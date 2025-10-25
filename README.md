@@ -1,5 +1,7 @@
 # FAM4K007 - 本地视频播放器
 
+**[中文版本](README.md) | [English Version](README_EN.md)**
+
 一个基于 libmpv 的 Android 本地视频播放器，支持多种视频格式、字幕处理、手势控制和实时超分等功能。
 
 ## 主要功能
