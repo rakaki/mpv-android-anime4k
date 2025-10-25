@@ -20,7 +20,7 @@ class FeedbackActivity : BaseActivity() {
         
         // GitHub Issue按钮点击
         findViewById<CardView>(R.id.btnGithubIssue).setOnClickListener {
-            openUrl(AppConstants.URLs.GITHUB_URL)
+            openUrl(AppConstants.URLs.GITHUB_ISSUES_URL)
         }
     }
     

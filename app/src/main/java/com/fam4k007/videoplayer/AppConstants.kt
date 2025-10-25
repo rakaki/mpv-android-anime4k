@@ -28,9 +28,10 @@ object AppConstants {
      * URL 配置
      */
     object URLs {
-        const val GITHUB_URL = "https://www.iiice.cn/#/"
-        const val CONTACT_URL = "https://www.iiice.cn/#/"
-        const val HOME_PAGE = "https://www.iiice.cn/#/"
+        const val GITHUB_URL = "https://github.com/azxcvn/mpv-android-anime4k"
+        const val CONTACT_URL = "https://github.com/azxcvn"
+        const val HOME_PAGE = "https://github.com/azxcvn/mpv-android-anime4k"
+        const val GITHUB_ISSUES_URL = "https://github.com/azxcvn/mpv-android-anime4k/issues"
     }
 
     /**
