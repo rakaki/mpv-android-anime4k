@@ -1,0 +1,517 @@
+package com.fam4k007.videoplayer.player
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import android.view.View
+import android.view.WindowInsetsController
+import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import java.lang.ref.WeakReference
+import java.text.SimpleDateFormat
+import java.util.*
+
+/**
+ * 播放器控制管理器
+ * 负责UI控制面板的显示/隐藏、按钮事件、进度更新等
+ * 使用 WeakReference 防止内存泄漏
+ */
+class PlayerControlsManager(
+    private val activityRef: WeakReference<AppCompatActivity>,
+    private val callback: ControlsCallback,
+    private val gestureHandlerRef: WeakReference<GestureHandler>? = null
+) {
+
+    companion object {
+        private const val TAG = "PlayerControlsManager"
+        private const val AUTO_HIDE_DELAY = 5000L
+    }
+
+    interface ControlsCallback {
+        fun onPlayPauseClick()
+        fun onPreviousClick()
+        fun onNextClick()
+        fun onRewindClick()
+        fun onForwardClick()
+        fun onAudioTrackClick()
+        fun onSubtitleClick()  // 新增：字幕按钮回调
+        fun onDecoderClick()
+        fun onAnime4KClick()
+        fun onMoreClick()
+        fun onSpeedClick()
+        fun onSeekBarChange(position: Double)
+        fun onBackClick()
+    }
+
+    // UI 组件
+    private var topInfoPanel: LinearLayout? = null
+    private var controlPanel: LinearLayout? = null
+    
+    private var tvFileName: TextView? = null
+    private var tvBattery: TextView? = null
+    private var tvTime: TextView? = null
+    private var tvTimeInfo: TextView? = null
+    
+    private var btnPlayPause: ImageView? = null
+    private var btnPrevious: ImageView? = null
+    private var btnNext: ImageView? = null
+    private var btnRewind: ImageView? = null
+    private var btnForward: ImageView? = null
+    private var btnBack: ImageView? = null
+    private var btnSubtitle: ImageView? = null  // 新增：字幕按钮
+    private var btnAudioTrack: ImageView? = null
+    private var btnDecoder: ImageView? = null
+    private var btnMore: ImageView? = null
+    private var btnSpeed: ImageView? = null
+    private var btnAnime4K: Button? = null
+    
+    private var seekBar: SeekBar? = null
+    
+    // 恢复播放提示
+    private var resumePlaybackPrompt: LinearLayout? = null
+    private var tvResumeConfirm: TextView? = null
+
+    // 状态
+    var isVisible = true
+        private set
+    
+    // Handler（使用 WeakReference）
+    private val handler = Handler(Looper.getMainLooper())
+    private val hideControlsRunnable = Runnable {
+        hideControls()
+    }
+    private val timeUpdateRunnable = object : Runnable {
+        override fun run() {
+            updateTime()
+            handler.postDelayed(this, 60000) // 每分钟更新
+        }
+    }
+
+    // 电池监听
+    private var batteryReceiver: BroadcastReceiver? = null
+
+    /**
+     * 绑定UI组件
+     */
+    fun bindViews(
+        topInfoPanel: LinearLayout,
+        controlPanel: LinearLayout,
+        tvFileName: TextView,
+        tvBattery: TextView,
+        tvTime: TextView,
+        tvTimeInfo: TextView,
+        btnPlayPause: ImageView,
+        btnPrevious: ImageView,
+        btnNext: ImageView,
+        btnRewind: ImageView,
+        btnForward: ImageView,
+        btnBack: ImageView,
+        btnSubtitle: ImageView,  // 新增参数
+        btnAudioTrack: ImageView,
+        btnDecoder: ImageView,
+        btnMore: ImageView,
+        btnSpeed: ImageView,
+        btnAnime4K: Button,
+        seekBar: SeekBar,
+        resumePlaybackPrompt: LinearLayout,
+        tvResumeConfirm: TextView
+    ) {
+        this.topInfoPanel = topInfoPanel
+        this.controlPanel = controlPanel
+        
+        this.tvFileName = tvFileName
+        this.tvBattery = tvBattery
+        this.tvTime = tvTime
+        this.tvTimeInfo = tvTimeInfo
+        
+        this.btnPlayPause = btnPlayPause
+        this.btnPrevious = btnPrevious
+        this.btnNext = btnNext
+        this.btnRewind = btnRewind
+        this.btnForward = btnForward
+        this.btnBack = btnBack
+        this.btnSubtitle = btnSubtitle  // 初始化字幕按钮
+        this.btnAudioTrack = btnAudioTrack
+        this.btnDecoder = btnDecoder
+        this.btnMore = btnMore
+        this.btnSpeed = btnSpeed
+        this.btnAnime4K = btnAnime4K
+        
+        this.seekBar = seekBar
+        
+        this.resumePlaybackPrompt = resumePlaybackPrompt
+        this.tvResumeConfirm = tvResumeConfirm
+        
+        setupClickListeners()
+        setupSeekBar()
+    }
+
+    /**
+     * 初始化
+     */
+    fun initialize() {
+        val activity = activityRef.get() ?: return
+        
+        // 立即隐藏系统UI
+        hideSystemUI()
+        
+        // 初始化电池监听
+        initBatteryMonitor(activity)
+        
+        // 初始化时间
+        updateTime()
+        handler.post(timeUpdateRunnable)
+        
+        // 启动自动隐藏
+        resetAutoHideTimer()
+        
+        Log.d(TAG, "PlayerControlsManager initialized")
+    }
+
+    /**
+     * 设置按钮点击监听
+     */
+    private fun setupClickListeners() {
+        btnBack?.setOnClickListener {
+            callback.onBackClick()
+        }
+        
+        btnPlayPause?.setOnClickListener {
+            callback.onPlayPauseClick()
+            resetAutoHideTimer()
+        }
+        
+        btnPrevious?.setOnClickListener {
+            callback.onPreviousClick()
+        }
+        
+        btnNext?.setOnClickListener {
+            callback.onNextClick()
+        }
+        
+        btnRewind?.setOnClickListener {
+            callback.onRewindClick()
+            resetAutoHideTimer()
+        }
+        
+        btnForward?.setOnClickListener {
+            callback.onForwardClick()
+            resetAutoHideTimer()
+        }
+        
+        btnSubtitle?.setOnClickListener {
+            callback.onSubtitleClick()
+            resetAutoHideTimer()
+        }
+        
+        btnAudioTrack?.setOnClickListener {
+            callback.onAudioTrackClick()
+            resetAutoHideTimer()
+        }
+        
+        btnDecoder?.setOnClickListener {
+            callback.onDecoderClick()
+            resetAutoHideTimer()
+        }
+        
+        btnAnime4K?.setOnClickListener {
+            callback.onAnime4KClick()
+            resetAutoHideTimer()
+        }
+        
+        btnMore?.setOnClickListener {
+            callback.onMoreClick()
+            resetAutoHideTimer()
+        }
+        
+        btnSpeed?.setOnClickListener {
+            callback.onSpeedClick()
+            resetAutoHideTimer()
+        }
+        
+        tvResumeConfirm?.setOnClickListener {
+            resumePlaybackPrompt?.visibility = View.GONE
+        }
+    }
+
+    // 当前视频时长（用于进度条计算）
+    private var currentDuration: Double = 0.0
+    
+    // 用于防止进度条拖动时频繁触发seek
+    private var isUserSeeking = false
+
+    /**
+     * 设置进度条监听
+     */
+    private fun setupSeekBar() {
+        seekBar?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                // 只在拖动完成时才seek,避免频繁触发
+                if (fromUser && currentDuration > 0) {
+                    val position = (progress / 100.0) * currentDuration
+                    // 实时更新时间显示,但不执行seek
+                    tvTimeInfo?.text = "${formatTime(position)}/${formatTime(currentDuration)}"
+                }
+            }
+            
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                isUserSeeking = true
+                handler.removeCallbacks(hideControlsRunnable)
+            }
+            
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                isUserSeeking = false
+                // 只在拖动结束时执行一次seek
+                seekBar?.let {
+                    val progress = it.progress
+                    if (currentDuration > 0) {
+                        val position = (progress / 100.0) * currentDuration
+                        callback.onSeekBarChange(position)
+                    }
+                }
+                resetAutoHideTimer()
+            }
+        })
+    }
+
+    /**
+     * 更新播放进度显示
+     */
+    fun updateProgress(position: Double, duration: Double) {
+        if (duration > 0) {
+            currentDuration = duration  // 更新当前时长
+            
+            // 只在用户不拖动时更新进度条和时间
+            if (!isUserSeeking) {
+                val progress = ((position / duration) * 100).toInt()
+                seekBar?.progress = progress
+                
+                // 更新合并的时间显示：当前时间/总时长
+                tvTimeInfo?.text = "${formatTime(position)}/${formatTime(duration)}"
+            }
+        }
+    }
+
+    /**
+     * 更新播放按钮图标
+     */
+    fun updatePlayPauseButton(isPlaying: Boolean) {
+        btnPlayPause?.setImageResource(
+            if (isPlaying) com.fam4k007.videoplayer.R.drawable.pause
+            else com.fam4k007.videoplayer.R.drawable.play
+        )
+    }
+
+    /**
+     * 更新上下集按钮状态
+     */
+    fun updateEpisodeButtons(hasPrevious: Boolean, hasNext: Boolean) {
+        btnPrevious?.isEnabled = hasPrevious
+        btnPrevious?.alpha = if (hasPrevious) 1.0f else 0.5f
+        
+        btnNext?.isEnabled = hasNext
+        btnNext?.alpha = if (hasNext) 1.0f else 0.5f
+    }
+
+    /**
+     * 设置文件名
+     */
+    fun setFileName(fileName: String) {
+        tvFileName?.text = fileName
+    }
+
+    /**
+     * 显示恢复播放提示
+     */
+    fun showResumePrompt() {
+        resumePlaybackPrompt?.visibility = View.VISIBLE
+        
+        // 5秒后自动隐藏
+        handler.postDelayed({
+            resumePlaybackPrompt?.visibility = View.GONE
+        }, 5000)
+    }
+
+    /**
+     * 切换控制面板显示/隐藏
+     */
+    fun toggleControls() {
+        if (isVisible) {
+            hideControls()
+        } else {
+            showControls()
+        }
+    }
+
+    /**
+     * 显示控制面板
+     */
+    fun showControls() {
+        if (isVisible) return
+        
+        // 设置可见性
+        controlPanel?.visibility = View.VISIBLE
+        topInfoPanel?.visibility = View.VISIBLE
+        
+        // 入场动画：淡入 + 从下往上滑入
+        controlPanel?.apply {
+            alpha = 0f
+            translationY = 100f
+            animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(250)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+        }
+        
+        // 顶部信息栏：淡入 + 从上往下滑入
+        topInfoPanel?.apply {
+            alpha = 0f
+            translationY = -100f
+            animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(250)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+        }
+        
+        isVisible = true
+        resetAutoHideTimer()
+    }
+
+    /**
+     * 隐藏控制面板
+     */
+    fun hideControls() {
+        if (!isVisible) return
+        
+        // 出场动画：淡出
+        controlPanel?.animate()
+            ?.alpha(0f)
+            ?.setDuration(200)
+            ?.setInterpolator(android.view.animation.AccelerateInterpolator())
+            ?.withEndAction {
+                controlPanel?.visibility = View.GONE
+                controlPanel?.alpha = 1f
+            }
+            ?.start()
+        
+        topInfoPanel?.animate()
+            ?.alpha(0f)
+            ?.setDuration(200)
+            ?.setInterpolator(android.view.animation.AccelerateInterpolator())
+            ?.withEndAction {
+                topInfoPanel?.visibility = View.GONE
+                topInfoPanel?.alpha = 1f
+            }
+            ?.start()
+        
+        isVisible = false
+        handler.removeCallbacks(hideControlsRunnable)
+    }
+
+    /**
+     * 重置自动隐藏定时器
+     */
+    fun resetAutoHideTimer() {
+        handler.removeCallbacks(hideControlsRunnable)
+        handler.postDelayed(hideControlsRunnable, AUTO_HIDE_DELAY)
+    }
+
+    /**
+     * 停止自动隐藏（暂停时）
+     */
+    fun stopAutoHide() {
+        handler.removeCallbacks(hideControlsRunnable)
+    }
+
+    /**
+     * 隐藏系统UI
+     */
+    private fun hideSystemUI() {
+        val activity = activityRef.get() ?: return
+        val windowInsetsController = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+        windowInsetsController.apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    private fun formatTime(seconds: Double): String {
+        val totalSeconds = seconds.toInt()
+        val minutes = totalSeconds / 60
+        val secs = totalSeconds % 60
+        return String.format("%02d:%02d", minutes, secs)
+    }
+
+    private fun initBatteryMonitor(context: Context) {
+        batteryReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) ?: 0
+                val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+                val batteryPct = (level / scale.toFloat() * 100).toInt()
+                tvBattery?.text = "$batteryPct%"
+            }
+        }
+        context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+    }
+
+    private fun updateTime() {
+        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        tvTime?.text = sdf.format(Date())
+    }
+
+    /**
+     * 清理资源
+     */
+    fun cleanup() {
+        Log.d(TAG, "Cleaning up PlayerControlsManager")
+        
+        handler.removeCallbacks(hideControlsRunnable)
+        handler.removeCallbacks(timeUpdateRunnable)
+        
+        activityRef.get()?.let { activity ->
+            batteryReceiver?.let {
+                try {
+                    activity.unregisterReceiver(it)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to unregister battery receiver", e)
+                }
+            }
+        }
+        
+        batteryReceiver = null
+        
+        // 清空所有视图引用
+        topInfoPanel = null
+        controlPanel = null
+        tvFileName = null
+        tvBattery = null
+        tvTime = null
+        tvTimeInfo = null
+        btnPlayPause = null
+        btnPrevious = null
+        btnNext = null
+        btnRewind = null
+        btnForward = null
+        btnBack = null
+        btnAudioTrack = null
+        btnDecoder = null
+        btnMore = null
+        btnSpeed = null
+        btnAnime4K = null
+        seekBar = null
+        resumePlaybackPrompt = null
+        tvResumeConfirm = null
+    }
+}

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAM4K007 配色方案预览</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #333;
+        }
+        
+        .schemes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+        }
+        
+        .scheme {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .scheme-header {
+            padding: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .scheme-preview {
+            padding: 20px;
+        }
+        
+        .preview-section {
+            margin-bottom: 20px;
+        }
+        
+        .preview-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .preview-box {
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .color-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .color-item {
+            flex: 1;
+            height: 60px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .button-demo {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin: 5px;
+        }
+        
+        /* 方案1: 深蓝科技 */
+        .scheme1 .scheme-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .scheme1 .main-bg {
+            background: #F7F9FC;
+        }
+        .scheme1 .toolbar {
+            background: #667eea;
+            color: white;
+        }
+        .scheme1 .accent {
+            background: #667eea;
+            color: white;
+        }
+        .scheme1 .secondary {
+            background: #764ba2;
+            color: white;
+        }
+        
+        /* 方案2: 现代暗黑 */
+        .scheme2 .scheme-header {
+            background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+            color: white;
+        }
+        .scheme2 .main-bg {
+            background: #121212;
+            color: #e0e0e0;
+        }
+        .scheme2 .toolbar {
+            background: #1e1e1e;
+            color: white;
+        }
+        .scheme2 .accent {
+            background: #BB86FC;
+            color: white;
+        }
+        .scheme2 .secondary {
+            background: #03DAC6;
+            color: black;
+        }
+        
+        /* 方案3: 清新绿松 */
+        .scheme3 .scheme-header {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        .scheme3 .main-bg {
+            background: #F0FFF4;
+        }
+        .scheme3 .toolbar {
+            background: #11998e;
+            color: white;
+        }
+        .scheme3 .accent {
+            background: #11998e;
+            color: white;
+        }
+        .scheme3 .secondary {
+            background: #38ef7d;
+            color: white;
+        }
+        
+        /* 方案4: 橙色活力 */
+        .scheme4 .scheme-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .scheme4 .main-bg {
+            background: #FFF5F5;
+        }
+        .scheme4 .toolbar {
+            background: #FF6B6B;
+            color: white;
+        }
+        .scheme4 .accent {
+            background: #FF6B6B;
+            color: white;
+        }
+        .scheme4 .secondary {
+            background: #f093fb;
+            color: white;
+        }
+        
+        /* 方案5: 极简灰度 */
+        .scheme5 .scheme-header {
+            background: linear-gradient(135deg, #434343 0%, #000000 100%);
+            color: white;
+        }
+        .scheme5 .main-bg {
+            background: #FAFAFA;
+        }
+        .scheme5 .toolbar {
+            background: #212121;
+            color: white;
+        }
+        .scheme5 .accent {
+            background: #424242;
+            color: white;
+        }
+        .scheme5 .secondary {
+            background: #757575;
+            color: white;
+        }
+        
+        .code-box {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 FAM4K007 配色方案预览</h1>
+        
+        <div class="schemes">
+            <!-- 方案1: 深蓝科技 -->
+            <div class="scheme scheme1">
+                <div class="scheme-header">方案1: 深蓝科技 (推荐)</div>
+                <div class="scheme-preview">
+                    <div class="preview-section">
+                        <div class="preview-title">主界面</div>
+                        <div class="preview-box main-bg">
+                            <div style="background: white; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                                <span class="button-demo accent">选择视频文件夹</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-around;">
+                                <span class="button-demo secondary">首页</span>
+                                <span class="button-demo" style="background: #e0e0e0;">我的</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">顶部栏/工具栏</div>
+                        <div class="preview-box toolbar">
+                            ← 播放器设置
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">色板</div>
+                        <div class="color-row">
+                            <div class="color-item accent">#667eea<br/>主色</div>
+                            <div class="color-item secondary">#764ba2<br/>辅助色</div>
+                            <div class="color-item main-bg" style="color: #333;">#F7F9FC<br/>背景</div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-box">
+主色: #667eea (深蓝紫)<br/>
+辅助色: #764ba2 (紫色)<br/>
+背景: #F7F9FC (浅灰蓝)<br/>
+文字: #333333 (深灰)
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方案2: 现代暗黑 -->
+            <div class="scheme scheme2">
+                <div class="scheme-header">方案2: 现代暗黑</div>
+                <div class="scheme-preview">
+                    <div class="preview-section">
+                        <div class="preview-title">主界面</div>
+                        <div class="preview-box main-bg">
+                            <div style="background: #1e1e1e; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                                <span class="button-demo accent">选择视频文件夹</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-around;">
+                                <span class="button-demo accent">首页</span>
+                                <span class="button-demo" style="background: #2d2d2d; color: #999;">我的</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">顶部栏/工具栏</div>
+                        <div class="preview-box toolbar">
+                            ← 播放器设置
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">色板</div>
+                        <div class="color-row">
+                            <div class="color-item accent">#BB86FC<br/>主色</div>
+                            <div class="color-item secondary">#03DAC6<br/>辅助色</div>
+                            <div class="color-item main-bg" style="color: #e0e0e0;">#121212<br/>背景</div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-box">
+主色: #BB86FC (紫色)<br/>
+辅助色: #03DAC6 (青色)<br/>
+背景: #121212 (纯黑)<br/>
+文字: #E0E0E0 (浅灰)
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方案3: 清新绿松 -->
+            <div class="scheme scheme3">
+                <div class="scheme-header">方案3: 清新绿松</div>
+                <div class="scheme-preview">
+                    <div class="preview-section">
+                        <div class="preview-title">主界面</div>
+                        <div class="preview-box main-bg">
+                            <div style="background: white; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                                <span class="button-demo accent">选择视频文件夹</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-around;">
+                                <span class="button-demo secondary">首页</span>
+                                <span class="button-demo" style="background: #d0f0dd;">我的</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">顶部栏/工具栏</div>
+                        <div class="preview-box toolbar">
+                            ← 播放器设置
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">色板</div>
+                        <div class="color-row">
+                            <div class="color-item accent">#11998e<br/>主色</div>
+                            <div class="color-item secondary">#38ef7d<br/>辅助色</div>
+                            <div class="color-item main-bg" style="color: #333;">#F0FFF4<br/>背景</div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-box">
+主色: #11998e (绿松石)<br/>
+辅助色: #38ef7d (亮绿)<br/>
+背景: #F0FFF4 (浅绿白)<br/>
+文字: #1a202c (深灰)
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方案4: 橙色活力 -->
+            <div class="scheme scheme4">
+                <div class="scheme-header">方案4: 橙色活力</div>
+                <div class="scheme-preview">
+                    <div class="preview-section">
+                        <div class="preview-title">主界面</div>
+                        <div class="preview-box main-bg">
+                            <div style="background: white; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                                <span class="button-demo accent">选择视频文件夹</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-around;">
+                                <span class="button-demo secondary">首页</span>
+                                <span class="button-demo" style="background: #ffe0e0;">我的</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">顶部栏/工具栏</div>
+                        <div class="preview-box toolbar">
+                            ← 播放器设置
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">色板</div>
+                        <div class="color-row">
+                            <div class="color-item accent">#FF6B6B<br/>主色</div>
+                            <div class="color-item secondary">#f093fb<br/>辅助色</div>
+                            <div class="color-item main-bg" style="color: #333;">#FFF5F5<br/>背景</div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-box">
+主色: #FF6B6B (珊瑚红)<br/>
+辅助色: #f093fb (粉紫)<br/>
+背景: #FFF5F5 (浅红白)<br/>
+文字: #2d3748 (深灰)
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方案5: 极简灰度 -->
+            <div class="scheme scheme5">
+                <div class="scheme-header">方案5: 极简灰度</div>
+                <div class="scheme-preview">
+                    <div class="preview-section">
+                        <div class="preview-title">主界面</div>
+                        <div class="preview-box main-bg">
+                            <div style="background: white; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                                <span class="button-demo accent">选择视频文件夹</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-around;">
+                                <span class="button-demo secondary">首页</span>
+                                <span class="button-demo" style="background: #e0e0e0; color: #757575;">我的</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">顶部栏/工具栏</div>
+                        <div class="preview-box toolbar">
+                            ← 播放器设置
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <div class="preview-title">色板</div>
+                        <div class="color-row">
+                            <div class="color-item accent">#424242<br/>主色</div>
+                            <div class="color-item secondary">#757575<br/>辅助色</div>
+                            <div class="color-item main-bg" style="color: #333;">#FAFAFA<br/>背景</div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-box">
+主色: #424242 (深灰)<br/>
+辅助色: #757575 (中灰)<br/>
+背景: #FAFAFA (浅灰)<br/>
+文字: #212121 (黑灰)
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px; padding: 20px; background: white; border-radius: 12px; text-align: center;">
+            <h3>选择方式</h3>
+            <p style="margin: 10px 0; color: #666;">
+                请在浏览器中打开此文件预览效果,选好后告诉我方案编号(1-5)<br/>
+                文件位置: <code>C:\Users\root\Desktop\FAM4K007\color_schemes.html</code>
+            </p>
+            <p style="color: #999; font-size: 14px;">
+                💡 推荐方案1(深蓝科技),统一且现代化
+            </p>
+        </div>
+    </div>
+</body>
+</html>

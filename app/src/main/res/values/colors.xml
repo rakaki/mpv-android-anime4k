@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 方案1: 深蓝科技 - 主色系 -->
+    <color name="primary">#667eea</color>
+    <color name="primary_dark">#5568d3</color>
+    <color name="primary_light">#8094f0</color>
+    <color name="secondary">#764ba2</color>
+    <color name="secondary_dark">#5e3c82</color>
+    <color name="secondary_light">#9066be</color>
+    
+    <!-- 背景色 -->
+    <color name="background">#F7F9FC</color>
+    <color name="background_light">#FFFFFF</color>
+    <color name="background_dark">#E8EBF0</color>
+    
+    <!-- 文字颜色 -->
+    <color name="text_primary">#333333</color>
+    <color name="text_secondary">#666666</color>
+    <color name="text_hint">#999999</color>
+    <color name="text_white">#FFFFFF</color>
+    
+    <!-- 强调色 -->
+    <color name="accent">#667eea</color>
+    <color name="accent_light">#E8ECFE</color>
+    
+    <!-- 分割线 -->
+    <color name="divider">#E0E0E0</color>
+    
+    <!-- 半透明遮罩 -->
+    <color name="overlay_dark">#66000000</color>
+    <color name="overlay_light">#33FFFFFF</color>
+    
+    <!-- Anime4K 模式选择器颜色 -->
+    <color name="anime4k_mode_selected">#E8ECFE</color>
+    <color name="anime4k_mode_normal">#F7F9FC</color>
+</resources>

@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">FAMPV4K</string>
+    
+    <!-- Activity 标题 -->
+    <string name="settings">设置</string>
+    <string name="playback_settings">播放设置</string>
+    <string name="playback_history">播放历史</string>
+    <string name="help">使用说明</string>
+    <string name="license">许可证</string>
+    <string name="about">关于</string>
+    <string name="feedback">意见反馈</string>
+</resources>

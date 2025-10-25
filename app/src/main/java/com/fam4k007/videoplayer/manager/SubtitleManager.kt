@@ -1,0 +1,185 @@
+package com.fam4k007.videoplayer.manager
+
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import dev.jdtech.mpv.MPVLib
+import java.io.File
+
+/**
+ * 外挂字幕管理器
+ * 负责加载和管理外部字幕文件
+ */
+class SubtitleManager {
+    
+    companion object {
+        private const val TAG = "SubtitleManager"
+    }
+
+    /**
+     * 添加外挂字幕
+     * @param context Android Context
+     * @param subtitleUri 字幕文件的 Uri
+     * @param onSubtitleAdded 字幕成功添加后的回调，传入字幕路径
+     * @return 是否添加成功
+     */
+    fun addExternalSubtitle(
+        context: Context, 
+        subtitleUri: Uri,
+        onSubtitleAdded: ((subtitlePath: String) -> Unit)? = null
+    ): Boolean {
+        return try {
+            val path = getSubtitlePath(context, subtitleUri)
+            if (path != null) {
+                Log.d(TAG, "===== Adding external subtitle =====")
+                Log.d(TAG, "Path: $path")
+                
+                // 执行 sub-add 命令，使用 "select" 标志自动选中字幕
+                // sub-add <path> [select|insert-next|append] [title]
+                // "select" 标志会自动加载并显示该字幕
+                MPVLib.command(arrayOf("sub-add", path, "select"))
+                Log.d(TAG, "sub-add command executed with 'select' flag")
+                
+                // 立即查询 track-list 状态
+                val trackCount = MPVLib.getPropertyInt("track-list/count") ?: 0
+                val currentSid = MPVLib.getPropertyString("sid") ?: "no"
+                Log.d(TAG, "Immediately after sub-add: track-list/count = $trackCount, current sid = $currentSid")
+                
+                for (i in 0 until trackCount) {
+                    val type = MPVLib.getPropertyString("track-list/$i/type")
+                    val id = MPVLib.getPropertyInt("track-list/$i/id")
+                    val lang = MPVLib.getPropertyString("track-list/$i/lang") ?: "unknown"
+                    val title = MPVLib.getPropertyString("track-list/$i/title") ?: ""
+                    Log.d(TAG, "  Track[$i]: type=$type, id=$id, lang=$lang, title=$title")
+                }
+                
+                Log.d(TAG, "Successfully added external subtitle: $path")
+                
+                // 回调：通知 PlaybackEngine 字幕已添加，以便在重新加载视频时重新添加
+                onSubtitleAdded?.invoke(path)
+                
+                Log.d(TAG, "===== End adding external subtitle =====")
+                true
+            } else {
+                Log.w(TAG, "Failed to get subtitle path from URI: $subtitleUri")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to add external subtitle", e)
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /**
+     * 获取字幕文件的实际路径
+     * 支持 content:// 和 file:// URI
+     * 对于 content:// URI，复制到临时目录后返回真实路径
+     */
+    private fun getSubtitlePath(context: Context, uri: Uri): String? {
+        return try {
+            when (uri.scheme) {
+                "file" -> {
+                    // file:// URI 直接使用路径
+                    uri.path?.let { path ->
+                        if (File(path).exists()) {
+                            Log.d(TAG, "Using file:// path directly: $path")
+                            path
+                        } else {
+                            Log.w(TAG, "File does not exist: $path")
+                            null
+                        }
+                    }
+                }
+                "content" -> {
+                    // content:// URI 需要复制到实际文件路径，MPV 无法直接处理 content:// URI
+                    Log.d(TAG, "content:// URI detected, need to copy to cache")
+                    copyContentUriToFile(context, uri)
+                }
+                else -> {
+                    // 尝试直接使用 URI
+                    Log.d(TAG, "Unknown scheme: ${uri.scheme}, trying direct URI")
+                    uri.toString()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get subtitle path", e)
+            null
+        }
+    }
+
+    /**
+     * 将 content:// URI 的文件复制到应用缓存目录
+     * 返回缓存文件的实际路径供 MPV 使用
+     */
+    private fun copyContentUriToFile(context: Context, uri: Uri): String? {
+        return try {
+            val displayName = getSubtitleDisplayName(context, uri)
+            val cacheFile = File(context.cacheDir, "subtitles_$displayName")
+            
+            Log.d(TAG, "Copying content URI to cache: ${cacheFile.absolutePath}")
+            
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                cacheFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            if (cacheFile.exists()) {
+                Log.d(TAG, "Cache file created successfully: ${cacheFile.absolutePath} (${cacheFile.length()} bytes)")
+                cacheFile.absolutePath
+            } else {
+                Log.e(TAG, "Failed to create cache file")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to copy content URI to file", e)
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * 获取字幕文件的显示名称
+     */
+    fun getSubtitleDisplayName(context: Context, uri: Uri): String {
+        return when (uri.scheme) {
+            "file" -> {
+                val file = File(uri.path ?: "")
+                file.name
+            }
+            "content" -> {
+                try {
+                    val cursor = context.contentResolver.query(uri, null, null, null, null)
+                    cursor?.use {
+                        if (it.moveToFirst()) {
+                            val index = it.getColumnIndex(android.provider.MediaStore.MediaColumns.DISPLAY_NAME)
+                            if (index >= 0) {
+                                return it.getString(index)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to get display name from content URI", e)
+                }
+                "外挂字幕"
+            }
+            else -> {
+                "字幕文件"
+            }
+        }
+    }
+
+    /**
+     * 检查文件是否是支持的字幕格式
+     */
+    fun isSupportedSubtitleFormat(filename: String): Boolean {
+        val supportedExtensions = setOf(
+            "srt", "ass", "ssa", "sub", "vtt", "lrc", 
+            "sbv", "smi", "pjs", "psb", "rt", "vtt",
+            "aqt", "mpl2", "txt", "dvd", "idx", "sup"
+        )
+        val extension = filename.substringAfterLast('.', "").lowercase()
+        return extension in supportedExtensions
+    }
+}

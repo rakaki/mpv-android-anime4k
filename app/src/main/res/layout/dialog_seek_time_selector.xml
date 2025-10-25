@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="20dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="时长修改"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+    <RadioGroup
+        android:id="@+id/rgSeekTimeOptions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <RadioButton
+            android:id="@+id/rb3s"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="3s"
+            android:gravity="center_vertical"
+            android:textSize="16sp" />
+        <RadioButton
+            android:id="@+id/rb5s"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="5s"
+            android:gravity="center_vertical"
+            android:textSize="16sp" />
+        <RadioButton
+            android:id="@+id/rb10s"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="10s"
+            android:gravity="center_vertical"
+            android:textSize="16sp" />
+        <RadioButton
+            android:id="@+id/rb15s"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="15s"
+            android:gravity="center_vertical"
+            android:textSize="16sp" />
+        <RadioButton
+            android:id="@+id/rb20s"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="20s"
+            android:gravity="center_vertical"
+            android:textSize="16sp" />
+        <RadioButton
+            android:id="@+id/rb25s"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="25s"
+            android:gravity="center_vertical"
+            android:textSize="16sp" />
+        <RadioButton
+            android:id="@+id/rb30s"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="30s"
+            android:gravity="center_vertical"
+            android:textSize="16sp" />
+    </RadioGroup>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="20dp">
+        <Button
+            android:id="@+id/btnCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="取消"
+            android:background="?attr/selectableItemBackground"
+            android:textColor="@color/primary"
+            android:minWidth="0dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp" />
+        <Button
+            android:id="@+id/btnConfirm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="确定"
+            android:background="@color/primary"
+            android:textColor="@android:color/white"
+            android:minWidth="0dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+    </LinearLayout>
+</LinearLayout>
