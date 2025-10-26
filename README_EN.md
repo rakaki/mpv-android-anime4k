@@ -1,4 +1,4 @@
-# FAM4K007 - Local Video Player
+# FAMPV4K - Local Video Player
 
 An Android local video player based on libmpv, supporting multiple video formats, subtitle processing, gesture controls, and real-time upscaling features.
 

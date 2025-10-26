@@ -1,4 +1,4 @@
-# FAM4K007 - 本地视频播放器
+# FAMPV4K - 本地动漫视频实时超分播放器
 
 **[中文版本](README.md) | [English Version](README_EN.md)**
 
