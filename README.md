@@ -6,14 +6,13 @@
 
 ## 软件名称
 
-**FAM4K007** 是 **For Anime Media Player Video 4K** 的首字母简称：
+**FAMPV4K** 是 **For Anime Media Player Video 4K** 的首字母简称：
 - **F**or - 为了
 - **A**nime - 动画
 - **M**edia - 媒体
 - **P**layer - 播放器
 - **V**ideo - 视频
 - **4K** - 超高清分辨率
-- **007** - 连续编号
 
 该名称体现了本软件主要为日本动画爱好者优化的本地高清视频播放器定位。
 
