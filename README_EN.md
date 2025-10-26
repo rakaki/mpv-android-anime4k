@@ -4,14 +4,13 @@ An Android local video player based on libmpv, supporting multiple video formats
 
 ## About the Name
 
-**FAM4K007** is an abbreviation for **For Anime Media Player Video 4K**:
+**FAMPV4K** is an abbreviation for **For Anime Media Player Video 4K**:
 - **F**or - For
 - **A**nime - Anime
 - **M**edia - Media
 - **P**layer - Player
 - **V**ideo - Video
 - **4K** - Ultra high definition resolution
-- **007** - Continuous numbering
 
 This name reflects the software's primary positioning as a high-definition local video player optimized for anime enthusiasts.
 
