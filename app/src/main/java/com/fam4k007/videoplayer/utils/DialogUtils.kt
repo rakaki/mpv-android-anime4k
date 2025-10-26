@@ -50,7 +50,7 @@ object DialogUtils {
         onPositive: (() -> Unit)? = null,
         onNegative: (() -> Unit)? = null
     ) {
-        AlertDialog.Builder(context)
+        val dialog = AlertDialog.Builder(context)
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton(positiveButtonText) { _, _ ->
@@ -59,7 +59,24 @@ object DialogUtils {
             .setNegativeButton(negativeButtonText) { _, _ ->
                 onNegative?.invoke()
             }
-            .show()
+            .create()
+        
+        // 应用圆角风格
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.show()
+        
+        // 为对话框添加圆角背景
+        try {
+            val decorView = dialog.window?.decorView as? android.view.ViewGroup
+            decorView?.findViewById<android.view.View>(android.R.id.content)?.let { contentView ->
+                val background = android.graphics.drawable.GradientDrawable()
+                background.setColor(android.graphics.Color.WHITE)
+                background.cornerRadius = 16f * context.resources.displayMetrics.density
+                contentView.background = background
+            }
+        } catch (e: Exception) {
+            // 降级处理
+        }
     }
 
     /**

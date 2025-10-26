@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F5F5F5">
+    android:background="#F8F9FA">
 
     <!-- Toolbar -->
     <androidx.appcompat.widget.Toolbar
@@ -19,205 +19,308 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="0dp">
-
-        <!-- 音量与亮度说明 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="音量与亮度"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:padding="16dp"
-            android:paddingStart="20dp"
-            android:background="@android:color/transparent" />
+        android:layout_height="match_parent"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#FFFFFF"
-            android:padding="20dp">
+            android:paddingTop="16dp"
+            android:paddingBottom="24dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- 音量与亮度说明 - 卡片1 -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="📱 应用内音量/亮度调节"
-                android:textSize="16sp"
-                android:textColor="@color/text_primary"
-                android:textStyle="bold" />
+                android:orientation="vertical"
+                android:layout_marginLeft="12dp"
+                android:layout_marginRight="12dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/card_background"
+                android:elevation="2dp"
+                android:padding="20dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+                <!-- 分类标题和颜色条 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <View
+                        android:layout_width="4dp"
+                        android:layout_height="24dp"
+                        android:background="#FF6B6B"
+                        android:layout_marginRight="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔆 音量与亮度"
+                        android:textSize="18sp"
+                        android:textColor="#2C3E50"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 内容1 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="应用内音量/亮度调节"
+                        android:textSize="15sp"
+                        android:textColor="#34495E"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="• 左侧上下滑动调节亮度\n• 右侧上下滑动调节音量\n• 退出播放器自动恢复系统设置"
+                        android:textSize="14sp"
+                        android:textColor="#7F8C8D"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginLeft="8dp" />
+                </LinearLayout>
+
+                <!-- 分隔线 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#ECF0F1"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- 内容2 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="MPV音量增强功能"
+                        android:textSize="15sp"
+                        android:textColor="#34495E"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="• 系统音量达最大值后继续向上滑动\n• 进入增强模式支持超过100%的音量\n• 最高可提升至200%音量\n• 音量指示器显示百分比(如150%)\n• 向下滑动降至100%以下自动退出"
+                        android:textSize="14sp"
+                        android:textColor="#7F8C8D"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginLeft="8dp" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 手势操作说明 - 卡片2 -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="• 左侧上下滑动: 调节亮度\n• 右侧上下滑动: 调节音量\n• 退出播放器后自动恢复系统设置"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:lineSpacingExtra="4dp"
-                android:layout_marginTop="12dp" />
+                android:orientation="vertical"
+                android:layout_marginLeft="12dp"
+                android:layout_marginRight="12dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/card_background"
+                android:elevation="2dp"
+                android:padding="20dp">
 
+                <!-- 分类标题 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <View
+                        android:layout_width="4dp"
+                        android:layout_height="24dp"
+                        android:background="#3498DB"
+                        android:layout_marginRight="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="👆 手势操作"
+                        android:textSize="18sp"
+                        android:textColor="#2C3E50"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 手势内容 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="播放控制手势"
+                        android:textSize="15sp"
+                        android:textColor="#34495E"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="• 单击屏幕 - 显示/隐藏控制面板\n• 双击屏幕 - 暂停/播放\n• 长按屏幕 - 2倍速播放(松开恢复)\n• 左右滑动 - 调整进度(100px = 5秒)"
+                        android:textSize="14sp"
+                        android:textColor="#7F8C8D"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginLeft="8dp" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Anime4K 超分模式说明 - 卡片3 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginLeft="12dp"
+                android:layout_marginRight="12dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/card_background"
+                android:elevation="2dp"
+                android:padding="20dp">
+
+                <!-- 分类标题 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <View
+                        android:layout_width="4dp"
+                        android:layout_height="24dp"
+                        android:background="#9B59B6"
+                        android:layout_marginRight="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🚀 Anime4K 超分辨率"
+                        android:textSize="18sp"
+                        android:textColor="#2C3E50"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 基础模式 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="16dp"
+                    android:paddingBottom="12dp"
+                    android:background="@drawable/tag_background_light">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="基础模式 (单次处理)"
+                        android:textSize="15sp"
+                        android:textColor="#34495E"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"
+                        android:layout_marginLeft="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="模式 A: 强力线条重建 - 适合高模糊度\n模式 B: 柔和线条重建 - 适合低模糊度\n模式 C: 降噪放大 - 适合有噪点的动画"
+                        android:textSize="14sp"
+                        android:textColor="#7F8C8D"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginLeft="16dp" />
+                </LinearLayout>
+
+                <!-- 增强模式 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="16dp"
+                    android:paddingBottom="12dp"
+                    android:background="@drawable/tag_background_light">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="增强模式 (多次处理)"
+                        android:textSize="15sp"
+                        android:textColor="#34495E"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"
+                        android:layout_marginLeft="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="模式 A+A: 双重强力重建 - GPU占用高\n模式 B+B: 双重柔和重建 - 更自然效果\n模式 C+A: 降噪+线条重建 - 改进噪点"
+                        android:textSize="14sp"
+                        android:textColor="#7F8C8D"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginLeft="16dp" />
+                </LinearLayout>
+
+                <!-- 分隔线 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#ECF0F1"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- 使用技巧 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="💡 使用技巧"
+                        android:textSize="15sp"
+                        android:textColor="#34495E"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="• Anime4K 专为 1080p 原生动画优化\n• 首次使用建议「模式 B + 平衡」\n• 视频模糊尝试模式 A (强力重建)\n• 视频有噪点尝试模式 C (降噪)\n• 卡顿时降低质量或切换基础模式\n• 不同视频源效果不同，多尝试"
+                        android:textSize="14sp"
+                        android:textColor="#7F8C8D"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginLeft="8dp" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 底部留白 -->
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🔊 MPV音量增强功能"
-                android:textSize="16sp"
-                android:textColor="@color/text_primary"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="• 系统音量达到最大值后\n• 继续向上滑动自动进入增强模式\n• 支持超过100%的音量(最高200%)\n• 音量指示器会显示百分比(如150%)\n• 向下滑动降至100%以下自动退出"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:lineSpacingExtra="4dp"
-                android:layout_marginTop="12dp" />
+                android:layout_height="24dp" />
 
         </LinearLayout>
-
-        <!-- 手势操作说明 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="手势操作"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:padding="16dp"
-            android:paddingStart="20dp"
-            android:layout_marginTop="16dp"
-            android:background="@android:color/transparent" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#FFFFFF"
-            android:padding="20dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🎬 播放控制手势"
-                android:textSize="16sp"
-                android:textColor="@color/text_primary"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="• 单击屏幕: 显示/隐藏控制面板\n• 双击屏幕: 暂停/播放\n• 长按屏幕: 2倍速播放(松开恢复)\n• 左右滑动: 调整进度(100px = 5秒)"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:lineSpacingExtra="4dp"
-                android:layout_marginTop="12dp" />
-
-        </LinearLayout>
-
-        <!-- Anime4K 超分模式说明 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Anime4K 超分辨率"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:padding="16dp"
-            android:paddingStart="20dp"
-            android:layout_marginTop="16dp"
-            android:background="@android:color/transparent" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#FFFFFF"
-            android:padding="20dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📺 基础模式 (单次处理)"
-                android:textSize="16sp"
-                android:textColor="@color/text_primary"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="• 模式 A: 强力线条重建\n  适合高模糊度、重采样伪影的1080p动画\n\n• 模式 B: 柔和线条重建\n  适合低模糊度、下采样振铃的1080p动画\n\n• 模式 C: 降噪放大\n  适合有噪点的动画"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:lineSpacingExtra="4dp"
-                android:layout_marginTop="12dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🚀 增强模式 (多次处理)"
-                android:textSize="16sp"
-                android:textColor="@color/text_primary"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="• 模式 A+A: 双重强力重建\n  最高感知质量，更强线条还原 (GPU占用高)\n\n• 模式 B+B: 双重柔和重建\n  高感知质量，更自然效果 (GPU占用高)\n\n• 模式 C+A: 降噪+线条重建\n  改进噪点视频效果 (GPU占用高)"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:lineSpacingExtra="4dp"
-                android:layout_marginTop="12dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="💡 使用技巧"
-                android:textSize="16sp"
-                android:textColor="@color/text_primary"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="• Anime4K 专为 1080p 原生动画优化\n• 首次使用建议「模式 B + 平衡」\n• 视频模糊: 尝试模式 A (强力重建)\n• 视频有噪点: 尝试模式 C (降噪)\n• 卡顿时降低质量或切换基础模式\n• 不同视频源效果不同，多尝试"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:lineSpacingExtra="4dp"
-                android:layout_marginTop="12dp" />
-
-        </LinearLayout>
-
-        <!-- 底部留白 -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="32dp" />
-
-    </LinearLayout>
 
     </ScrollView>
 

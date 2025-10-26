@@ -4,6 +4,29 @@
 
 一个基于 libmpv 的 Android 本地视频播放器，支持多种视频格式、字幕处理、手势控制和实时超分等功能。
 
+## 软件名称
+
+**FAM4K007** 是 **For Anime Media Player Video 4K** 的首字母简称：
+- **F**or - 为了
+- **A**nime - 动画
+- **M**edia - 媒体
+- **P**layer - 播放器
+- **V**ideo - 视频
+- **4K** - 超高清分辨率
+- **007** - 连续编号
+
+该名称体现了本软件主要为日本动画爱好者优化的本地高清视频播放器定位。
+
+## 功能截图
+
+| 首页 | 播放页面 | 设置页面 |
+|------|---------|---------|
+| ![首页](docs/screenshots/Screenshot_20251026_114205.jpg) | ![播放](docs/screenshots/Screenshot_20251026_114217.jpg) | ![设置](docs/screenshots/Screenshot_20251026_114259.jpg) |
+
+| 字幕管理 | 播放控制 |
+|---------|---------|
+| ![字幕](docs/screenshots/Screenshot_20251026_114420.jpg) | ![控制](docs/screenshots/IMG_20251026_114329.jpg) |
+
 ## 主要功能
 
 - **视频播放**：支持主流视频格式（MP4、MKV、AVI 等）
@@ -89,4 +112,4 @@
 
 ---
 
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-10-26

@@ -61,9 +61,11 @@ class VideoBrowserActivity : AppCompatActivity() {
             requestStoragePermission()
         }
 
-        // 设置下拉刷新
+        // 设置下拉刷新动画（无实际刷新，仅动画，延长时间）
         swipeRefreshLayout.setOnRefreshListener {
-            refreshVideoList()
+            swipeRefreshLayout.postDelayed({
+                swipeRefreshLayout.isRefreshing = false
+            }, 800)
         }
         swipeRefreshLayout.setColorSchemeResources(
             R.color.primary,
@@ -233,10 +235,6 @@ class VideoBrowserActivity : AppCompatActivity() {
 
         adapter.notifyDataSetChanged()
         swipeRefreshLayout.setRefreshing(false)
-
-        if (videoFolders.isEmpty()) {
-            DialogUtils.showToastShort(this, "未找到视频文件")
-        }
     }
 
     private fun refreshVideoList() {

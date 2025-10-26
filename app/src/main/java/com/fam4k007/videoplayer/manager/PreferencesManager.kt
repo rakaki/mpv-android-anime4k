@@ -107,6 +107,26 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().remove(videoUri).apply()
     }
     
+    // ==================== 主题设置 ====================
+    
+    /**
+     * 获取主题模式
+     * @return "light" 亮色 | "dark" 深色 | "system" 跟随系统
+     */
+    fun getThemeMode(): String {
+        return sharedPreferences.getString(
+            "theme_mode",
+            "light"  // 默认亮色
+        ) ?: "light"
+    }
+    
+    /**
+     * 保存主题模式
+     */
+    fun setThemeMode(mode: String) {
+        sharedPreferences.edit().putString("theme_mode", mode).apply()
+    }
+    
     // ==================== 批量操作 ====================
     
     /**

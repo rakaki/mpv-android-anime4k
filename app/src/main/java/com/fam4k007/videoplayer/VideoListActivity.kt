@@ -66,9 +66,11 @@ class VideoListActivity : AppCompatActivity() {
         btnBack.setOnClickListener { finish() }
         btnSort.setOnClickListener { showSortDialog() }
         
-        // 设置下拉刷新
+        // 设置下拉刷新动画（无实际刷新，仅动画，延长时间）
         swipeRefreshLayout.setOnRefreshListener {
-            refreshVideoList()
+            swipeRefreshLayout.postDelayed({
+                swipeRefreshLayout.isRefreshing = false
+            }, 800)
         }
         swipeRefreshLayout.setColorSchemeResources(
             R.color.primary,
@@ -400,11 +402,6 @@ class VideoListActivity : AppCompatActivity() {
                             
                             tvVideoCount.text = "${videoList.size} 个视频"
                             swipeRefreshLayout.setRefreshing(false)
-                            
-                            DialogUtils.showToastShort(
-                                this@VideoListActivity,
-                                "刷新成功，共 ${videoList.size} 个视频"
-                            )
                         }
                     } else {
                         withContext(Dispatchers.Main) {
@@ -416,10 +413,6 @@ class VideoListActivity : AppCompatActivity() {
                 Log.e(TAG, "刷新视频列表失败", e)
                 withContext(Dispatchers.Main) {
                     swipeRefreshLayout.setRefreshing(false)
-                    DialogUtils.showToastShort(
-                        this@VideoListActivity,
-                        "刷新失败"
-                    )
                 }
             }
         }

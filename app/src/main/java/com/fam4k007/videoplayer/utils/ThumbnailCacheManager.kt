@@ -108,17 +108,44 @@ class ThumbnailCacheManager private constructor(context: Context) {
             }
 
             // 提取指定位置的帧
+            // 注意：getFrameAtTime 返回的 bitmap 已经是正确的显示方向
             val bitmap = retriever.getFrameAtTime(
                 frameTimeMicros,
                 MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-            )
+            ) ?: return null
 
-            // 缩放到目标尺寸
-            return if (bitmap != null) {
-                Bitmap.createScaledBitmap(bitmap, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, true)
+            // 使用实际bitmap的宽高
+            val srcWidth = bitmap.width
+            val srcHeight = bitmap.height
+            
+            val targetRatio = THUMBNAIL_WIDTH.toFloat() / THUMBNAIL_HEIGHT
+            val srcRatio = if (srcHeight != 0) srcWidth.toFloat() / srcHeight else 1f
+            
+            // 核心思路：等比缩放到至少填满目标区域，然后居中裁剪
+            val scale: Float
+            val scaledWidth: Int
+            val scaledHeight: Int
+            
+            if (srcRatio > targetRatio) {
+                // 源更宽（横屏），按高度缩放，保证高度填满，宽度超出后裁剪
+                scale = THUMBNAIL_HEIGHT.toFloat() / srcHeight
+                scaledWidth = (srcWidth * scale).toInt()
+                scaledHeight = THUMBNAIL_HEIGHT
             } else {
-                null
+                // 源更高（竖屏），按宽度缩放，保证宽度填满，高度超出后裁剪
+                scale = THUMBNAIL_WIDTH.toFloat() / srcWidth
+                scaledWidth = THUMBNAIL_WIDTH
+                scaledHeight = (srcHeight * scale).toInt()
             }
+            
+            val scaledBitmap = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+            
+            // 居中裁剪到目标尺寸
+            val x = ((scaledWidth - THUMBNAIL_WIDTH) / 2).coerceAtLeast(0)
+            val y = ((scaledHeight - THUMBNAIL_HEIGHT) / 2).coerceAtLeast(0)
+            val finalBitmap = Bitmap.createBitmap(scaledBitmap, x, y, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT)
+            
+            return finalBitmap
         } catch (e: Exception) {
             Log.e(TAG, "Failed to extract thumbnail", e)
             return null

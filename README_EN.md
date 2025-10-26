@@ -2,6 +2,29 @@
 
 An Android local video player based on libmpv, supporting multiple video formats, subtitle processing, gesture controls, and real-time upscaling features.
 
+## About the Name
+
+**FAM4K007** is an abbreviation for **For Anime Media Player Video 4K**:
+- **F**or - For
+- **A**nime - Anime
+- **M**edia - Media
+- **P**layer - Player
+- **V**ideo - Video
+- **4K** - Ultra high definition resolution
+- **007** - Continuous numbering
+
+This name reflects the software's primary positioning as a high-definition local video player optimized for anime enthusiasts.
+
+## Screenshots
+
+| Home | Playback | Settings |
+|------|----------|----------|
+| ![Home](docs/screenshots/Screenshot_20251026_114205.jpg) | ![Playback](docs/screenshots/Screenshot_20251026_114217.jpg) | ![Settings](docs/screenshots/Screenshot_20251026_114259.jpg) |
+
+| Subtitle Management | Playback Control |
+|-------------------|------------------|
+| ![Subtitles](docs/screenshots/Screenshot_20251026_114420.jpg) | ![Control](docs/screenshots/IMG_20251026_114329.jpg) |
+
 ## Key Features
 
 - **Video Playback**: Support for mainstream video formats (MP4, MKV, AVI, etc.)
@@ -87,6 +110,6 @@ If you encounter any issues or have suggestions, please feel free to report them
 
 ---
 
-**Last Updated:** 2025-10-25
+**Last Updated:** 2025-10-26
 
 **[中文版本](README.md) | [English Version](README_EN.md)**

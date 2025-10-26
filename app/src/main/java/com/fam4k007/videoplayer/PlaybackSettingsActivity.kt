@@ -179,6 +179,9 @@ class PlaybackSettingsActivity : BaseActivity() {
             .setView(dialogView)
             .create()
         
+        // 应用圆角风格
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
         // 设置按钮监听
         val btnCancel = dialogView.findViewById<android.widget.Button>(R.id.btnCancel)
         val btnConfirm = dialogView.findViewById<android.widget.Button>(R.id.btnConfirm)
@@ -210,6 +213,7 @@ class PlaybackSettingsActivity : BaseActivity() {
         tvSeekTimeValue.text = "${seconds}秒"
     }
     
+    
     /**
      * 更新长按倍速显示
      */
@@ -217,3 +221,4 @@ class PlaybackSettingsActivity : BaseActivity() {
         tvLongPressSpeedValue.text = "${String.format("%.1f", speed)}x"
     }
 }
+

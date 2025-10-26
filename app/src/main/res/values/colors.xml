@@ -25,6 +25,7 @@
     
     <!-- 分割线 -->
     <color name="divider">#E0E0E0</color>
+    <color name="divider_light">#F0F0F0</color>
     
     <!-- 半透明遮罩 -->
     <color name="overlay_dark">#66000000</color>

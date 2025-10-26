@@ -39,6 +39,10 @@ class VideoListAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VideoViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_video_file, parent, false)
+        // 初始化缓存管理器
+        if (!::thumbnailCacheManager.isInitialized) {
+            thumbnailCacheManager = ThumbnailCacheManager.getInstance(parent.context)
+        }
         return VideoViewHolder(view)
     }
 
@@ -56,24 +60,23 @@ class VideoListAdapter(
             // 先设置占位图
             holder.ivThumb.setImageResource(android.R.drawable.ic_media_play)
 
-            // 优先使用 MediaMetadataRetriever 直接提取中间�?
-            CoroutineScope(Dispatchers.Main).launch {
+            // 使用缓存管理器加载缩略图（带缓存）
+            val job = CoroutineScope(Dispatchers.Main).launch {
                 try {
-                    val bitmap = withContext(Dispatchers.IO) {
-                        extractThumbnailWithRetriever(context, uri, video.duration)
-                    }
+                    val bitmap = thumbnailCacheManager.getThumbnail(context, uri, video.duration)
                     if (bitmap != null) {
                         holder.ivThumb.setImageBitmap(bitmap)
                         holder.ivThumb.scaleType = ImageView.ScaleType.CENTER_CROP
                     } else {
-                        throw Exception("MediaMetadataRetriever returned null")
+                        throw Exception("Failed to get thumbnail")
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("VideoListAdapter", "MediaMetadataRetriever 失败: ${e.message}, 尝试 Glide")
-                    // 如果 MediaMetadataRetriever 失败，降级到 Glide
+                    android.util.Log.e("VideoListAdapter", "缩略图加载失败: ${e.message}")
+                    // 降级到 Glide
                     loadThumbnailWithGlide(context, uri, holder.ivThumb)
                 }
             }
+            thumbnailJobs[holder.adapterPosition] = job
         } catch (e: Exception) {
             android.util.Log.e("VideoListAdapter", "缩略图加载异�? ${e.message}")
             holder.ivThumb.setImageResource(android.R.drawable.ic_menu_report_image)
@@ -156,14 +159,48 @@ class VideoListAdapter(
             }
             
             // 提取指定时间位置的帧
+            // 注意：getFrameAtTime 返回的 bitmap 已经是正确的显示方向
             val bitmap = retriever.getFrameAtTime(frameTimeMicros, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: return null
             
-            // 缩放到目标尺寸
-            return if (bitmap != null) {
-                android.graphics.Bitmap.createScaledBitmap(bitmap, 384, 216, true)
+            // 等比缩放并居中裁剪到目标尺寸（384x216）
+            val targetWidth = 384
+            val targetHeight = 216
+            val srcWidth = bitmap.width
+            val srcHeight = bitmap.height
+            val targetRatio = targetWidth.toFloat() / targetHeight
+            val srcRatio = if (srcHeight != 0) srcWidth.toFloat() / srcHeight else 1f
+            
+            val scale: Float
+            val scaledWidth: Int
+            val scaledHeight: Int
+            
+            if (srcRatio > targetRatio) {
+                // 横屏：按高度缩放
+                scale = targetHeight.toFloat() / srcHeight
+                scaledWidth = (srcWidth * scale).toInt()
+                scaledHeight = targetHeight
             } else {
-                null
+                // 竖屏：按宽度缩放
+                scale = targetWidth.toFloat() / srcWidth
+                scaledWidth = targetWidth
+                scaledHeight = (srcHeight * scale).toInt()
             }
+            
+            val scaledBitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+            if (scaledBitmap != bitmap) {
+                bitmap.recycle()
+            }
+            
+            // 居中裁剪
+            val x = ((scaledWidth - targetWidth) / 2).coerceAtLeast(0)
+            val y = ((scaledHeight - targetHeight) / 2).coerceAtLeast(0)
+            val finalBitmap = android.graphics.Bitmap.createBitmap(scaledBitmap, x, y, targetWidth, targetHeight)
+            if (finalBitmap != scaledBitmap) {
+                scaledBitmap.recycle()
+            }
+            
+            return finalBitmap
         } catch (e: Exception) {
             android.util.Log.e("VideoListAdapter", "MediaMetadataRetriever 提取失败: ${e.message}")
             return null

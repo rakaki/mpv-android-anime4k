@@ -68,12 +68,6 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var surfaceView: SurfaceView
     private lateinit var clickArea: View
     
-    // 截图状态指示器
-    private var screenshotStatusCard: androidx.cardview.widget.CardView? = null
-    private var screenshotProgressBar: android.widget.ProgressBar? = null
-    private var screenshotSuccessIcon: TextView? = null
-    private var screenshotStatusText: TextView? = null
-    
     // 进度恢复提示框
     private var resumeProgressPrompt: LinearLayout? = null
     private var btnResumePromptConfirm: TextView? = null
@@ -448,12 +442,6 @@ class VideoPlayerActivity : AppCompatActivity() {
             Log.w(TAG, "Anime4K initialization failed")
         }
         
-        // 初始化截图状态指示器
-        screenshotStatusCard = findViewById(R.id.cardScreenshotStatus)
-        screenshotProgressBar = findViewById(R.id.progressLoading)
-        screenshotSuccessIcon = findViewById(R.id.iconSuccess)
-        screenshotStatusText = findViewById(R.id.tvStatusText)
-        
         // 绑定View到管理器
         bindViewsToManagers()
     }
@@ -723,10 +711,6 @@ class VideoPlayerActivity : AppCompatActivity() {
                 
                 dialog.setContentView(dialogView)
                 dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-                dialog.window?.setLayout(
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-                )
                 dialog.setCanceledOnTouchOutside(true)
                 
                 btnCancel.setOnClickListener {
@@ -1267,10 +1251,6 @@ class VideoPlayerActivity : AppCompatActivity() {
         
         dialog.setContentView(dialogView)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.window?.setLayout(
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-        )
         dialog.setCanceledOnTouchOutside(true)
         
         btnCancel.setOnClickListener {
@@ -1805,9 +1785,6 @@ class VideoPlayerActivity : AppCompatActivity() {
         try {
             Log.d(TAG, "takeScreenshot() called")
             
-            // 显示加载状态
-            showScreenshotStatus(loading = true)
-            
             // 从SurfaceView抓取当前画面
             val bitmap = Bitmap.createBitmap(
                 surfaceView.width,
@@ -1829,68 +1806,18 @@ class VideoPlayerActivity : AppCompatActivity() {
                             saveBitmapToFile(bitmap)
                         } else {
                             Log.e(TAG, "PixelCopy failed with result: $copyResult")
-                            runOnUiThread {
-                                hideScreenshotStatus()
-                                DialogUtils.showToastShort(this, "截图失败: 无法捕获画面")
-                            }
+                            DialogUtils.showToastShort(this, "截图失败: 无法捕获画面")
                         }
                     },
                     Handler(Looper.getMainLooper())
                 )
             } else {
                 // Android 7.0以下使用备用方法
-                hideScreenshotStatus()
                 DialogUtils.showToastShort(this, "您的Android版本不支持截图")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Screenshot failed", e)
-            hideScreenshotStatus()
             DialogUtils.showToastShort(this, "截图失败: ${e.message}")
-        }
-    }
-    
-    // 显示截图状态
-    private fun showScreenshotStatus(loading: Boolean) {
-        runOnUiThread {
-            screenshotStatusCard?.visibility = View.VISIBLE
-            screenshotStatusCard?.alpha = 0f
-            screenshotStatusCard?.scaleX = 0.8f
-            screenshotStatusCard?.scaleY = 0.8f
-            
-            if (loading) {
-                screenshotProgressBar?.visibility = View.VISIBLE
-                screenshotSuccessIcon?.visibility = View.GONE
-                screenshotStatusText?.text = "正在保存..."
-            } else {
-                screenshotProgressBar?.visibility = View.GONE
-                screenshotSuccessIcon?.visibility = View.VISIBLE
-                screenshotStatusText?.text = "已保存"
-            }
-            
-            // 入场动画
-            screenshotStatusCard?.animate()
-                ?.alpha(1f)
-                ?.scaleX(1f)
-                ?.scaleY(1f)
-                ?.setDuration(200)
-                ?.setInterpolator(android.view.animation.DecelerateInterpolator())
-                ?.start()
-        }
-    }
-    
-    // 隐藏截图状态
-    private fun hideScreenshotStatus() {
-        runOnUiThread {
-            screenshotStatusCard?.animate()
-                ?.alpha(0f)
-                ?.scaleX(0.8f)
-                ?.scaleY(0.8f)
-                ?.setDuration(200)
-                ?.setInterpolator(android.view.animation.AccelerateInterpolator())
-                ?.withEndAction {
-                    screenshotStatusCard?.visibility = View.GONE
-                }
-                ?.start()
         }
     }
     
@@ -1916,21 +1843,11 @@ class VideoPlayerActivity : AppCompatActivity() {
                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
                     }
                     
-                    runOnUiThread {
-                        // 切换到成功状态
-                        showScreenshotStatus(loading = false)
-                        // 1秒后自动隐藏
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            hideScreenshotStatus()
-                        }, 1000)
-                    }
+                    DialogUtils.showToastShort(this, "已保存")
                     Log.d(TAG, "Screenshot saved to MediaStore: $filename")
                 } else {
                     Log.e(TAG, "Failed to create MediaStore URI")
-                    runOnUiThread {
-                        hideScreenshotStatus()
-                        DialogUtils.showToastShort(this, "截图保存失败")
-                    }
+                    DialogUtils.showToastShort(this, "截图保存失败")
                 }
             } else {
                 // Android 10以下直接保存到Pictures目录
@@ -1947,23 +1864,14 @@ class VideoPlayerActivity : AppCompatActivity() {
                 // 通知系统扫描新文件
                 sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)))
                 
-                runOnUiThread {
-                    // 切换到成功状态
-                    showScreenshotStatus(loading = false)
-                    // 1秒后自动隐藏
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        hideScreenshotStatus()
-                    }, 1000)
-                }
+                DialogUtils.showToastShort(this, "已保存")
                 Log.d(TAG, "Screenshot saved: ${file.absolutePath}")
             }
             
             bitmap.recycle()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save bitmap", e)
-            runOnUiThread {
-                DialogUtils.showToastShort(this, "保存截图失败: ${e.message}")
-            }
+            DialogUtils.showToastShort(this, "保存截图失败: ${e.message}")
         }
     }
     

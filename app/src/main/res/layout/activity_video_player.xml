@@ -600,12 +600,12 @@
 
     <!-- 截图状态指示器 -->
     <include
+        android:id="@+id/screenshotStatusContainer"
         layout="@layout/view_screenshot_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_alignParentBottom="true"
-        android:layout_marginBottom="120dp"
-        android:visibility="gone" />
+        android:layout_marginBottom="120dp" />
 
 </RelativeLayout>
