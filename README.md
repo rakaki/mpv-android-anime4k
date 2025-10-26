@@ -18,11 +18,11 @@
 
 ## 功能截图
 
-| 首页 | 播放页面 | 设置页面 |
+| 首页 | 设置页面 | 播放页面 |
 |------|---------|---------|
 | ![首页](docs/screenshots/Screenshot_20251026_114205.jpg) | ![播放](docs/screenshots/Screenshot_20251026_114217.jpg) | ![设置](docs/screenshots/Screenshot_20251026_114259.jpg) |
 
-| 字幕管理 | 播放控制 |
+| 文件夹扫描 | 视频列表 |
 |---------|---------|
 | ![字幕](docs/screenshots/Screenshot_20251026_114420.jpg) | ![控制](docs/screenshots/IMG_20251026_114329.jpg) |
 
