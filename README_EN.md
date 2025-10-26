@@ -16,7 +16,7 @@ This name reflects the software's primary positioning as a high-definition local
 
 ## Screenshots
 
-| Home | Playback | Settings |
+| Home | Settings | Playback |
 |------|----------|----------|
 | ![Home](docs/screenshots/Screenshot_20251026_114205.jpg) | ![Playback](docs/screenshots/Screenshot_20251026_114217.jpg) | ![Settings](docs/screenshots/Screenshot_20251026_114259.jpg) |
 
