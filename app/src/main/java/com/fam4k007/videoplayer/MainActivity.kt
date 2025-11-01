@@ -6,12 +6,14 @@ import android.widget.Toast
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.fam4k007.videoplayer.utils.ThemeManager
 
 class MainActivity : AppCompatActivity() {
     
     private lateinit var bottomNav: BottomNavigationView
     
     override fun onCreate(savedInstanceState: Bundle?) {
+        ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         bottomNav = findViewById(R.id.bottomNavigationView)

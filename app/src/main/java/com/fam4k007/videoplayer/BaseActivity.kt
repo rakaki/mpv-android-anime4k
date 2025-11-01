@@ -1,8 +1,12 @@
 package com.fam4k007.videoplayer
 
+import android.graphics.PorterDuff
+import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.core.content.ContextCompat
+import com.fam4k007.videoplayer.utils.ThemeManager
 
 /**
  * 基类 Activity
@@ -10,6 +14,12 @@ import androidx.appcompat.widget.Toolbar
  * 所有业务 Activity 应继承此类
  */
 abstract class BaseActivity : AppCompatActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // 应用主题
+        ThemeManager.applyTheme(this)
+        super.onCreate(savedInstanceState)
+    }
 
     /**
      * 设置 Toolbar 及返回按钮
@@ -29,8 +39,12 @@ abstract class BaseActivity : AppCompatActivity() {
                 this.title = title
                 if (showBackButton) {
                     setDisplayHomeAsUpEnabled(true)
+                    // 设置白色的矢量返回图标（自适应大小）
+                    setHomeAsUpIndicator(R.drawable.ic_back_arrow)
                 }
             }
+            // 设置标题文字为白色
+            toolbar.setTitleTextColor(ContextCompat.getColor(this, android.R.color.white))
         } catch (e: Exception) {
             e.printStackTrace()
         }

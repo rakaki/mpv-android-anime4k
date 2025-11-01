@@ -1,5 +1,6 @@
 package com.fam4k007.videoplayer
 
+import android.graphics.Typeface
 import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.RadioButton
@@ -8,8 +9,10 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SwitchCompat
+import androidx.core.content.ContextCompat
 import com.fam4k007.videoplayer.manager.PreferencesManager
 import com.fam4k007.videoplayer.utils.DialogUtils
+import com.fam4k007.videoplayer.utils.ThemeManager
 
 /**
  * 播放设置页面
@@ -147,6 +150,14 @@ class PlaybackSettingsActivity : BaseActivity() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_seek_time_selector, null)
         val radioGroup = dialogView.findViewById<RadioGroup>(R.id.rgSeekTimeOptions)
         
+        // 获取主题色
+        val themeColor = ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary)
+        val blackColor = ContextCompat.getColor(this, android.R.color.black)
+        
+        // 设置标题栏背景色为主题色
+        val titleBar = dialogView.findViewById<LinearLayout>(R.id.llDialogTitle)
+        titleBar.setBackgroundColor(themeColor)
+        
         // 根据当前设置选中对应的 RadioButton
         val selectedId = when (currentSeekTime) {
             3 -> R.id.rb3s
@@ -160,6 +171,27 @@ class PlaybackSettingsActivity : BaseActivity() {
         }
         radioGroup.check(selectedId)
         
+        // 设置所有 RadioButton 的初始颜色
+        val radioButtons = listOf(
+            dialogView.findViewById<RadioButton>(R.id.rb3s),
+            dialogView.findViewById<RadioButton>(R.id.rb5s),
+            dialogView.findViewById<RadioButton>(R.id.rb10s),
+            dialogView.findViewById<RadioButton>(R.id.rb15s),
+            dialogView.findViewById<RadioButton>(R.id.rb20s),
+            dialogView.findViewById<RadioButton>(R.id.rb25s),
+            dialogView.findViewById<RadioButton>(R.id.rb30s)
+        )
+        
+        radioButtons.forEach { radioButton ->
+            if (radioButton.id == selectedId) {
+                radioButton.setTextColor(themeColor)
+                radioButton.setTypeface(null, Typeface.BOLD)
+            } else {
+                radioButton.setTextColor(blackColor)
+                radioButton.setTypeface(null, Typeface.NORMAL)
+            }
+        }
+        
         // 监听选择变化
         radioGroup.setOnCheckedChangeListener { _, checkedId ->
             selectedSeekTime = when (checkedId) {
@@ -172,6 +204,17 @@ class PlaybackSettingsActivity : BaseActivity() {
                 R.id.rb30s -> 30
                 else -> 5
             }
+            
+            // 更新所有 RadioButton 的颜色和样式
+            radioButtons.forEach { radioButton ->
+                if (radioButton.id == checkedId) {
+                    radioButton.setTextColor(themeColor)
+                    radioButton.setTypeface(null, Typeface.BOLD)
+                } else {
+                    radioButton.setTextColor(blackColor)
+                    radioButton.setTypeface(null, Typeface.NORMAL)
+                }
+            }
         }
         
         // 创建对话框
@@ -182,9 +225,13 @@ class PlaybackSettingsActivity : BaseActivity() {
         // 应用圆角风格
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         
-        // 设置按钮监听
+        // 设置按钮监听并应用主题色
         val btnCancel = dialogView.findViewById<android.widget.Button>(R.id.btnCancel)
         val btnConfirm = dialogView.findViewById<android.widget.Button>(R.id.btnConfirm)
+        
+        // 为按钮背景应用主题色
+        btnCancel.background.setColorFilter(themeColor, android.graphics.PorterDuff.Mode.SRC_IN)
+        btnConfirm.background.setColorFilter(themeColor, android.graphics.PorterDuff.Mode.SRC_IN)
         
         btnCancel.setOnClickListener {
             dialog.dismiss()

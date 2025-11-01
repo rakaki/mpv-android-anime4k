@@ -61,7 +61,7 @@
             android:layout_height="wrap_content"
             android:text="12 个视频"
             android:textSize="14sp"
-            android:textColor="@color/primary"
+            android:textColor="?attr/colorPrimary"
             android:textStyle="bold"
             android:layout_marginStart="16dp" />
 

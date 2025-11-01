@@ -41,6 +41,8 @@ import com.fam4k007.videoplayer.player.SeriesManager
 import com.fam4k007.videoplayer.utils.FormatUtils
 import com.fam4k007.videoplayer.utils.UriUtils.resolveUri
 import com.fam4k007.videoplayer.utils.DialogUtils
+import com.fam4k007.videoplayer.utils.ThemeManager
+import com.fam4k007.videoplayer.utils.getThemeAttrColor
 import dev.jdtech.mpv.MPVLib
 import java.io.File
 import java.io.FileOutputStream
@@ -125,6 +127,9 @@ class VideoPlayerActivity : AppCompatActivity() {
     private var seekAccumulatorRunnable: Runnable? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 应用主题（必须在 super.onCreate 之前）
+        ThemeManager.applyTheme(this)
+        
         super.onCreate(savedInstanceState)
         
         setContentView(R.layout.activity_video_player)
@@ -692,32 +697,14 @@ class VideoPlayerActivity : AppCompatActivity() {
                 val items = audioTracks.map { it.second }
                 val currentTrackIndex = audioTracks.indexOfFirst { it.third }
                 
-                val dialog = android.app.Dialog(this)
-                val dialogView = layoutInflater.inflate(R.layout.dialog_audio_track, null)
-                val dialogTitle = dialogView.findViewById<TextView>(R.id.dialogTitle)
-                val recyclerView = dialogView.findViewById<RecyclerView>(R.id.dialogRecyclerView)
-                val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
+                // 获取音轨按钮（在顶部，对话框显示在下方）
+                val btnAudioTrack = findViewById<ImageView>(R.id.btnAudioTrack)
                 
-                dialogTitle.text = "音轨"
-                recyclerView.layoutManager = LinearLayoutManager(this)
-                
-                val adapter = SelectionAdapter(items, currentTrackIndex) { position ->
+                showPopupDialog(btnAudioTrack, items, currentTrackIndex, showAbove = false) { position ->
                     val trackId = audioTracks[position].first
                     engine.selectAudioTrack(trackId)
                     DialogUtils.showToastShort(this@VideoPlayerActivity, "已切换到: ${items[position]}")
-                    dialog.dismiss()
                 }
-                recyclerView.adapter = adapter
-                
-                dialog.setContentView(dialogView)
-                dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-                dialog.setCanceledOnTouchOutside(true)
-                
-                btnCancel.setOnClickListener {
-                    dialog.dismiss()
-                }
-                
-                dialog.show()
             } catch (e: Exception) {
                 Log.e(TAG, "Error showing audio track dialog", e)
                 DialogUtils.showToastShort(this, "获取音轨失败")
@@ -905,6 +892,80 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 显示弹出式对话框（在按钮上方或下方显示）
+     * @param anchorView 锚点视图（按钮）
+     * @param items 选项列表
+     * @param selectedPosition 当前选中位置（-1表示无选中状态）
+     * @param showAbove 是否显示在按钮上方（true=上方，false=下方）
+     * @param useFixedHeight 是否使用固定高度（true=固定144dp，false=自适应）
+     * @param onItemClick 点击回调
+     */
+    private fun showPopupDialog(
+        anchorView: View,
+        items: List<String>,
+        selectedPosition: Int = -1,
+        showAbove: Boolean = true,
+        useFixedHeight: Boolean = false,
+        onItemClick: (Int) -> Unit
+    ) {
+        val dialog = android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+        // 根据是否需要固定高度选择不同的布局文件
+        val layoutRes = if (useFixedHeight) R.layout.dialog_popup_menu_fixed else R.layout.dialog_popup_menu
+        val dialogView = layoutInflater.inflate(layoutRes, null)
+        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.recyclerViewPopup)
+        
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.isVerticalScrollBarEnabled = false
+        
+        val adapter = PopupMenuAdapter(items, selectedPosition) { position ->
+            onItemClick(position)
+            dialog.dismiss()
+        }
+        recyclerView.adapter = adapter
+        
+        dialog.setContentView(dialogView)
+        dialog.setCanceledOnTouchOutside(true)
+        
+        // 获取锚点视图在屏幕上的位置
+        val location = IntArray(2)
+        anchorView.getLocationOnScreen(location)
+        val anchorX = location[0]
+        val anchorY = location[1]
+        
+        // 测量对话框大小
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val dialogWidth = dialogView.measuredWidth.coerceAtLeast(anchorView.width)
+        val dialogHeight = dialogView.measuredHeight
+        
+        // 计算对话框位置
+        val window = dialog.window
+        val layoutParams = window?.attributes
+        layoutParams?.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+        layoutParams?.x = anchorX + (anchorView.width - dialogWidth) / 2
+        
+        // 根据参数决定显示在上方还是下方
+        layoutParams?.y = if (showAbove) {
+            // 显示在按钮上方，不遮挡按钮
+            anchorY - dialogHeight - 10
+        } else {
+            // 显示在按钮下方，不遮挡按钮
+            anchorY + anchorView.height + 10
+        }
+        
+        layoutParams?.width = dialogWidth
+        layoutParams?.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        window?.attributes = layoutParams
+        
+        // 设置进场和出场动画
+        window?.setWindowAnimations(R.style.PopupAnimation)
+        
+        dialog.show()
+    }
+
     private fun showSubtitleDialog() {
         playbackEngine?.let { engine ->
             try {
@@ -920,18 +981,10 @@ class VideoPlayerActivity : AppCompatActivity() {
                 }
                 menuItems.add("外挂字幕")
                 
-                val dialog = android.app.Dialog(this)
-                val dialogView = layoutInflater.inflate(R.layout.dialog_option_list, null)
-                val dialogTitle = dialogView.findViewById<TextView>(R.id.dialogTitle)
-                val recyclerView = dialogView.findViewById<RecyclerView>(R.id.dialogRecyclerView)
-                val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
-                val scrollHint = dialogView.findViewById<TextView>(R.id.scrollHint)
+                // 获取字幕按钮（在顶部，对话框显示在下方）
+                val btnSubtitle = findViewById<ImageView>(R.id.btnSubtitle)
                 
-                dialogTitle.text = "字幕设置"
-                recyclerView.layoutManager = LinearLayoutManager(this)
-                recyclerView.isVerticalScrollBarEnabled = false
-                
-                val adapter = MenuItemAdapter(menuItems) { position ->
+                showPopupDialog(btnSubtitle, menuItems, showAbove = false, useFixedHeight = true) { position ->
                     when {
                         position == menuItems.size - 1 -> {
                             openSubtitlePicker()
@@ -945,19 +998,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                             }
                         }
                     }
-                    dialog.dismiss()
                 }
-                recyclerView.adapter = adapter
-                
-                dialog.setContentView(dialogView)
-                dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-                dialog.setCanceledOnTouchOutside(true)
-                
-                btnCancel.setOnClickListener {
-                    dialog.dismiss()
-                }
-                
-                dialog.show()
             } catch (e: Exception) {
                 Log.e(TAG, "Error showing subtitle dialog", e)
                 DialogUtils.showToastShort(this, "获取字幕失败")
@@ -969,33 +1010,14 @@ class VideoPlayerActivity : AppCompatActivity() {
         val items = subtitleTracks.map { it.second }
         val currentTrackIndex = subtitleTracks.indexOfFirst { it.third }
         
-        val dialog = android.app.Dialog(this)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_subtitle_track, null)
-        val dialogTitle = dialogView.findViewById<TextView>(R.id.dialogTitle)
-        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.dialogRecyclerView)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
+        // 获取字幕按钮（在顶部，对话框显示在下方）
+        val btnSubtitle = findViewById<ImageView>(R.id.btnSubtitle)
         
-        dialogTitle.text = "字幕轨道"
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.isVerticalScrollBarEnabled = false
-        
-        val adapter = SelectionAdapter(items, currentTrackIndex) { position ->
+        showPopupDialog(btnSubtitle, items, currentTrackIndex, showAbove = false, useFixedHeight = false) { position ->
             val trackId = subtitleTracks[position].first
             engine.selectSubtitleTrack(trackId)
             DialogUtils.showToastShort(this@VideoPlayerActivity, "已切换到: ${items[position]}")
-            dialog.dismiss()
         }
-        recyclerView.adapter = adapter
-        
-        dialog.setContentView(dialogView)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.setCanceledOnTouchOutside(true)
-        
-        btnCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-        
-        dialog.show()
     }
 
     private fun showSubtitleDelayDialog(engine: PlaybackEngine) {
@@ -1024,8 +1046,8 @@ class VideoPlayerActivity : AppCompatActivity() {
             val isDefault = Math.abs(currentValue - defaultDelay) < 0.01
             btnReset.isEnabled = !isDefault
             btnReset.setTextColor(if (isDefault) 
-                getColor(android.R.color.darker_gray) else 
-                getColor(android.R.color.white))
+                getThemeAttrColor(R.attr.colorButtonDisabledText) else 
+                getThemeAttrColor(R.attr.colorButtonText))
         }
         
         // 更新编辑框和引擎
@@ -1122,6 +1144,17 @@ class VideoPlayerActivity : AppCompatActivity() {
         seekBarSize.max = 6
         seekBarSize.progress = currentSelection
         tvCurrentSize.text = scaleLabels[currentSelection]
+        tvCurrentSize.setTextColor(ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary))
+        
+        // 设置SeekBar颜色
+        seekBarSize.progressDrawable?.setColorFilter(
+            ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary),
+            android.graphics.PorterDuff.Mode.SRC_IN
+        )
+        seekBarSize.thumb?.setColorFilter(
+            ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary),
+            android.graphics.PorterDuff.Mode.SRC_IN
+        )
         
         val defaultPosition = 3 // 正常 (1.0)
         
@@ -1130,8 +1163,8 @@ class VideoPlayerActivity : AppCompatActivity() {
             val isDefault = position == defaultPosition
             btnReset.isEnabled = !isDefault
             btnReset.setTextColor(if (isDefault) 
-                getColor(android.R.color.darker_gray) else 
-                getColor(android.R.color.white))
+                getThemeAttrColor(R.attr.colorButtonDisabledText) else 
+                getThemeAttrColor(R.attr.colorButtonText))
         }
         
         updateResetButton(currentSelection)
@@ -1199,8 +1232,8 @@ class VideoPlayerActivity : AppCompatActivity() {
             val isDefault = position == defaultVertical
             btnReset.isEnabled = !isDefault
             btnReset.setTextColor(if (isDefault) 
-                getColor(android.R.color.darker_gray) else 
-                getColor(android.R.color.white))
+                getThemeAttrColor(R.attr.colorButtonDisabledText) else 
+                getThemeAttrColor(R.attr.colorButtonText))
         }
         
         updateResetButton(currentVertical)
@@ -1231,33 +1264,15 @@ class VideoPlayerActivity : AppCompatActivity() {
         val items = listOf("硬件解码", "软件解码")
         val currentSelection = if (isHardwareDecoding) 0 else 1
         
-        val dialog = android.app.Dialog(this)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_decoder, null)
-        val dialogTitle = dialogView.findViewById<TextView>(R.id.dialogTitle)
-        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.dialogRecyclerView)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
+        // 获取解码按钮（在顶部，对话框显示在下方）
+        val btnDecoder = findViewById<ImageView>(R.id.btnDecoder)
         
-        dialogTitle.text = "解码方式"
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        
-        val adapter = SelectionAdapter(items, currentSelection) { position ->
+        showPopupDialog(btnDecoder, items, currentSelection, showAbove = false) { position ->
             isHardwareDecoding = (position == 0)
             playbackEngine?.setHardwareDecoding(isHardwareDecoding)
             DialogUtils.showToastShort(this@VideoPlayerActivity, "已切换到${if (isHardwareDecoding) "硬件" else "软件"}解码")
             Log.d(TAG, "Decoder switched to: ${if (isHardwareDecoding) "auto" else "no"}")
-            dialog.dismiss()
         }
-        recyclerView.adapter = adapter
-        
-        dialog.setContentView(dialogView)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.setCanceledOnTouchOutside(true)
-        
-        btnCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-        
-        dialog.show()
     }
 
     private fun showSpeedDialog() {
@@ -1265,35 +1280,15 @@ class VideoPlayerActivity : AppCompatActivity() {
         val speedValues = listOf(0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0)
         val currentSelection = speedValues.indexOf(currentSpeed)
         
-        val dialog = android.app.Dialog(this)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_speed, null)
-        val dialogTitle = dialogView.findViewById<TextView>(R.id.dialogTitle)
-        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.dialogRecyclerView)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
-        val scrollHint = dialogView.findViewById<TextView>(R.id.scrollHint)
+        // 获取倍速按钮（在底部，对话框显示在上方）
+        val btnSpeed = findViewById<ImageView>(R.id.btnSpeed)
         
-        dialogTitle.text = "播放速度"
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.isVerticalScrollBarEnabled = false
-        
-        val adapter = SelectionAdapter(speeds, currentSelection) { position ->
+        showPopupDialog(btnSpeed, speeds, currentSelection, showAbove = true, useFixedHeight = true) { position ->
             currentSpeed = speedValues[position]
             playbackEngine?.setSpeed(currentSpeed)
             DialogUtils.showToastShort(this@VideoPlayerActivity, "播放速度：${speeds[position]}")
             Log.d(TAG, "Speed changed to: $currentSpeed")
-            dialog.dismiss()
         }
-        recyclerView.adapter = adapter
-        
-        dialog.setContentView(dialogView)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.setCanceledOnTouchOutside(true)
-        
-        btnCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-        
-        dialog.show()
     }
 
     // resetAutoHideTimer、hideSystemUI、showSystemUI、applyNavigationBarPadding 已由 PlayerControlsManager 处理
@@ -1520,19 +1515,24 @@ class VideoPlayerActivity : AppCompatActivity() {
             fun bind(position: Int) {
                 itemText.text = items[position]
                 
-                // 如果 selectedPosition 为 -1，表示所有项都显示为蓝色（如"更多"菜单）
+                // 禁用点击反馈效果
+                itemView.isClickable = true
+                itemView.isFocusable = true
+                itemView.background = null
+                innerLayout.background = null
+                
+                // 如果 selectedPosition 为 -1，表示所有项都显示为未选中状态（如"更多"菜单）
                 if (selectedPosition == -1) {
-                    innerLayout.setBackgroundResource(R.drawable.bg_rounded_item)
-                    itemText.setTextColor(android.graphics.Color.WHITE)
+                    itemText.setTextColor(android.graphics.Color.parseColor("#333333"))
                 } else {
                     // 正常的选中/未选中状态（如字幕轨道）
                     val isSelected = position == selectedPosition
                     if (isSelected) {
-                        innerLayout.setBackgroundResource(R.drawable.bg_rounded_item)
-                        itemText.setTextColor(android.graphics.Color.WHITE)
+                        itemText.setTextColor(ThemeManager.getThemeColor(this@VideoPlayerActivity, com.google.android.material.R.attr.colorPrimary))
+                        itemText.setTypeface(null, android.graphics.Typeface.BOLD)
                     } else {
-                        innerLayout.setBackgroundResource(R.drawable.bg_rounded_item_unselected)
-                        itemText.setTextColor(android.graphics.Color.BLACK)
+                        itemText.setTextColor(android.graphics.Color.parseColor("#333333"))
+                        itemText.setTypeface(null, android.graphics.Typeface.NORMAL)
                     }
                 }
                 
@@ -1586,6 +1586,56 @@ class VideoPlayerActivity : AppCompatActivity() {
     
     // 适配器类
     
+    // 弹出式菜单适配器（用于在按钮上方显示的弹出菜单）
+    inner class PopupMenuAdapter(
+        private val items: List<String>,
+        private var selectedPosition: Int = -1,
+        private val onItemClick: (Int) -> Unit
+    ) : RecyclerView.Adapter<PopupMenuAdapter.ViewHolder>() {
+        
+        inner class ViewHolder(view: android.view.View) : RecyclerView.ViewHolder(view) {
+            val itemText: TextView = view.findViewById(R.id.itemText)
+            val itemLayout: android.widget.LinearLayout = view.findViewById(R.id.itemLayout)
+            
+            fun bind(position: Int) {
+                itemText.text = items[position]
+                
+                // 禁用点击反馈效果
+                itemView.isClickable = true
+                itemView.isFocusable = true
+                itemView.background = null
+                itemLayout.background = null
+                
+                // 设置选中状态
+                val isSelected = position == selectedPosition
+                
+                // 选中项文字使用主题颜色并加粗，未选中用黑色
+                if (isSelected) {
+                    itemText.setTypeface(null, android.graphics.Typeface.BOLD)
+                    itemText.setTextColor(ThemeManager.getThemeColor(this@VideoPlayerActivity, com.google.android.material.R.attr.colorPrimary))
+                } else {
+                    itemText.setTypeface(null, android.graphics.Typeface.NORMAL)
+                    itemText.setTextColor(android.graphics.Color.parseColor("#333333"))
+                }
+                
+                itemView.setOnClickListener {
+                    onItemClick(position)
+                }
+            }
+        }
+        
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
+            val view = layoutInflater.inflate(R.layout.dialog_popup_item, parent, false)
+            return ViewHolder(view)
+        }
+        
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            holder.bind(position)
+        }
+        
+        override fun getItemCount() = items.size
+    }
+    
     // 显示更多选项对话框
     private fun showMoreOptionsDialog() {
         val options = mutableListOf<String>()
@@ -1605,34 +1655,15 @@ class VideoPlayerActivity : AppCompatActivity() {
             return
         }
         
-        val dialog = android.app.Dialog(this)
-        val dialogView = layoutInflater.inflate(R.layout.dialog_more, null)
-        val dialogTitle = dialogView.findViewById<TextView>(R.id.dialogTitle)
-        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.dialogRecyclerView)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
+        // 获取更多按钮（在顶部，对话框显示在下方）
+        val btnMore = findViewById<ImageView>(R.id.btnMore)
         
-        dialogTitle.text = "更多"
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.isVerticalScrollBarEnabled = false
-        
-        val adapter = SelectionAdapter(options, -1) { position ->
+        showPopupDialog(btnMore, options, -1, showAbove = false) { position ->
             when (options[position]) {
                 "章节" -> showChapterDialog()
                 "截图" -> takeScreenshot()
             }
-            dialog.dismiss()
         }
-        recyclerView.adapter = adapter
-        
-        dialog.setContentView(dialogView)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.setCanceledOnTouchOutside(true)
-        
-        btnCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-        
-        dialog.show()
     }
     
     // 显示章节选择对话框
@@ -1766,6 +1797,36 @@ class VideoPlayerActivity : AppCompatActivity() {
             holder.chapterTitle.text = chapter.first
             holder.chapterTime.text = formatChapterTime(chapter.second)
             
+            // 动态设置背景色
+            val normalColor = getThemeAttrColor(R.attr.colorChapterItemNormal)
+            val selectedColor = getThemeAttrColor(R.attr.colorChapterItemSelected)
+            val pressedColor = getThemeAttrColor(R.attr.colorChapterItemPressed)
+            
+            val drawable = android.graphics.drawable.StateListDrawable()
+            val normalDrawable = android.graphics.drawable.GradientDrawable().apply {
+                setColor(normalColor)
+                cornerRadius = 12.dpToPx().toFloat()
+            }
+            val selectedDrawable = android.graphics.drawable.GradientDrawable().apply {
+                setColor(selectedColor)
+                cornerRadius = 12.dpToPx().toFloat()
+            }
+            val pressedDrawable = android.graphics.drawable.GradientDrawable().apply {
+                setColor(pressedColor)
+                cornerRadius = 12.dpToPx().toFloat()
+            }
+            
+            drawable.addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
+            drawable.addState(intArrayOf(android.R.attr.state_selected), selectedDrawable)
+            drawable.addState(intArrayOf(), normalDrawable)
+            
+            holder.itemView.background = drawable
+            
+            // 设置图标和文字颜色
+            holder.chapterIcon.setColorFilter(getThemeAttrColor(R.attr.colorChapterIcon))
+            holder.chapterTitle.setTextColor(getThemeAttrColor(R.attr.colorChapterText))
+            holder.chapterTime.setTextColor(getThemeAttrColor(R.attr.colorChapterTextSecondary))
+            
             holder.itemView.setOnClickListener {
                 // 先关闭对话框，再跳转，减少卡顿感
                 onItemSelected?.invoke()
@@ -1881,6 +1942,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 }
 
-
-
-
+// 扩展函数：dp转px
+fun Int.dpToPx(): Int {
+    return (this * android.content.res.Resources.getSystem().displayMetrics.density).toInt()
+}

@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.fam4k007.videoplayer.utils.DialogUtils
+import com.fam4k007.videoplayer.utils.ThemeManager
 
 class VideoListActivity : AppCompatActivity() {
 
@@ -45,6 +46,7 @@ class VideoListActivity : AppCompatActivity() {
     private var currentSortOrder = SortOrder.ASCENDING
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video_list)
 

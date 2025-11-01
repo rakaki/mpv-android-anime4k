@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fam4k007.videoplayer.utils.DialogUtils
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.fam4k007.videoplayer.utils.ThemeManager
 
 class VideoBrowserActivity : AppCompatActivity() {
 
@@ -39,6 +40,7 @@ class VideoBrowserActivity : AppCompatActivity() {
     private lateinit var adapter: VideoFolderAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video_browser)
 
