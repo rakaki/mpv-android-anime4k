@@ -5,9 +5,17 @@
 # ============================================
 
 # 1. 保护 MPV 库（最重要！）
--keep class dev.jdtech.mpv.** { *; }
--keep interface dev.jdtech.mpv.** { *; }
--keepclassmembers class dev.jdtech.mpv.** { *; }
+# 注意：使用的是 is.xyz.mpv，不是 dev.jdtech.mpv
+-keep class is.xyz.mpv.** { *; }
+-keep interface is.xyz.mpv.** { *; }
+-keepclassmembers class is.xyz.mpv.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+
+# 特别保护 MPVLib 和 BaseMPVView
+-keep class is.xyz.mpv.MPVLib { *; }
+-keep class is.xyz.mpv.BaseMPVView { *; }
+-keep class is.xyz.mpv.MPVLib$** { *; }
 
 # 2. 保护所有 native 方法
 -keepclasseswithmembernames class * {
@@ -19,21 +27,40 @@
     public static final ** CREATOR;
 }
 
+# 4. 保护自定义 View（防止 CustomMPVView 被混淆）
+-keep public class * extends android.view.View {
+    public <init>(android.content.Context);
+    public <init>(android.content.Context, android.util.AttributeSet);
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+}
+
+# 5. 保护项目中的关键类
+-keep class com.fam4k007.videoplayer.player.CustomMPVView { *; }
+-keep class com.fam4k007.videoplayer.player.PlaybackEngine { *; }
+-keep class com.fam4k007.videoplayer.player.PlayerControlsManager { *; }
+-keep class com.fam4k007.videoplayer.player.GestureHandler { *; }
+
+# 6. 保护数据类
+-keep class com.fam4k007.videoplayer.VideoFolder { *; }
+-keep class com.fam4k007.videoplayer.VideoFile { *; }
+-keep class com.fam4k007.videoplayer.VideoFileParcelable { *; }
+
 # ============================================
-# 可选规则：如果 Release 崩溃再启用
+# 其他库规则
 # ============================================
 
-# Glide 图片加载库（如果截图或缩略图失败，启用下面）
-# -keep public class * implements com.bumptech.glide.module.GlideModule
-# -keep class com.bumptech.glide.** { *; }
+# Glide 图片加载库
+-keep public class * implements com.bumptech.glide.module.GlideModule
+-keep class com.bumptech.glide.** { *; }
+-keepclassmembers class com.bumptech.glide.** { *; }
 
-# 保护所有自定义 View（如果界面显示异常，启用下面）
-# -keep public class * extends android.view.View {
-#     public <init>(android.content.Context);
-#     public <init>(android.content.Context, android.util.AttributeSet);
-# }
+# Kotlin 协程
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembers class kotlinx.** {
+    volatile <fields>;
+}
 
-# 保护数据类（如果视频列表传递失败，启用下面）
-# -keep class com.fam4k007.videoplayer.VideoFolder { *; }
-# -keep class com.fam4k007.videoplayer.VideoFile { *; }
-# -keep class com.fam4k007.videoplayer.VideoFileParcelable { *; }
+# 保持调试信息（方便定位崩溃）
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
