@@ -3,7 +3,7 @@ package com.fam4k007.videoplayer.manager
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import dev.jdtech.mpv.MPVLib
+import `is`.xyz.mpv.MPVLib
 import java.io.File
 
 /**
@@ -20,13 +20,11 @@ class SubtitleManager {
      * 添加外挂字幕
      * @param context Android Context
      * @param subtitleUri 字幕文件的 Uri
-     * @param onSubtitleAdded 字幕成功添加后的回调，传入字幕路径
      * @return 是否添加成功
      */
     fun addExternalSubtitle(
         context: Context, 
-        subtitleUri: Uri,
-        onSubtitleAdded: ((subtitlePath: String) -> Unit)? = null
+        subtitleUri: Uri
     ): Boolean {
         return try {
             val path = getSubtitlePath(context, subtitleUri)
@@ -37,7 +35,7 @@ class SubtitleManager {
                 // 执行 sub-add 命令，使用 "select" 标志自动选中字幕
                 // sub-add <path> [select|insert-next|append] [title]
                 // "select" 标志会自动加载并显示该字幕
-                MPVLib.command(arrayOf("sub-add", path, "select"))
+                MPVLib.command("sub-add", path, "select")
                 Log.d(TAG, "sub-add command executed with 'select' flag")
                 
                 // 立即查询 track-list 状态
@@ -54,9 +52,6 @@ class SubtitleManager {
                 }
                 
                 Log.d(TAG, "Successfully added external subtitle: $path")
-                
-                // 回调：通知 PlaybackEngine 字幕已添加，以便在重新加载视频时重新添加
-                onSubtitleAdded?.invoke(path)
                 
                 Log.d(TAG, "===== End adding external subtitle =====")
                 true

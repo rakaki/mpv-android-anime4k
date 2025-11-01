@@ -13,8 +13,8 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import android.view.MotionEvent
-import android.view.SurfaceView
 import android.view.View
+import com.fam4k007.videoplayer.player.CustomMPVView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
@@ -43,7 +43,7 @@ import com.fam4k007.videoplayer.utils.UriUtils.resolveUri
 import com.fam4k007.videoplayer.utils.DialogUtils
 import com.fam4k007.videoplayer.utils.ThemeManager
 import com.fam4k007.videoplayer.utils.getThemeAttrColor
-import dev.jdtech.mpv.MPVLib
+import `is`.xyz.mpv.MPVLib
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.ref.WeakReference
@@ -67,7 +67,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var anime4KManager: Anime4KManager
 
     // ========== UI 组件（仅保留必需的引用）==========
-    private lateinit var surfaceView: SurfaceView
+    private lateinit var mpvView: CustomMPVView
     private lateinit var clickArea: View
     
     // 进度恢复提示框
@@ -105,10 +105,6 @@ class VideoPlayerActivity : AppCompatActivity() {
     private var anime4KMode = Anime4KManager.Mode.OFF
     private var anime4KQuality = Anime4KManager.Quality.BALANCED
     
-    // Surface准备状态标志
-    private var isSurfaceReady = false
-    private var pendingVideoLoad = false
-    
     // 手势提示View
     private lateinit var seekHint: TextView
     private lateinit var speedHint: LinearLayout
@@ -117,8 +113,8 @@ class VideoPlayerActivity : AppCompatActivity() {
     // 字幕文件选择器
     private lateinit var subtitlePickerLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>
     
-    // 标志：是否正在打开字幕选择器（用于区分正常返回和选择器返回）
-    private var isSelectingSubtitle = false
+    // 记录打开字幕选择器前的播放状态
+    private var wasPlayingBeforeSubtitlePicker = false
     
     // 双击进度累积（用于连续双击）
     private var seekAccumulator = 0
@@ -133,6 +129,11 @@ class VideoPlayerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         
         setContentView(R.layout.activity_video_player)
+        
+        // ========== 保持屏幕常亮 ==========
+        // 在播放视频时防止屏幕自动锁定
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        Log.d(TAG, "Screen keep-on enabled")
 
         // 初始化PreferencesManager
         preferencesManager = PreferencesManager.getInstance(this)
@@ -158,8 +159,28 @@ class VideoPlayerActivity : AppCompatActivity() {
         Log.d(TAG, "Saved position: $savedPosition seconds")
 
         // 初始化UI组件
-        surfaceView = findViewById(R.id.surfaceView)
+        mpvView = findViewById(R.id.surfaceView)
         clickArea = findViewById(R.id.clickArea)
+        
+        // ========== 关键修复: 在Activity中初始化MPV ==========
+        // 参考 mpvKt: player.initialize(filesDir.path, cacheDir.path)
+        // BaseMPVView.initialize() 会调用 MPVLib.create() 和 init()
+        Log.d(TAG, "Initializing MPV in Activity...")
+        try {
+            mpvView.initialize(filesDir.path, cacheDir.path)
+            Log.d(TAG, "MPV initialized successfully")
+            
+            // MPV 初始化完成后加载视频
+            mpvView.postDelayed({
+                Log.d(TAG, "Loading video after MPV init")
+                loadVideo()
+            }, 100) // 延迟 100ms 确保 MPV 完全就绪
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize MPV", e)
+            DialogUtils.showToastShort(this, "MPV 初始化失败: ${e.message}")
+            finish()
+            return
+        }
         
         // 初始化进度恢复提示框
         resumeProgressPrompt = findViewById(R.id.resumeProgressPrompt)
@@ -187,9 +208,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 获取从列表传入的视频数据
         handleVideoListIntent()
         
-        // 标记等待Surface准备完成后加载视频
-        pendingVideoLoad = true
-        // loadVideo() 现在会在surfaceCreated回调中调用
+        // 注意：loadVideo() 现在在 MPV 初始化完成后的回调中调用
     }
 
     /**
@@ -198,6 +217,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun initializeManagers() {
         // 初始化 PlaybackEngine
         playbackEngine = PlaybackEngine(
+            mpvView,
             WeakReference(this),
             object : PlaybackEngine.PlaybackEventCallback {
                 override fun onPlaybackStateChanged(isPlaying: Boolean) {
@@ -235,14 +255,9 @@ class VideoPlayerActivity : AppCompatActivity() {
                 }
                 
                 override fun onSurfaceReady() {
-                    // Surface准备完成，可以安全加载视频了
+                    // Surface 已准备完成（由 BaseMPVView 自动管理）
                     Log.d(TAG, "Surface ready callback received")
-                    if (pendingVideoLoad) {
-                        isSurfaceReady = true
-                        pendingVideoLoad = false
-                        Log.d(TAG, "Loading video after surface ready")
-                        loadVideo()
-                    }
+                    // BaseMPVView 会自动处理 Surface 生命周期，无需手动加载视频
                 }
             }
         )
@@ -253,9 +268,6 @@ class VideoPlayerActivity : AppCompatActivity() {
             finish()
             return
         }
-        
-        // 绑定 Surface
-        playbackEngine.attachSurface(surfaceView)
         
         // 初始化 GestureHandler (需要先于PlayerControlsManager创建)
         gestureHandler = GestureHandler(
@@ -720,95 +732,17 @@ class VideoPlayerActivity : AppCompatActivity() {
         subtitlePickerLauncher = registerForActivityResult(
             ActivityResultContracts.OpenDocument()
         ) { uri ->
-            // 必须在 finally 块中重置标志，确保即使发生异常也会重置
             try {
                 if (uri != null) {
                     Log.d(TAG, "Subtitle file selected: $uri")
-                    // 检查文件是否是支持的字幕格式
                     val displayName = subtitleManager.getSubtitleDisplayName(this, uri)
                     Log.d(TAG, "Subtitle file name: $displayName")
                     
                     if (subtitleManager.isSupportedSubtitleFormat(displayName)) {
-                        // 添加外挂字幕，通过回调注册到 PlaybackEngine 以便后续重新加载
-                        if (subtitleManager.addExternalSubtitle(this, uri) { subtitlePath ->
-                            // 字幕添加成功，注册到 PlaybackEngine
-                            playbackEngine?.registerExternalSubtitle(subtitlePath)
-                        }) {
+                        // 添加外挂字幕（sub-add 命令会自动选中）
+                        if (subtitleManager.addExternalSubtitle(this, uri)) {
                             DialogUtils.showToastShort(this, "已添加字幕: $displayName")
                             Log.d(TAG, "External subtitle added successfully: $displayName")
-                            
-                            // 延迟后尝试自动选中新添加的字幕
-                            // MPV 需要足够的时间来处理新添加的字幕
-                            Thread {
-                                try {
-                                    // 增加延迟到 2 秒，确保 MPV 完全处理外挂字幕
-                                    Thread.sleep(2000)
-                                    runOnUiThread {
-                                        try {
-                                            // 获取更新后的字幕轨道列表
-                                            val subtitleTracks = playbackEngine?.getSubtitleTracks()
-                                            Log.d(TAG, "Auto-select: Got subtitle tracks, count = ${subtitleTracks?.size}")
-                                            
-                                            if (subtitleTracks != null) {
-                                                Log.d(TAG, "Auto-select: Available tracks: $subtitleTracks")
-                                                
-                                                // 详细打印每个轨道
-                                                for ((index, track) in subtitleTracks.withIndex()) {
-                                                    Log.d(TAG, "Auto-select: Track[$index]: id=${track.first}, name=${track.second}, current=${track.third}")
-                                                }
-                                                
-                                                if (subtitleTracks.size > 1) {
-                                                    // 通常新添加的字幕会成为最后一个轨道
-                                                    val lastTrackIndex = subtitleTracks.size - 1
-                                                    val trackId = subtitleTracks[lastTrackIndex].first
-                                                    Log.d(TAG, "Auto-select: Selecting track at index $lastTrackIndex with ID $trackId")
-                                                    playbackEngine?.selectSubtitleTrack(trackId)
-                                                    Log.d(TAG, "Auto-selected new external subtitle: track $trackId")
-                                                } else {
-                                                    Log.w(TAG, "Auto-select: Not enough tracks to select (size=${subtitleTracks.size}), will retry in 1s")
-                                                    // 再次延迟尝试
-                                                    Thread {
-                                                        try {
-                                                            Thread.sleep(1000)
-                                                            runOnUiThread {
-                                                                val retryTracks = playbackEngine?.getSubtitleTracks()
-                                                                Log.d(TAG, "Auto-select: Retry - Got subtitle tracks, count = ${retryTracks?.size}")
-                                                                Log.d(TAG, "Auto-select: Retry - Available tracks: $retryTracks")
-                                                                
-                                                                if (retryTracks != null) {
-                                                                    for ((index, track) in retryTracks.withIndex()) {
-                                                                        Log.d(TAG, "Auto-select: Retry Track[$index]: id=${track.first}, name=${track.second}, current=${track.third}")
-                                                                    }
-                                                                }
-                                                                
-                                                                if (retryTracks != null && retryTracks.size > 1) {
-                                                                    val lastIdx = retryTracks.size - 1
-                                                                    val tid = retryTracks[lastIdx].first
-                                                                    Log.d(TAG, "Auto-select: Retry - Selecting track at index $lastIdx with ID $tid")
-                                                                    playbackEngine?.selectSubtitleTrack(tid)
-                                                                    Log.d(TAG, "Auto-selected new external subtitle (retry): track $tid")
-                                                                } else {
-                                                                    Log.w(TAG, "Auto-select: Retry still failed (count=${retryTracks?.size})")
-                                                                }
-                                                            }
-                                                        } catch (e: Exception) {
-                                                            Log.e(TAG, "Error in retry auto-select", e)
-                                                        }
-                                                    }.start()
-                                                }
-                                            } else {
-                                                Log.w(TAG, "Auto-select: Failed to get subtitle tracks (null)")
-                                            }
-                                        } catch (e: Exception) {
-                                            Log.e(TAG, "Error in auto-select runOnUiThread", e)
-                                            e.printStackTrace()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.w(TAG, "Error auto-selecting new subtitle", e)
-                                    e.printStackTrace()
-                                }
-                            }.start()
                         } else {
                             DialogUtils.showToastShort(this, "添加字幕失败")
                             Log.w(TAG, "Failed to add external subtitle: $displayName")
@@ -818,68 +752,37 @@ class VideoPlayerActivity : AppCompatActivity() {
                         Log.w(TAG, "Unsupported subtitle format: $displayName")
                     }
                 } else {
-                    // 用户取消选择文件
                     Log.d(TAG, "Subtitle file selection cancelled")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error handling subtitle file selection", e)
-                e.printStackTrace()
                 DialogUtils.showToastShort(this, "添加字幕出错: ${e.message}")
             } finally {
-                // 选择完成，重置标志（必须）
-                isSelectingSubtitle = false
-                Log.d(TAG, "Subtitle file picker closed, isSelectingSubtitle reset to false")
-                
-                // 延迟后检查是否需要恢复播放（防止黑屏）
-                resumePromptHandler.postDelayed({
-                    try {
-                        Log.d(TAG, "File picker callback finally block: checking playback state")
-                        val isPaused = playbackEngine?.let { MPVLib.getPropertyBoolean("pause") } ?: true
-                        val hasVideo = playbackEngine?.let { MPVLib.getPropertyString("filename") != null } ?: false
-                        Log.d(TAG, "Playback state after file picker: isPaused=$isPaused, hasVideo=$hasVideo")
-                        
-                        if (hasVideo && isPaused) {
-                            Log.d(TAG, "文件选择器关闭：检测到视频已暂停，尝试恢复播放以防止黑屏...")
-                            playbackEngine?.play()
-                            Log.d(TAG, "已发送播放恢复命令")
-                        }
-                        
-                        // 强制刷新渲染（解决Surface销毁后的黑屏问题）
-                        if (hasVideo) {
-                            Log.d(TAG, "强制刷新视频渲染...")
-                            try {
-                                // 暂停-继续循环，强制重新渲染（不使用seeking，避免触发视频重新加载）
-                                val wasPaused = isPaused
-                                Log.d(TAG, "执行渲染刷新: 先暂停")
-                                MPVLib.setPropertyBoolean("pause", true)
-                                Thread.sleep(100)
-                                
-                                if (!wasPaused) {
-                                    Log.d(TAG, "执行渲染刷新: 恢复播放")
-                                    MPVLib.setPropertyBoolean("pause", false)
-                                }
-                                
-                                Log.d(TAG, "已执行渲染刷新命令")
-                            } catch (e: Exception) {
-                                Log.e(TAG, "渲染刷新失败", e)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error recovering playback in finally block", e)
-                    }
-                }, 100)
+                // 恢复之前的播放状态
+                if (wasPlayingBeforeSubtitlePicker) {
+                    Log.d(TAG, "Resuming playback after subtitle picker")
+                    playbackEngine?.play()
+                    wasPlayingBeforeSubtitlePicker = false
+                }
             }
         }
     }
-
+    
     /**
-     * 打开字幕文件选择器
+     * 打开字幕选择器
      */
     private fun openSubtitlePicker() {
         if (::subtitlePickerLauncher.isInitialized) {
-            // 标记正在选择字幕
-            isSelectingSubtitle = true
-            // 可以指定只选择特定类型的文件
+            // 记录当前播放状态
+            wasPlayingBeforeSubtitlePicker = isPlaying
+            
+            // 如果正在播放，暂停视频
+            if (isPlaying) {
+                Log.d(TAG, "Pausing playback before opening subtitle picker")
+                playbackEngine?.pause()
+            }
+            
+            // 启动文件选择器
             subtitlePickerLauncher.launch(
                 arrayOf(
                     "application/x-subrip",
@@ -1318,6 +1221,9 @@ class VideoPlayerActivity : AppCompatActivity() {
         super.onDestroy()
         Log.d(TAG, "Activity destroyed")
         
+        // 清除屏幕常亮标志
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
         // 恢复原始系统设置(音量、亮度)
         gestureHandler?.restoreOriginalSettings()
         
@@ -1338,46 +1244,7 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "Activity resumed, isSelectingSubtitle: $isSelectingSubtitle")
-        
-        // 检查播放状态，确保从后台返回后能正确恢复
-        resumePromptHandler.postDelayed({
-            try {
-                val isPaused = playbackEngine?.let { MPVLib.getPropertyBoolean("pause") } ?: true
-                val hasVideo = playbackEngine?.let { MPVLib.getPropertyString("filename") != null } ?: false
-                Log.d(TAG, "Resume check: isPaused=$isPaused, hasVideo=$hasVideo, isSelectingSubtitle=$isSelectingSubtitle")
-                
-                // 如果有视频但是黑屏（暂停），尝试恢复
-                if (hasVideo && isPaused && isSelectingSubtitle) {
-                    Log.d(TAG, "检测到从字幕选择器返回，视频已暂停，尝试恢复播放...")
-                    playbackEngine?.play()
-                    Log.d(TAG, "已发送播放命令")
-                }
-                
-                // 强制刷新渲染（解决Surface销毁后的黑屏问题）
-                if (hasVideo && isSelectingSubtitle) {
-                    Log.d(TAG, "从字幕选择器返回，强制刷新视频渲染...")
-                    try {
-                        // 暂停-继续循环，强制重新渲染
-                        val wasPaused = isPaused
-                        Log.d(TAG, "执行渲染刷新: 先暂停")
-                        MPVLib.setPropertyBoolean("pause", true)
-                        Thread.sleep(100)
-                        
-                        if (!wasPaused) {
-                            Log.d(TAG, "执行渲染刷新: 恢复播放")
-                            MPVLib.setPropertyBoolean("pause", false)
-                        }
-                        
-                        Log.d(TAG, "已执行渲染刷新命令")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "渲染刷新失败", e)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Resume recovery error", e)
-            }
-        }, 300)
+        Log.d(TAG, "Activity resumed")
     }
 
     override fun onPause() {
@@ -1397,14 +1264,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 保存播放历史
         savePlaybackHistory()
         
-        // 用户切换到其他应用、返回桌面、锁屏、小窗等操作时，自动退出播放界面
-        // 但如果正在选择字幕，不自动退出（因为文件选择器会让Activity进入onStop）
-        if (!isFinishing && !isSelectingSubtitle) {
-            Log.d(TAG, "检测到用户离开播放界面（返回桌面/切换任务/锁屏/小窗），自动退出")
-            finish()
-        }
-        
-        Log.d(TAG, "Activity stopped, isFinishing: $isFinishing, isSelectingSubtitle: $isSelectingSubtitle")
+        Log.d(TAG, "Activity stopped, isFinishing: $isFinishing")
     }
 
     private fun savePlaybackPosition() {
@@ -1841,25 +1701,25 @@ class VideoPlayerActivity : AppCompatActivity() {
         override fun getItemCount() = chapters.size
     }
     
-    // 截图功能 - 直接从SurfaceView抓取当前画面
+    // 截图功能 - 直接从MPVView抓取当前画面
     private fun takeScreenshot() {
         try {
             Log.d(TAG, "takeScreenshot() called")
             
-            // 从SurfaceView抓取当前画面
+            // 从MPVView抓取当前画面
             val bitmap = Bitmap.createBitmap(
-                surfaceView.width,
-                surfaceView.height,
+                mpvView.width,
+                mpvView.height,
                 Bitmap.Config.ARGB_8888
             )
             
-            // 使用PixelCopy API (Android 7.0+) 从SurfaceView抓取内容
+            // 使用PixelCopy API (Android 7.0+) 从MPVView抓取内容
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 val location = IntArray(2)
-                surfaceView.getLocationInWindow(location)
+                mpvView.getLocationInWindow(location)
                 
                 android.view.PixelCopy.request(
-                    surfaceView.holder.surface,
+                    mpvView.holder.surface,
                     bitmap,
                     { copyResult ->
                         if (copyResult == android.view.PixelCopy.SUCCESS) {

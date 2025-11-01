@@ -9,7 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
-import dev.jdtech.mpv.MPVLib
+import `is`.xyz.mpv.MPVLib
 import java.lang.ref.WeakReference
 
 /**

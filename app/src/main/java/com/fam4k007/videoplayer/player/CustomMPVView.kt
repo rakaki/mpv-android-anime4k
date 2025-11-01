@@ -1,0 +1,97 @@
+package com.fam4k007.videoplayer.player
+
+import android.content.Context
+import android.util.AttributeSet
+import android.util.Log
+import `is`.xyz.mpv.BaseMPVView
+import `is`.xyz.mpv.MPVLib
+
+/**
+ * 自定义MPV视图
+ * 继承BaseMPVView,封装MPV配置
+ * 
+ * 重要: MPV必须在Activity的onCreate中通过 initialize(filesDir, cacheDir) 方法初始化
+ * 不要在View的生命周期回调中初始化MPV
+ */
+class CustomMPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context, attrs) {
+
+    companion object {
+        private const val TAG = "CustomMPVView"
+    }
+
+    /**
+     * 初始化MPV选项
+     * 会在MPVLib.create()之后、MPVLib.init()之前被调用
+     */
+    override fun initOptions() {
+        Log.d(TAG, "Initializing MPV options")
+        
+        // 视频输出配置
+        setVo("gpu")
+        MPVLib.setOptionString("hwdec", "auto")
+        MPVLib.setOptionString("ao", "audiotrack,opensles")
+        MPVLib.setOptionString("keep-open", "yes")
+        MPVLib.setOptionString("gpu-context", "android")
+
+        // 视频适应屏幕
+        MPVLib.setOptionString("keepaspect", "yes")
+        MPVLib.setOptionString("panscan", "0.0")
+        MPVLib.setOptionString("video-aspect-override", "-1")
+
+        // ========== 字幕配置 ==========
+        // 自动加载外部字幕文件
+        MPVLib.setOptionString("sub-auto", "fuzzy")
+        // 字幕文件编码
+        MPVLib.setOptionString("sub-codepage", "auto")
+        // 首选字幕语言
+        MPVLib.setOptionString("slang", "zh,chi,zho,chs,cht,zh-CN,zh-TW,en,eng")
+        // libass 字体配置
+        MPVLib.setOptionString("sub-font-provider", "none")
+        MPVLib.setOptionString("sub-fonts-dir", "/system/fonts")
+        MPVLib.setOptionString("sub-font", "Noto Sans CJK SC")
+        MPVLib.setOptionString("embeddedfonts", "no")
+        // 字幕显示位置
+        MPVLib.setOptionString("sub-use-margins", "yes")
+        MPVLib.setOptionString("sub-ass-force-margins", "yes")
+        MPVLib.setOptionString("blend-subtitles", "video")
+        // 字幕样式
+        MPVLib.setOptionString("sub-font-size", "55")
+        MPVLib.setOptionString("sub-border-size", "2.5")
+
+        // TLS配置
+        MPVLib.setOptionString("tls-verify", "yes")
+        MPVLib.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
+
+        // 缓存限制
+        val cacheMegs = 64
+        MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
+        MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
+
+        // 默认播放速度
+        MPVLib.setOptionString("speed", "1.0")
+
+        Log.d(TAG, "MPV options initialized")
+    }
+
+    /**
+     * 在 MPV 初始化之后执行的配置
+     * 会在 MPVLib.init() 之后被调用
+     */
+    override fun postInitOptions() {
+        Log.d(TAG, "Post-init options - MPV fully initialized")
+        // 这里可以添加需要在 MPV 完全初始化后才能设置的选项
+    }
+
+    /**
+     * 观察MPV属性变化
+     * 会在MPVLib.init()之后被调用
+     */
+    override fun observeProperties() {
+        Log.d(TAG, "Setting up property observers")
+        
+        // BaseMPVView 会自动处理属性观察
+        // 如果需要观察特定属性，可以在这里添加
+        
+        Log.d(TAG, "Property observers initialized")
+    }
+}

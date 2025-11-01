@@ -47,16 +47,6 @@ This name reflects the software's primary positioning as a high-definition local
 - **Minimum SDK**: 26 (Android 8.0)
 - **Compile SDK**: 34 (Android 14)
 
-## Known Issues
-
-| Issue | Description |
-|-------|-------------|
-| Missing Thumbnails | Video list thumbnails may disappear after pull-to-refresh |
-| Sorting Delay | Sorting function may need to be executed twice initially |
-| Duplicate Video Loading | Videos are reloaded once at the beginning to fix subtitle display issues |
-| Embedded + External Subtitle Conflict | Do not import external subtitles for videos with embedded subtitles |
-| Black Screen on Subtitle Import | Very rare: importing external subtitles may cause black screen; go back and re-enter to recover |
-
 ## Planned Features
 
 The following features are planned but not yet implemented:
@@ -79,7 +69,7 @@ This project would not be possible without the support of the following open-sou
 |---------|-------------|
 | [mpv-player/mpv](https://github.com/mpv-player/mpv) | The core foundation of this project, a powerful multimedia player library |
 | [mpv-android/mpv-android](https://github.com/mpv-android/mpv-android) | Reference implementation for Android mobile |
-| [jarnedemeulemeester/libmpv-android](https://github.com/jarnedemeulemeester/libmpv-android) | Provides ready-to-use libmpv library files |
+| [abdallahmehiz/mpv-android](https://github.com/abdallahmehiz/mpv-android/releases) | Provides ready-to-use libmpv library files |
 | [abdallahmehiz/mpvKt](https://github.com/abdallahmehiz/mpvKt) | Reference for gesture controls, swipe handling, and external subtitle import |
 | [bloc97/Anime4K](https://github.com/bloc97/Anime4K) | Source of super-resolution GLSL shader files |
 | [Predidit/Kazumi](https://github.com/Predidit/Kazumi) | Project development inspiration and original requirements |

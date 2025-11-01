@@ -49,16 +49,6 @@
 - **最低 SDK**：26 (Android 8.0)
 - **编译 SDK**：34 (Android 14)
 
-## 已知问题
-
-| 问题 | 现象 |
-|------|------|
-| 视频列表缩略图丢失 | 下拉刷新后缩略图可能消失 |
-| 排序功能延迟 | 排序功能初始需要执行两次才生效 |
-| 视频重复加载 | 为修复字幕画面问题，视频开头会重复加载一次 |
-| 内嵌+外部字幕冲突 | 内嵌字幕视频不应再导入外部字幕 |
-| 字幕导入黑屏 | 导入外部字幕有极小概率导致黑屏，返回重进即可恢复 |
-
 ## 功能规划
 
 以下功能已规划但暂未实现：
@@ -81,7 +71,7 @@
 |------|------|
 | [mpv-player/mpv](https://github.com/mpv-player/mpv) | 本项目的核心基础，强大的多媒体播放器库 |
 | [mpv-android/mpv-android](https://github.com/mpv-android/mpv-android) | Android 移动端实现参考 |
-| [jarnedemeulemeester/libmpv-android](https://github.com/jarnedemeulemeester/libmpv-android) | 提供现成可用的 libmpv 库文件 |
+| [abdallahmehiz/mpv-android](https://github.com/abdallahmehiz/mpv-android/releases) | 提供现成可用的 libmpv 库文件 |
 | [abdallahmehiz/mpvKt](https://github.com/abdallahmehiz/mpvKt) | 参考了手势控制、滑动处理、外部字幕导入等多项实现 |
 | [bloc97/Anime4K](https://github.com/bloc97/Anime4K) | 超分辨率滤镜 GLSL 文件来源 |
 | [Predidit/Kazumi](https://github.com/Predidit/Kazumi) | 项目开发灵感和原始需求 |
