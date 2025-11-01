@@ -83,6 +83,25 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().putBoolean(AppConstants.Preferences.PRECISE_SEEKING, enabled).apply()
     }
     
+    // ==================== 音量增强 ====================
+    
+    /**
+     * 获取是否启用音量增强(允许音量超过100%)
+     */
+    fun isVolumeBoostEnabled(): Boolean {
+        return sharedPreferences.getBoolean(
+            AppConstants.Preferences.VOLUME_BOOST_ENABLED,
+            true  // 默认启用
+        )
+    }
+    
+    /**
+     * 保存音量增强设置
+     */
+    fun setVolumeBoostEnabled(enabled: Boolean) {
+        sharedPreferences.edit().putBoolean(AppConstants.Preferences.VOLUME_BOOST_ENABLED, enabled).apply()
+    }
+    
     // ==================== 播放位置（用于记忆播放进度）====================
     
     /**

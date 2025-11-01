@@ -21,6 +21,8 @@ class PlaybackSettingsActivity : BaseActivity() {
 
     private lateinit var switchPreciseSeeking: SwitchCompat
     private lateinit var tvPreciseSeekingDesc: TextView
+    private lateinit var switchVolumeBoost: SwitchCompat
+    private lateinit var tvVolumeBoostDesc: TextView
     private lateinit var llSeekTimeContainer: LinearLayout
     private lateinit var tvSeekTimeValue: TextView
     private lateinit var seekBarLongPressSpeed: SeekBar
@@ -45,6 +47,8 @@ class PlaybackSettingsActivity : BaseActivity() {
         // 初始化视图
         switchPreciseSeeking = findViewById(R.id.switchPreciseSeeking)
         tvPreciseSeekingDesc = findViewById(R.id.tvPreciseSeekingDesc)
+        switchVolumeBoost = findViewById(R.id.switchVolumeBoost)
+        tvVolumeBoostDesc = findViewById(R.id.tvVolumeBoostDesc)
         llSeekTimeContainer = findViewById(R.id.llSeekTimeContainer)
         tvSeekTimeValue = findViewById(R.id.tvSeekTimeValue)
         seekBarLongPressSpeed = findViewById(R.id.seekBarLongPressSpeed)
@@ -63,6 +67,10 @@ class PlaybackSettingsActivity : BaseActivity() {
     private fun loadSettings() {
         val preciseSeeking = preferencesManager.isPreciseSeekingEnabled()
         switchPreciseSeeking.isChecked = preciseSeeking
+        
+        // 加载音量增强设置
+        val volumeBoostEnabled = preferencesManager.isVolumeBoostEnabled()
+        switchVolumeBoost.isChecked = volumeBoostEnabled
         
         // 加载快进/快退时长设置
         val seekTime = preferencesManager.getSeekTime()
@@ -94,6 +102,18 @@ class PlaybackSettingsActivity : BaseActivity() {
                 "已启用精确定位模式\n(定位更准确但可能较慢)"
             } else {
                 "已启用快速定位模式\n(定位更快但使用关键帧)"
+            }
+            DialogUtils.showToastShort(this, message)
+        }
+        
+        // 音量增强开关
+        switchVolumeBoost.setOnCheckedChangeListener { _, isChecked ->
+            preferencesManager.setVolumeBoostEnabled(isChecked)
+            
+            val message = if (isChecked) {
+                "音量增强已启用\n(允许音量超过100%,最高300%)"
+            } else {
+                "音量增强已关闭\n(音量范围限制在1-100%)"
             }
             DialogUtils.showToastShort(this, message)
         }

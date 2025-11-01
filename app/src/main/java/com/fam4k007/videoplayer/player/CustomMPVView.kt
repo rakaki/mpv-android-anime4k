@@ -30,6 +30,15 @@ class CustomMPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context
         setVo("gpu")
         MPVLib.setOptionString("hwdec", "auto")
         MPVLib.setOptionString("ao", "audiotrack,opensles")
+        
+        // ========== 音量配置 ==========
+        // 允许音量超过100%(最高300%)
+        MPVLib.setOptionString("volume-max", "300")
+        // 启用软件音量控制,允许音量超过100%
+        MPVLib.setOptionString("softvol", "yes")
+        // 设置音量控制模式
+        MPVLib.setOptionString("audio-normalize-downmix", "no")
+        
         MPVLib.setOptionString("keep-open", "yes")
         MPVLib.setOptionString("gpu-context", "android")
 

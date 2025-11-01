@@ -17,6 +17,7 @@ object AppConstants {
 
         // 播放设置 Key
         const val PRECISE_SEEKING = "precise_seeking"
+        const val VOLUME_BOOST_ENABLED = "volume_boost_enabled"
         const val SEEK_TIME = "seek_time"
         const val LONG_PRESS_SPEED = "long_press_speed"
 
