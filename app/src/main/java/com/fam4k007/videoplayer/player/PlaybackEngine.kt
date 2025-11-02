@@ -690,6 +690,71 @@ class PlaybackEngine(
             false
         }
     }
+    
+    /**
+     * 设置字幕文本颜色
+     * @param color 颜色值，格式如 "#FFFFFF" 或 "#FFFFFFFF"（ARGB）
+     */
+    fun setSubtitleTextColor(color: String) {
+        try {
+            MPVLib.setPropertyString("sub-color", color)
+            Log.d(TAG, "Subtitle text color set to: $color")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set subtitle text color", e)
+        }
+    }
+    
+    /**
+     * 设置字幕描边粗细
+     * @param size 粗细值，范围 0-100
+     */
+    fun setSubtitleBorderSize(size: Int) {
+        try {
+            MPVLib.setPropertyInt("sub-border-size", size)
+            Log.d(TAG, "Subtitle border size set to: $size")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set subtitle border size", e)
+        }
+    }
+    
+    /**
+     * 设置字幕描边颜色
+     * @param color 颜色值，格式如 "#000000" 或 "#FF000000"（ARGB）
+     */
+    fun setSubtitleBorderColor(color: String) {
+        try {
+            MPVLib.setPropertyString("sub-border-color", color)
+            Log.d(TAG, "Subtitle border color set to: $color")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set subtitle border color", e)
+        }
+    }
+    
+    /**
+     * 设置字幕背景颜色
+     * @param color 颜色值，格式如 "#00000000"（ARGB，支持透明）
+     */
+    fun setSubtitleBackColor(color: String) {
+        try {
+            MPVLib.setPropertyString("sub-back-color", color)
+            Log.d(TAG, "Subtitle back color set to: $color")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set subtitle back color", e)
+        }
+    }
+    
+    /**
+     * 设置字幕描边样式
+     * @param style 样式值: "outline-and-shadow", "opaque-box", "background-box"
+     */
+    fun setSubtitleBorderStyle(style: String) {
+        try {
+            MPVLib.setPropertyString("sub-border-style", style)
+            Log.d(TAG, "Subtitle border style set to: $style")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set subtitle border style", e)
+        }
+    }
 
     /**
      * 检查是否有章节

@@ -608,6 +608,51 @@ class VideoPlayerActivity : AppCompatActivity() {
                         Log.w(TAG, "Saved subtitle file not found: $savedSubtitlePath")
                     }
                 }
+                
+                // 恢复字幕轨道选择
+                val savedTrackId = preferencesManager.getSubtitleTrackId(uriString)
+                if (savedTrackId != -1) {
+                    // 延迟恢复，确保轨道已加载
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        try {
+                            engine.selectSubtitleTrack(savedTrackId)
+                            Log.d(TAG, "Restored subtitle track: $savedTrackId")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to restore subtitle track", e)
+                        }
+                    }, 600)
+                }
+                
+                // 恢复字幕样式设置
+                val savedTextColor = preferencesManager.getSubtitleTextColor(uriString)
+                if (savedTextColor != "#FFFFFF") {
+                    engine.setSubtitleTextColor(savedTextColor)
+                    Log.d(TAG, "Restored subtitle text color: $savedTextColor")
+                }
+                
+                val savedBorderSize = preferencesManager.getSubtitleBorderSize(uriString)
+                if (savedBorderSize != 3) {
+                    engine.setSubtitleBorderSize(savedBorderSize)
+                    Log.d(TAG, "Restored subtitle border size: $savedBorderSize")
+                }
+                
+                val savedBorderColor = preferencesManager.getSubtitleBorderColor(uriString)
+                if (savedBorderColor != "#000000") {
+                    engine.setSubtitleBorderColor(savedBorderColor)
+                    Log.d(TAG, "Restored subtitle border color: $savedBorderColor")
+                }
+                
+                val savedBackColor = preferencesManager.getSubtitleBackColor(uriString)
+                if (savedBackColor != "#00000000") {
+                    engine.setSubtitleBackColor(savedBackColor)
+                    Log.d(TAG, "Restored subtitle back color: $savedBackColor")
+                }
+                
+                val savedBorderStyle = preferencesManager.getSubtitleBorderStyle(uriString)
+                if (savedBorderStyle != "outline-and-shadow") {
+                    engine.setSubtitleBorderStyle(savedBorderStyle)
+                    Log.d(TAG, "Restored subtitle border style: $savedBorderStyle")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error restoring subtitle preferences", e)
@@ -982,6 +1027,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                     menuItems.add("字幕延迟")
                     menuItems.add("字幕杂项")
                 }
+                menuItems.add("样式设置")
                 menuItems.add("外挂字幕")
                 menuItems.add("更改字体")
                 
@@ -990,6 +1036,10 @@ class VideoPlayerActivity : AppCompatActivity() {
                 
                 showPopupDialog(btnSubtitle, menuItems, showAbove = false, useFixedHeight = true, showScrollHint = true) { position ->
                     when {
+                        position == menuItems.size - 3 -> {
+                            // 样式设置
+                            showSubtitleStyleDialog(engine)
+                        }
                         position == menuItems.size - 2 -> {
                             // 外挂字幕
                             openSubtitlePicker()
@@ -1025,6 +1075,12 @@ class VideoPlayerActivity : AppCompatActivity() {
             val trackId = subtitleTracks[position].first
             engine.selectSubtitleTrack(trackId)
             DialogUtils.showToastShort(this@VideoPlayerActivity, "已切换到: ${items[position]}")
+            
+            // 保存选中的字幕轨道
+            videoUri?.let { uri ->
+                preferencesManager.setSubtitleTrackId(uri.toString(), trackId)
+                Log.d(TAG, "Saved subtitle track ID: $trackId")
+            }
         }
     }
 
@@ -1243,6 +1299,12 @@ class VideoPlayerActivity : AppCompatActivity() {
             engine.setSubtitleScale(defaultScale)
             engine.setSubtitleVerticalPosition(defaultPosition)
             updateResetButton()
+            
+            // 保存重置后的设置
+            videoUri?.let { uri ->
+                preferencesManager.setSubtitleScale(uri.toString(), defaultScale)
+                preferencesManager.setSubtitlePosition(uri.toString(), defaultPosition)
+            }
         }
         
         // 配置对话框
@@ -1272,6 +1334,326 @@ class VideoPlayerActivity : AppCompatActivity() {
         dialog.setCanceledOnTouchOutside(true)
         
         dialog.show()
+    }
+    
+    /**
+     * 显示字幕样式设置对话框
+     */
+    private fun showSubtitleStyleDialog(engine: PlaybackEngine) {
+        val dialog = android.app.Dialog(this)
+        val view = layoutInflater.inflate(R.layout.dialog_subtitle_style, null)
+        
+        // 获取当前设置
+        val uriString = videoUri?.toString() ?: ""
+        var currentTextColor = preferencesManager.getSubtitleTextColor(uriString)
+        var currentBorderSize = preferencesManager.getSubtitleBorderSize(uriString).toDouble()
+        var currentBorderColor = preferencesManager.getSubtitleBorderColor(uriString)
+        var currentBackColor = preferencesManager.getSubtitleBackColor(uriString)
+        var currentBorderStyle = preferencesManager.getSubtitleBorderStyle(uriString)
+        
+        // 默认值
+        val defaultTextColor = "#FFFFFF"
+        val defaultBorderSize = 3.0
+        val defaultBorderColor = "#000000"
+        val defaultBackColor = "#00000000"
+        val defaultBorderStyle = "outline-and-shadow"
+        
+        // 获取UI组件
+        val tvBorderSizeValue = view.findViewById<TextView>(R.id.tvBorderSizeValue)
+        val seekBarBorderSize = view.findViewById<SeekBar>(R.id.seekBarBorderSize)
+        val btnReset = view.findViewById<Button>(R.id.btnReset)
+        val rgBorderStyle = view.findViewById<android.widget.RadioGroup>(R.id.rgBorderStyle)
+        val rbOutlineAndShadow = view.findViewById<android.widget.RadioButton>(R.id.rbOutlineAndShadow)
+        val rbOpaqueBox = view.findViewById<android.widget.RadioButton>(R.id.rbOpaqueBox)
+        val rbBackgroundBox = view.findViewById<android.widget.RadioButton>(R.id.rbBackgroundBox)
+        
+        // 设置初始值（直接显示整数 0-100）
+        seekBarBorderSize.max = 100
+        seekBarBorderSize.progress = currentBorderSize.toInt().coerceIn(0, 100)
+        tvBorderSizeValue.text = seekBarBorderSize.progress.toString()
+        
+        // 设置描边样式初始值
+        when (currentBorderStyle) {
+            "outline-and-shadow" -> rbOutlineAndShadow.isChecked = true
+            "opaque-box" -> rbOpaqueBox.isChecked = true
+            "background-box" -> rbBackgroundBox.isChecked = true
+        }
+        
+        // 更新重置按钮状态
+        fun updateResetButton() {
+            val hasChanged = currentTextColor != defaultTextColor ||
+                           currentBorderSize != defaultBorderSize ||
+                           currentBorderColor != defaultBorderColor ||
+                           currentBackColor != defaultBackColor ||
+                           currentBorderStyle != defaultBorderStyle
+            btnReset.isEnabled = hasChanged
+        }
+        updateResetButton()
+        
+        // 描边粗细SeekBar监听器（直接使用整数值 0-100）
+        seekBarBorderSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                tvBorderSizeValue.text = progress.toString()
+                currentBorderSize = progress.toDouble()
+                engine.setSubtitleBorderSize(progress)
+                updateResetButton()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                val size = seekBar?.progress ?: 3
+                videoUri?.let { uri ->
+                    preferencesManager.setSubtitleBorderSize(uri.toString(), size)
+                }
+            }
+        })
+        
+        // 设置文本颜色
+        setupColorPicker(view, "Text", currentTextColor, engine, uriString, 
+            { currentTextColor = it; updateResetButton() },
+            { engine.setSubtitleTextColor(it) },
+            { preferencesManager.setSubtitleTextColor(uriString, it) })
+        
+        // 设置描边颜色
+        setupColorPicker(view, "Border", currentBorderColor, engine, uriString,
+            { currentBorderColor = it; updateResetButton() },
+            { engine.setSubtitleBorderColor(it) },
+            { preferencesManager.setSubtitleBorderColor(uriString, it) })
+        
+        // 设置背景颜色
+        setupColorPicker(view, "Back", currentBackColor, engine, uriString,
+            { currentBackColor = it; updateResetButton() },
+            { engine.setSubtitleBackColor(it) },
+            { preferencesManager.setSubtitleBackColor(uriString, it) })
+        
+        // 描边样式选择监听
+        rgBorderStyle.setOnCheckedChangeListener { _, checkedId ->
+            val style = when (checkedId) {
+                R.id.rbOutlineAndShadow -> "outline-and-shadow"
+                R.id.rbOpaqueBox -> "opaque-box"
+                R.id.rbBackgroundBox -> "background-box"
+                else -> "outline-and-shadow"
+            }
+            currentBorderStyle = style
+            engine.setSubtitleBorderStyle(style)
+            videoUri?.let { uri ->
+                preferencesManager.setSubtitleBorderStyle(uri.toString(), style)
+            }
+            updateResetButton()
+        }
+        
+        // 重置按钮
+        btnReset.setOnClickListener {
+            currentTextColor = defaultTextColor
+            currentBorderSize = defaultBorderSize
+            currentBorderColor = defaultBorderColor
+            currentBackColor = defaultBackColor
+            currentBorderStyle = defaultBorderStyle
+            
+            seekBarBorderSize.progress = defaultBorderSize.toInt()
+            tvBorderSizeValue.text = seekBarBorderSize.progress.toString()
+            
+            engine.setSubtitleTextColor(defaultTextColor)
+            engine.setSubtitleBorderSize(defaultBorderSize.toInt())
+            engine.setSubtitleBorderColor(defaultBorderColor)
+            engine.setSubtitleBackColor(defaultBackColor)
+            engine.setSubtitleBorderStyle(defaultBorderStyle)
+            
+            videoUri?.let { uri ->
+                preferencesManager.setSubtitleTextColor(uri.toString(), defaultTextColor)
+                preferencesManager.setSubtitleBorderSize(uri.toString(), defaultBorderSize.toInt())
+                preferencesManager.setSubtitleBorderColor(uri.toString(), defaultBorderColor)
+                preferencesManager.setSubtitleBackColor(uri.toString(), defaultBackColor)
+                preferencesManager.setSubtitleBorderStyle(uri.toString(), defaultBorderStyle)
+            }
+            
+            // 重置描边样式单选按钮
+            rbOutlineAndShadow.isChecked = true
+            
+            // 重新设置颜色选择器（重置RGBA滑块和预设按钮）
+            setupColorPicker(view, "Text", defaultTextColor, engine, uriString,
+                { currentTextColor = it; updateResetButton() },
+                { engine.setSubtitleTextColor(it) },
+                { preferencesManager.setSubtitleTextColor(uriString, it) })
+            setupColorPicker(view, "Border", defaultBorderColor, engine, uriString,
+                { currentBorderColor = it; updateResetButton() },
+                { engine.setSubtitleBorderColor(it) },
+                { preferencesManager.setSubtitleBorderColor(uriString, it) })
+            setupColorPicker(view, "Back", defaultBackColor, engine, uriString,
+                { currentBackColor = it; updateResetButton() },
+                { engine.setSubtitleBackColor(it) },
+                { preferencesManager.setSubtitleBackColor(uriString, it) })
+            
+            updateResetButton()
+            DialogUtils.showToastShort(this, "已重置为默认样式")
+        }
+        
+        // 配置对话框
+        dialog.setContentView(view)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        // 获取屏幕宽度，设置对话框宽度（与字幕杂项一致）
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val dialogWidth = (screenWidth * 0.4).toInt().coerceIn(
+            (200 * displayMetrics.density).toInt(),
+            (450 * displayMetrics.density).toInt()
+        )
+        
+        // 将 dp 转换为 px
+        val marginRightDp = 65
+        val marginRightPx = (marginRightDp * displayMetrics.density).toInt()
+        
+        dialog.window?.setLayout(
+            dialogWidth,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        
+        // 设置对话框位置在右边界中部（与字幕杂项一致）
+        dialog.window?.setGravity(android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.RIGHT)
+        dialog.window?.attributes?.x = marginRightPx
+        dialog.setCanceledOnTouchOutside(true)
+        
+        dialog.show()
+    }
+    
+    /**
+     * 设置颜色选择器（预设色块 + RGBA滑块）
+     */
+    private fun setupColorPicker(
+        view: View, 
+        colorType: String,  // "Text", "Border", "Back"
+        initialColor: String,
+        engine: PlaybackEngine,
+        uriString: String,
+        onColorChange: (String) -> Unit,
+        onEngineUpdate: (String) -> Unit,
+        onPreferenceSave: (String) -> Unit
+    ) {
+        val btnAdvanced = view.findViewById<ImageView>(view.resources.getIdentifier("btn${colorType}ColorAdvanced", "id", packageName))
+        val layoutRGBA = view.findViewById<LinearLayout>(view.resources.getIdentifier("layout${colorType}ColorRGBA", "id", packageName))
+        
+        // 预设颜色按钮
+        val presetColors = when (colorType) {
+            "Text" -> listOf("White", "Black", "Red", "Green", "Blue", "Yellow", "Cyan", "Magenta")
+            "Border" -> listOf("White", "Black", "Red", "Green", "Blue", "Yellow", "Cyan", "Magenta")
+            "Back" -> listOf("Transparent", "Black", "White", "Red", "Green", "Blue", "Yellow", "Gray")
+            else -> listOf()
+        }
+        
+        val colorValues = when (colorType) {
+            "Text" -> listOf("#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF")
+            "Border" -> listOf("#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF")
+            "Back" -> listOf("#00000000", "#FF000000", "#FFFFFFFF", "#80FF0000", "#8000FF00", "#800000FF", "#80FFFF00", "#80808080")
+            else -> listOf()
+        }
+        
+        presetColors.forEachIndexed { index, colorName ->
+            val btnId = view.resources.getIdentifier("btn${colorType}Color$colorName", "id", packageName)
+            view.findViewById<View>(btnId)?.setOnClickListener {
+                val color = colorValues[index]
+                onColorChange(color)
+                onEngineUpdate(color)
+                onPreferenceSave(color)
+                setupRGBASliders(view, colorType, color, onColorChange, onEngineUpdate, onPreferenceSave)
+            }
+        }
+        
+        // 高级编辑按钮（切换RGBA滑块显示）
+        btnAdvanced.setOnClickListener {
+            if (layoutRGBA.visibility == View.GONE) {
+                layoutRGBA.visibility = View.VISIBLE
+            } else {
+                layoutRGBA.visibility = View.GONE
+            }
+        }
+        
+        // 初始化RGBA滑块
+        setupRGBASliders(view, colorType, initialColor, onColorChange, onEngineUpdate, onPreferenceSave)
+    }
+    
+    /**
+     * 设置RGBA滑块
+     */
+    private fun setupRGBASliders(
+        view: View,
+        colorType: String,
+        currentColor: String,
+        onColorChange: (String) -> Unit,
+        onEngineUpdate: (String) -> Unit,
+        onPreferenceSave: (String) -> Unit
+    ) {
+        val color = android.graphics.Color.parseColor(currentColor)
+        var r = android.graphics.Color.red(color)
+        var g = android.graphics.Color.green(color)
+        var b = android.graphics.Color.blue(color)
+        var a = android.graphics.Color.alpha(color)
+        
+        val seekBarR = view.findViewById<SeekBar>(view.resources.getIdentifier("seekBar${colorType}R", "id", packageName))
+        val seekBarG = view.findViewById<SeekBar>(view.resources.getIdentifier("seekBar${colorType}G", "id", packageName))
+        val seekBarB = view.findViewById<SeekBar>(view.resources.getIdentifier("seekBar${colorType}B", "id", packageName))
+        val seekBarA = view.findViewById<SeekBar>(view.resources.getIdentifier("seekBar${colorType}A", "id", packageName))
+        
+        val tvRValue = view.findViewById<TextView>(view.resources.getIdentifier("tv${colorType}RValue", "id", packageName))
+        val tvGValue = view.findViewById<TextView>(view.resources.getIdentifier("tv${colorType}GValue", "id", packageName))
+        val tvBValue = view.findViewById<TextView>(view.resources.getIdentifier("tv${colorType}BValue", "id", packageName))
+        val tvAValue = view.findViewById<TextView>(view.resources.getIdentifier("tv${colorType}AValue", "id", packageName))
+        
+        seekBarR?.progress = r
+        seekBarG?.progress = g
+        seekBarB?.progress = b
+        seekBarA?.progress = a
+        
+        tvRValue?.text = r.toString()
+        tvGValue?.text = g.toString()
+        tvBValue?.text = b.toString()
+        tvAValue?.text = a.toString()
+        
+        fun updateColor() {
+            val newColor = String.format("#%02X%02X%02X%02X", a, r, g, b)
+            onColorChange(newColor)
+            onEngineUpdate(newColor)
+            onPreferenceSave(newColor)
+        }
+        
+        seekBarR?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                r = progress
+                tvRValue?.text = progress.toString()
+                if (fromUser) updateColor()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        seekBarG?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                g = progress
+                tvGValue?.text = progress.toString()
+                if (fromUser) updateColor()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        seekBarB?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                b = progress
+                tvBValue?.text = progress.toString()
+                if (fromUser) updateColor()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        seekBarA?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                a = progress
+                tvAValue?.text = progress.toString()
+                if (fromUser) updateColor()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
     private fun toggleDecoder() {
@@ -1673,10 +2055,7 @@ class VideoPlayerActivity : AppCompatActivity() {
             Log.d(TAG, "ASS override toggled to: $newState")
         }, 100)
         
-        // 立即显示提示（不等待延迟）
-        val stateText = if (newState) "已启用" else "已关闭"
-        val hint = if (newState) "自定义字体对所有字幕生效" else "ASS字幕保持原样式"
-        DialogUtils.showToastShort(this, "样式覆盖 $stateText\n$hint")
+        // Toast消息已取消
     }
     
     // 显示章节选择对话框

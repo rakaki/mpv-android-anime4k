@@ -65,7 +65,7 @@ class CustomMPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context
         MPVLib.setOptionString("blend-subtitles", "video")
         // 字幕样式
         MPVLib.setOptionString("sub-font-size", "55")
-        MPVLib.setOptionString("sub-border-size", "2.5")
+        MPVLib.setOptionString("sub-border-size", "3")
 
         // TLS配置
         MPVLib.setOptionString("tls-verify", "yes")

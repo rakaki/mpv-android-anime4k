@@ -198,6 +198,92 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().putBoolean("${videoUri}_ass_override", enabled).apply()
     }
     
+    /**
+     * 获取视频的字幕轨道ID
+     */
+    fun getSubtitleTrackId(videoUri: String): Int {
+        return sharedPreferences.getInt("${videoUri}_sub_track_id", -1)
+    }
+    
+    /**
+     * 保存视频的字幕轨道ID
+     */
+    fun setSubtitleTrackId(videoUri: String, trackId: Int) {
+        sharedPreferences.edit().putInt("${videoUri}_sub_track_id", trackId).apply()
+    }
+    
+    // ==================== 字幕样式设置 ====================
+    
+    /**
+     * 获取字幕文本颜色（ARGB格式）
+     */
+    fun getSubtitleTextColor(videoUri: String): String {
+        return sharedPreferences.getString("${videoUri}_sub_text_color", "#FFFFFF") ?: "#FFFFFF"
+    }
+    
+    /**
+     * 保存字幕文本颜色
+     */
+    fun setSubtitleTextColor(videoUri: String, color: String) {
+        sharedPreferences.edit().putString("${videoUri}_sub_text_color", color).apply()
+    }
+    
+    /**
+     * 获取字幕描边粗细
+     */
+    fun getSubtitleBorderSize(videoUri: String): Int {
+        return sharedPreferences.getInt("${videoUri}_sub_border_size", 3)
+    }
+    
+    /**
+     * 保存字幕描边粗细
+     */
+    fun setSubtitleBorderSize(videoUri: String, size: Int) {
+        sharedPreferences.edit().putInt("${videoUri}_sub_border_size", size).apply()
+    }
+    
+    /**
+     * 获取字幕描边颜色（ARGB格式）
+     */
+    fun getSubtitleBorderColor(videoUri: String): String {
+        return sharedPreferences.getString("${videoUri}_sub_border_color", "#000000") ?: "#000000"
+    }
+    
+    /**
+     * 保存字幕描边颜色
+     */
+    fun setSubtitleBorderColor(videoUri: String, color: String) {
+        sharedPreferences.edit().putString("${videoUri}_sub_border_color", color).apply()
+    }
+    
+    /**
+     * 获取字幕背景颜色（ARGB格式）
+     */
+    fun getSubtitleBackColor(videoUri: String): String {
+        return sharedPreferences.getString("${videoUri}_sub_back_color", "#00000000") ?: "#00000000"
+    }
+    
+    /**
+     * 保存字幕背景颜色
+     */
+    fun setSubtitleBackColor(videoUri: String, color: String) {
+        sharedPreferences.edit().putString("${videoUri}_sub_back_color", color).apply()
+    }
+    
+    /**
+     * 获取字幕描边样式
+     */
+    fun getSubtitleBorderStyle(videoUri: String): String {
+        return sharedPreferences.getString("${videoUri}_sub_border_style", "outline-and-shadow") ?: "outline-and-shadow"
+    }
+    
+    /**
+     * 保存字幕描边样式
+     */
+    fun setSubtitleBorderStyle(videoUri: String, style: String) {
+        sharedPreferences.edit().putString("${videoUri}_sub_border_style", style).apply()
+    }
+    
     // ==================== 主题设置 ====================
     
     /**

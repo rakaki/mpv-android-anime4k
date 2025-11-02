@@ -9,4 +9,7 @@
     <string name="license">许可证</string>
     <string name="about">关于</string>
     <string name="feedback">意见反馈</string>
+    
+    <!-- 字幕样式设置 -->
+    <string name="subtitle_style_hint">需在"更多"中启用样式覆盖</string>
 </resources>
