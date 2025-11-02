@@ -1245,6 +1245,10 @@ class VideoPlayerActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "Activity resumed")
+        
+        // 重新应用音量增强设置(如果开启)
+        // 这样可以确保从后台返回时，音量设置正确
+        gestureHandler?.reapplyVolumeBoostSettings()
     }
 
     override fun onPause() {

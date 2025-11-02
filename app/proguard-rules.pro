@@ -34,13 +34,26 @@
     public <init>(android.content.Context, android.util.AttributeSet, int);
 }
 
+# 保护所有 Activity（确保 findViewById 和 Intent 正常工作）
+-keep public class * extends androidx.appcompat.app.AppCompatActivity {
+    public <methods>;
+}
+-keep public class * extends android.app.Activity {
+    public <methods>;
+}
+
 # 5. 保护项目中的关键类
 -keep class com.fam4k007.videoplayer.player.CustomMPVView { *; }
 -keep class com.fam4k007.videoplayer.player.PlaybackEngine { *; }
 -keep class com.fam4k007.videoplayer.player.PlayerControlsManager { *; }
 -keep class com.fam4k007.videoplayer.player.GestureHandler { *; }
 
-# 6. 保护数据类
+# 6. 保护设置管理和常量类（防止 SharedPreferences 键名被混淆）
+-keep class com.fam4k007.videoplayer.AppConstants { *; }
+-keep class com.fam4k007.videoplayer.AppConstants$** { *; }
+-keep class com.fam4k007.videoplayer.manager.PreferencesManager { *; }
+
+# 7. 保护数据类
 -keep class com.fam4k007.videoplayer.VideoFolder { *; }
 -keep class com.fam4k007.videoplayer.VideoFile { *; }
 -keep class com.fam4k007.videoplayer.VideoFileParcelable { *; }

@@ -91,7 +91,7 @@ class PreferencesManager private constructor(context: Context) {
     fun isVolumeBoostEnabled(): Boolean {
         return sharedPreferences.getBoolean(
             AppConstants.Preferences.VOLUME_BOOST_ENABLED,
-            true  // 默认启用
+            false  // 默认关闭
         )
     }
     

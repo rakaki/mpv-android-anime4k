@@ -27,7 +27,7 @@ class GestureHandler(
         
         // 参考 mpvKt 的灵敏度设置
         private const val BRIGHTNESS_SENSITIVITY = 0.001f  // 亮度灵敏度
-        private const val VOLUME_SENSITIVITY = 0.3f        // MPV音量灵敏度 (支持0.1%-300%)
+        private const val VOLUME_SENSITIVITY = 0.1f        // 音量灵敏度 (支持0.1%-100%) - 已降低敏感度
         private const val SEEK_SENSITIVITY = 0.15f         // 进度灵敏度
         
         // 音量配置 - 统一使用MPV音量控制
@@ -65,7 +65,7 @@ class GestureHandler(
     private var usePreciseSeeking = false
     
     // 音量增强设置
-    private var volumeBoostEnabled = true  // 默认启用音量增强
+    private var volumeBoostEnabled = false  // 默认关闭音量增强
     
     // 保存进入播放器时的原始系统设置(退出时恢复)
     private var originalSystemVolume = -1
@@ -115,7 +115,7 @@ class GestureHandler(
         // 读取精确进度控制设置和音量增强设置
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         usePreciseSeeking = prefs.getBoolean(KEY_PRECISE_SEEKING, false)
-        volumeBoostEnabled = prefs.getBoolean(KEY_VOLUME_BOOST_ENABLED, true)
+        volumeBoostEnabled = prefs.getBoolean(KEY_VOLUME_BOOST_ENABLED, false)  // 默认关闭
         
         // 根据音量增强设置确定最大音量
         val effectiveMaxVolume = if (volumeBoostEnabled) MAX_VOLUME else MAX_VOLUME_NO_BOOST
@@ -151,11 +151,13 @@ class GestureHandler(
             // 不修改系统音量，保持原样
             // MPV音量固定100%，实际音量由系统控制
             try {
-                currentVolume = 100f  // MPV固定100%
+                // currentVolume 记录当前系统音量百分比(用于手势调节的起始值)
+                currentVolume = systemVolumePercent
+                // MPV固定100%
                 MPVLib.setPropertyInt("volume", 100)
-                Log.d(TAG, "VolumeBoost OFF - System: $systemVolume/$maxSystemVolume (${systemVolumePercent.toInt()}%), MPV: 100%")
+                Log.d(TAG, "VolumeBoost OFF - System: $systemVolume/$maxSystemVolume (${systemVolumePercent.toInt()}%), MPV: 100%, currentVolume: ${currentVolume.toInt()}%")
             } catch (e: Exception) {
-                currentVolume = 100f
+                currentVolume = systemVolumePercent
                 Log.e(TAG, "Failed to set MPV volume", e)
             }
         }
@@ -180,6 +182,25 @@ class GestureHandler(
         }
         
         Log.d(TAG, "Initialized - MPV Volume: ${currentVolume.toInt()}%, System Volume: MAX, Brightness: $currentBrightness, VolumeBoost: $volumeBoostEnabled")
+    }
+
+    /**
+     * 重新应用音量增强设置
+     * 用于从后台返回或Activity恢复时，重新应用音量增强模式的系统音量设置
+     */
+    fun reapplyVolumeBoostSettings() {
+        val context = contextRef.get() ?: return
+        
+        // 重新读取音量增强设置(可能在设置界面被修改)
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        volumeBoostEnabled = prefs.getBoolean(KEY_VOLUME_BOOST_ENABLED, false)  // 默认关闭
+        
+        if (volumeBoostEnabled) {
+            // 音量增强模式：将系统音量重新设置为最大
+            audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, maxSystemVolume, 0)
+            Log.d(TAG, "Reapplied VolumeBoost - System volume set to MAX")
+        }
+        // 普通模式不需要做任何事，系统音量保持用户设置
     }
 
     /**
@@ -568,6 +589,26 @@ class GestureHandler(
      */
     fun restoreOriginalSettings() {
         try {
+            // 先恢复MPV音量，再恢复系统音量，避免音量状态混乱
+            if (volumeBoostEnabled) {
+                // 音量增强模式：将MPV恢复到原始百分比
+                // 这样下次进入时会重新读取系统音量并初始化
+                try {
+                    MPVLib.setPropertyInt("volume", originalMPVVolumePercent.toInt())
+                    Log.d(TAG, "VolumeBoost ON - Restored MPV volume to original: ${originalMPVVolumePercent.toInt()}%")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to restore MPV volume", e)
+                }
+            } else {
+                // 普通模式：MPV保持100%
+                try {
+                    MPVLib.setPropertyInt("volume", 100)
+                    Log.d(TAG, "VolumeBoost OFF - Restored MPV volume to: 100%")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to restore MPV volume", e)
+                }
+            }
+            
             // 恢复原始系统音量
             if (originalSystemVolume >= 0) {
                 try {
@@ -589,25 +630,6 @@ class GestureHandler(
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to restore original brightness", e)
-                }
-            }
-            
-            // 根据模式恢复MPV音量
-            if (volumeBoostEnabled) {
-                // 音量增强模式：恢复MPV到进入时的百分比
-                try {
-                    MPVLib.setPropertyInt("volume", originalMPVVolumePercent.toInt())
-                    Log.d(TAG, "VolumeBoost ON - Restored MPV volume to: ${originalMPVVolumePercent.toInt()}%")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to restore MPV volume", e)
-                }
-            } else {
-                // 普通模式：恢复MPV到100%
-                try {
-                    MPVLib.setPropertyInt("volume", 100)
-                    Log.d(TAG, "VolumeBoost OFF - Restored MPV volume to: 100%")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to restore MPV volume", e)
                 }
             }
         } catch (e: Exception) {
