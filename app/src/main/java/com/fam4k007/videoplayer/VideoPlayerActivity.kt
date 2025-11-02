@@ -879,8 +879,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                 if (subtitleTracks.isNotEmpty()) {
                     menuItems.add("字幕轨道")
                     menuItems.add("字幕延迟")
-                    menuItems.add("字幕大小")
-                    menuItems.add("字幕位置")
+                    menuItems.add("字幕杂项")
                 }
                 menuItems.add("外挂字幕")
                 
@@ -896,8 +895,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                             when (position) {
                                 0 -> showSubtitleTrackSelection(engine, subtitleTracks)
                                 1 -> showSubtitleDelayDialog(engine)
-                                2 -> showSubtitleSizeDialog(engine)
-                                3 -> showSubtitlePositionDialog(engine)
+                                2 -> showSubtitleMiscDialog(engine)
                             }
                         }
                     }
@@ -1024,141 +1022,129 @@ class VideoPlayerActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun showSubtitleSizeDialog(engine: PlaybackEngine) {
-        val currentScale = engine.getSubtitleScale()
-        val scaleLabels = listOf("极小 (0.5)", "较小 (0.7)", "小 (0.8)", "正常 (1.0)", "大 (1.2)", "较大 (1.5)", "极大 (2.0)")
-        val scaleValues = listOf(0.5, 0.7, 0.8, 1.0, 1.2, 1.5, 2.0)
-        
-        // 找到最接近当前值的选项
-        val currentSelection = scaleValues.indices.minByOrNull { 
-            Math.abs(scaleValues[it] - currentScale) 
-        } ?: 3
-        
+    /**
+     * 显示字幕杂项设置对话框（包含字幕大小和位置）
+     */
+    private fun showSubtitleMiscDialog(engine: PlaybackEngine) {
         val dialog = android.app.Dialog(this)
-        val view = layoutInflater.inflate(R.layout.dialog_subtitle_size, null)
+        val view = layoutInflater.inflate(R.layout.dialog_subtitle_misc, null)
         
-        val tvCurrentSize = view.findViewById<TextView>(R.id.tvCurrentSize)
-        val seekBarSize = view.findViewById<android.widget.SeekBar>(R.id.seekBarSize)
-        val btnReset = view.findViewById<Button>(R.id.btnResetSize)
-        val btnCancel = view.findViewById<Button>(R.id.btnCancelSize)
-        val btnConfirm = view.findViewById<Button>(R.id.btnConfirmSize)
+        // 获取UI组件
+        val tvSizeLabel = view.findViewById<TextView>(R.id.tvSizeLabel)
+        val tvSizeValue = view.findViewById<TextView>(R.id.tvSizeValue)
+        val seekBarSize = view.findViewById<SeekBar>(R.id.seekBarSize)
         
-        // 设置初始值
-        seekBarSize.max = 6
-        seekBarSize.progress = currentSelection
-        tvCurrentSize.text = scaleLabels[currentSelection]
-        tvCurrentSize.setTextColor(ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary))
+        val tvPositionLabel = view.findViewById<TextView>(R.id.tvPositionLabel)
+        val tvPositionValue = view.findViewById<TextView>(R.id.tvPositionValue)
+        val seekBarPosition = view.findViewById<SeekBar>(R.id.seekBarPosition)
+        
+        val btnReset = view.findViewById<Button>(R.id.btnReset)
+        
+        // 获取当前值
+        val currentScale = engine.getSubtitleScale()
+        val currentPosition = engine.getSubtitleVerticalPosition()
+        
+        // 定义默认值（这些是MPV的默认值）
+        val defaultScale = 1.0
+        val defaultPosition = 100
+        
+        // 配置字幕大小SeekBar (0-50, 对应 0.0-5.0)
+        seekBarSize.max = 50
+        val currentSizeProgress = (currentScale * 10).toInt().coerceIn(0, 50)
+        seekBarSize.progress = currentSizeProgress
+        tvSizeValue.text = String.format("%.1f", currentScale)
+        
+        // 配置字幕位置SeekBar (0-150)
+        seekBarPosition.max = 150
+        seekBarPosition.progress = currentPosition
+        tvPositionValue.text = "$currentPosition"
+        
+        // 设置主题颜色
+        val primaryColor = ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary)
+        tvSizeLabel.setTextColor(primaryColor)
+        tvPositionLabel.setTextColor(primaryColor)
+        tvSizeValue.setTextColor(primaryColor)
+        tvPositionValue.setTextColor(primaryColor)
         
         // 设置SeekBar颜色
-        seekBarSize.progressDrawable?.setColorFilter(
-            ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary),
-            android.graphics.PorterDuff.Mode.SRC_IN
-        )
-        seekBarSize.thumb?.setColorFilter(
-            ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary),
-            android.graphics.PorterDuff.Mode.SRC_IN
-        )
-        
-        val defaultPosition = 3 // 正常 (1.0)
+        fun setSeekBarColor(seekBar: SeekBar) {
+            seekBar.progressDrawable?.setColorFilter(primaryColor, android.graphics.PorterDuff.Mode.SRC_IN)
+            seekBar.thumb?.setColorFilter(primaryColor, android.graphics.PorterDuff.Mode.SRC_IN)
+        }
+        setSeekBarColor(seekBarSize)
+        setSeekBarColor(seekBarPosition)
         
         // 更新重置按钮状态
-        fun updateResetButton(position: Int) {
-            val isDefault = position == defaultPosition
-            btnReset.isEnabled = !isDefault
-            btnReset.setTextColor(if (isDefault) 
-                getThemeAttrColor(R.attr.colorButtonDisabledText) else 
-                getThemeAttrColor(R.attr.colorButtonText))
+        fun updateResetButton() {
+            val defaultSizeProgress = (defaultScale * 10).toInt()
+            val isSizeAtDefault = seekBarSize.progress == defaultSizeProgress
+            val isPositionAtDefault = seekBarPosition.progress == defaultPosition
+            val isAllDefault = isSizeAtDefault && isPositionAtDefault
+            
+            btnReset.isEnabled = !isAllDefault
         }
+        updateResetButton()
         
-        updateResetButton(currentSelection)
-        
-        // SeekBar 监听器
-        seekBarSize.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
-                tvCurrentSize.text = scaleLabels[progress]
-                engine.setSubtitleScale(scaleValues[progress])
-                updateResetButton(progress)
+        // 字幕大小SeekBar监听器
+        seekBarSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val scale = progress / 10.0
+                tvSizeValue.text = String.format("%.1f", scale)
+                engine.setSubtitleScale(scale)
+                updateResetButton()
             }
-            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
         
-        // 设置对话框
+        // 字幕位置SeekBar监听器
+        seekBarPosition.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                tvPositionValue.text = "$progress"
+                engine.setSubtitleVerticalPosition(progress)
+                updateResetButton()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        // 重置按钮点击事件
+        btnReset.setOnClickListener {
+            val defaultSizeProgress = (defaultScale * 10).toInt()
+            seekBarSize.progress = defaultSizeProgress
+            seekBarPosition.progress = defaultPosition
+            tvSizeValue.text = String.format("%.1f", defaultScale)
+            tvPositionValue.text = "$defaultPosition"
+            engine.setSubtitleScale(defaultScale)
+            engine.setSubtitleVerticalPosition(defaultPosition)
+            updateResetButton()
+        }
+        
+        // 配置对话框
         dialog.setContentView(view)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        // 获取屏幕宽度，设置对话框宽度
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val dialogWidth = (screenWidth * 0.4).toInt().coerceIn(
+            (200 * displayMetrics.density).toInt(),
+            (450 * displayMetrics.density).toInt()
+        )
+        
+        // 将 dp 转换为 px
+        val marginRightDp = 65
+        val marginRightPx = (marginRightDp * displayMetrics.density).toInt()
+        
         dialog.window?.setLayout(
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            dialogWidth,
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT
         )
+        
+        // 设置对话框位置在右边界中部（不遮挡顶部和底部控制）
+        dialog.window?.setGravity(android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.RIGHT)
+        dialog.window?.attributes?.x = marginRightPx  // 右边距离边界100dp（已转换为px）
         dialog.setCanceledOnTouchOutside(true)
-        
-        btnReset.setOnClickListener {
-            seekBarSize.progress = defaultPosition
-            tvCurrentSize.text = scaleLabels[defaultPosition]
-            engine.setSubtitleScale(scaleValues[defaultPosition])
-            updateResetButton(defaultPosition)
-        }
-        
-        btnConfirm.setOnClickListener {
-            val position = seekBarSize.progress
-            DialogUtils.showToastShort(this, "字幕大小：${scaleLabels[position]}")
-            dialog.dismiss()
-        }
-        
-        btnCancel.setOnClickListener {
-            engine.setSubtitleScale(currentScale)  // 恢复原始值
-            dialog.dismiss()
-        }
-        
-        dialog.show()
-    }
-
-    private fun showSubtitlePositionDialog(engine: PlaybackEngine) {
-        val dialog = android.app.Dialog(this)
-        dialog.setContentView(R.layout.dialog_subtitle_position)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        
-        val seekBarVertical = dialog.findViewById<android.widget.SeekBar>(R.id.seekBarVertical)
-        val tvVerticalValue = dialog.findViewById<TextView>(R.id.tvVerticalValue)
-        val btnReset = dialog.findViewById<Button>(R.id.btnReset)
-        val btnClose = dialog.findViewById<Button>(R.id.btnClose)
-        
-        // 获取当前垂直位置 (MPV 默认: sub-pos=100 表示底部, 0表示顶部)
-        val currentVertical = engine.getSubtitleVerticalPosition()
-        val defaultVertical = 100
-        
-        seekBarVertical.progress = currentVertical
-        tvVerticalValue.text = "$currentVertical"
-        
-        // 更新重置按钮状态
-        fun updateResetButton(position: Int) {
-            val isDefault = position == defaultVertical
-            btnReset.isEnabled = !isDefault
-            btnReset.setTextColor(if (isDefault) 
-                getThemeAttrColor(R.attr.colorButtonDisabledText) else 
-                getThemeAttrColor(R.attr.colorButtonText))
-        }
-        
-        updateResetButton(currentVertical)
-        
-        seekBarVertical.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
-                tvVerticalValue.text = "$progress"
-                engine.setSubtitleVerticalPosition(progress)
-                updateResetButton(progress)
-            }
-            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
-        })
-        
-        btnReset.setOnClickListener {
-            seekBarVertical.progress = defaultVertical
-            engine.setSubtitleVerticalPosition(defaultVertical)
-        }
-        
-        btnClose.setOnClickListener {
-            dialog.dismiss()
-        }
         
         dialog.show()
     }
