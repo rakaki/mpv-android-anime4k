@@ -586,41 +586,15 @@
                             android:textColor="#FFFFFF"
                             android:gravity="end" />
                     </LinearLayout>
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="20dp"
-                            android:layout_height="wrap_content"
-                            android:text="A"
-                            android:textSize="12sp"
-                            android:textColor="#FFFFFF"
-                            android:textStyle="bold" />
-
-                        <SeekBar
-                            android:id="@+id/seekBarBorderA"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:max="255" />
-
-                        <TextView
-                            android:id="@+id/tvBorderAValue"
-                            android:layout_width="35dp"
-                            android:layout_height="wrap_content"
-                            android:text="255"
-                            android:textSize="12sp"
-                            android:textColor="#FFFFFF"
-                            android:gravity="end" />
-                    </LinearLayout>
                 </LinearLayout>
+            </LinearLayout>
             
             <!-- 背景颜色 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -860,35 +834,8 @@
                             android:textColor="#FFFFFF"
                             android:gravity="end" />
                     </LinearLayout>
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="20dp"
-                            android:layout_height="wrap_content"
-                            android:text="A"
-                            android:textSize="12sp"
-                            android:textColor="#FFFFFF"
-                            android:textStyle="bold" />
-
-                        <SeekBar
-                            android:id="@+id/seekBarBackA"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:max="255" />
-
-                        <TextView
-                            android:id="@+id/tvBackAValue"
-                            android:layout_width="35dp"
-                            android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textSize="12sp"
-                            android:textColor="#FFFFFF"
-                            android:gravity="end" />
-                    </LinearLayout>
                 </LinearLayout>
+            </LinearLayout>
 
             <!-- 描边样式 -->
             <LinearLayout
