@@ -1,29 +1,26 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="@drawable/bg_dialog_subtitle"
-    android:padding="16dp"
-    android:minWidth="220dp">
+    android:padding="16dp">
 
-    <!-- 主控制区 -->
+    <!-- 延迟调节区域 -->
     <LinearLayout
-        android:id="@+id/controlContainer"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="12dp">
+        android:gravity="center_vertical">
 
-        <!-- 减号按钮 - 左对齐 -->
         <Button
             android:id="@+id/btnDecreaseDelay"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:text="−"
+            android:text="-"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFF"
+            android:textColor="?attr/colorButtonText"
             android:background="@drawable/bg_confirm_button"
             android:gravity="center"
             android:padding="0dp"
@@ -34,38 +31,24 @@
             android:insetLeft="0dp"
             android:insetRight="0dp" />
 
-        <!-- 弹性空间 -->
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <!-- 数值输入框 - 居中 -->
         <EditText
             android:id="@+id/etDelayValue"
-            android:layout_width="60dp"
-            android:layout_height="44dp"
-            android:text="0.0s"
-            android:hint="0.0s"
+            android:layout_width="80dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:text="0.0"
+            android:hint="0.0"
             android:inputType="numberDecimal|numberSigned"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="#FF5555"
+            android:textColor="#FFFFFF"
             android:gravity="center"
             android:background="@drawable/bg_dialog_rounded"
-            android:maxLength="7"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp" />
+            android:maxLength="6"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
 
-        <!-- 弹性空间 -->
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <!-- 加号按钮 - 右对齐 -->
         <Button
             android:id="@+id/btnIncreaseDelay"
             android:layout_width="40dp"
@@ -73,7 +56,7 @@
             android:text="+"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFF"
+            android:textColor="?attr/colorButtonText"
             android:background="@drawable/bg_confirm_button"
             android:gravity="center"
             android:padding="0dp"
@@ -86,97 +69,22 @@
 
     </LinearLayout>
 
-    <!-- 提示信息 -->
-    <TextView
+    <!-- 重置按钮 -->
+    <Button
+        android:id="@+id/btnResetDelay"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:text="-10s ~ +10s"
-        android:textSize="10sp"
-        android:textColor="#666666"
-        android:gravity="center"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:background="@drawable/bg_dialog_rounded"
-        android:layout_marginBottom="12dp" />
-
-    <!-- 底部按钮组 - 使用Space填充来实现左右对齐 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <!-- 重置按钮 - 左对齐 -->
-        <Button
-            android:id="@+id/btnResetDelay"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:text="重置"
-            android:textSize="13sp"
-            android:textColor="#999999"
-            android:background="@drawable/bg_dialog_rounded"
-            android:gravity="center"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:insetLeft="0dp"
-            android:insetRight="0dp" />
-
-        <!-- 弹性空间 -->
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <!-- 取消按钮 - 居中 -->
-        <Button
-            android:id="@+id/btnCancelDelay"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:text="取消"
-            android:textSize="13sp"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/bg_confirm_button"
-            android:gravity="center"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:insetLeft="0dp"
-            android:insetRight="0dp" />
-
-        <!-- 弹性空间 -->
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <!-- 确认按钮 - 右对齐 -->
-        <Button
-            android:id="@+id/btnConfirmDelay"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:text="确认"
-            android:textSize="13sp"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/bg_confirm_button"
-            android:gravity="center"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:insetLeft="0dp"
-            android:insetRight="0dp" />
-
-    </LinearLayout>
+        android:layout_height="36dp"
+        android:layout_gravity="center"
+        android:layout_marginTop="12dp"
+        android:text="重置"
+        android:textSize="14sp"
+        android:textColor="@android:color/white"
+        android:background="@drawable/bg_reset_button"
+        android:enabled="false"
+        android:stateListAnimator="@null"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:minWidth="0dp"
+        android:minHeight="0dp" />
 
 </LinearLayout>

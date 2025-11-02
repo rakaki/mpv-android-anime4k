@@ -1030,10 +1030,9 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     private fun showSubtitleDelayDialog(engine: PlaybackEngine) {
         val currentDelay = engine.getSubtitleDelay()
-        val defaultDelay = 0.0
-        val stepValue = 0.2  // 单位步进
+        val stepValue = 0.2  // 每次步进0.2秒
+        val defaultDelay = 0.0  // 默认延迟值
         
-        // 使用普通Dialog而不是AlertDialog，避免默认宽度限制
         val dialog = android.app.Dialog(this)
         val view = layoutInflater.inflate(R.layout.dialog_subtitle_delay, null)
         
@@ -1041,97 +1040,98 @@ class VideoPlayerActivity : AppCompatActivity() {
         val btnDecrease = view.findViewById<Button>(R.id.btnDecreaseDelay)
         val btnIncrease = view.findViewById<Button>(R.id.btnIncreaseDelay)
         val btnReset = view.findViewById<Button>(R.id.btnResetDelay)
-        val btnConfirm = view.findViewById<Button>(R.id.btnConfirmDelay)
-        val btnCancel = view.findViewById<Button>(R.id.btnCancelDelay)
         
-        // 设置初始值
+        // 设置初始值，只显示数字
         etDelayValue.setText(String.format("%.1f", currentDelay))
-        etDelayValue.setSelection(etDelayValue.text.length)
         
-        // 更新按钮状态
+        // 防止进入时自动弹出输入法
+        etDelayValue.clearFocus()
+        dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+        
+        // 更新重置按钮状态
         fun updateResetButton() {
             val currentValue = etDelayValue.text.toString().toDoubleOrNull() ?: 0.0
-            val isDefault = Math.abs(currentValue - defaultDelay) < 0.01
-            btnReset.isEnabled = !isDefault
-            btnReset.setTextColor(if (isDefault) 
-                getThemeAttrColor(R.attr.colorButtonDisabledText) else 
-                getThemeAttrColor(R.attr.colorButtonText))
+            btnReset.isEnabled = Math.abs(currentValue - defaultDelay) > 0.01
         }
-        
-        // 更新编辑框和引擎
-        fun updateDelayValue(newValue: Double) {
-            val clampedValue = newValue.coerceIn(-10.0, 10.0)
-            val roundedValue = Math.round(clampedValue * 10.0) / 10.0
-            etDelayValue.setText(String.format("%.1f", roundedValue))
-            etDelayValue.setSelection(etDelayValue.text.length)
-            engine.setSubtitleDelay(roundedValue)
-            updateResetButton()
-        }
-        
         updateResetButton()
         
-        // 减号按钮
+        // 更新延迟值
+        fun updateDelayValue(newValue: Double) {
+            val clampedValue = newValue.coerceIn(-10.0, 10.0)
+            val roundedValue = (Math.round(clampedValue * 10.0) / 10.0)
+            etDelayValue.setText(String.format("%.1f", roundedValue))
+            engine.setSubtitleDelay(roundedValue)
+            updateResetButton()
+            
+            // 保存设置
+            videoUri?.let { uri ->
+                preferencesManager.setSubtitleDelay(uri.toString(), roundedValue)
+            }
+        }
+        
+        // 减号按钮 - 减0.2秒
         btnDecrease.setOnClickListener {
             val currentValue = etDelayValue.text.toString().toDoubleOrNull() ?: 0.0
             updateDelayValue(currentValue - stepValue)
         }
         
-        // 加号按钮
+        // 加号按钮 - 加0.2秒
         btnIncrease.setOnClickListener {
             val currentValue = etDelayValue.text.toString().toDoubleOrNull() ?: 0.0
             updateDelayValue(currentValue + stepValue)
         }
         
-        // 监听输入变化
-        etDelayValue.addTextChangedListener(object : android.text.TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: android.text.Editable?) {
-                updateResetButton()
-                
-                // 实时应用延迟
-                val value = s.toString().toDoubleOrNull()
-                if (value != null && value >= -10.0 && value <= 10.0) {
-                    engine.setSubtitleDelay(value)
-                }
-            }
-        })
-        
-        // 设置对话框内容和样式
-        dialog.setContentView(view)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.window?.setLayout(
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        dialog.setCanceledOnTouchOutside(true)
-        
+        // 重置按钮 - 恢复到默认值
         btnReset.setOnClickListener {
             updateDelayValue(defaultDelay)
         }
         
-        btnConfirm.setOnClickListener {
-            val value = etDelayValue.text.toString().toDoubleOrNull()
-            if (value != null) {
-                val clampedValue = value.coerceIn(-10.0, 10.0)
-                val roundedValue = Math.round(clampedValue * 10.0) / 10.0
-                engine.setSubtitleDelay(roundedValue)
-                
-                // 保存字幕延迟设置
-                videoUri?.let { uri ->
-                    preferencesManager.setSubtitleDelay(uri.toString(), roundedValue)
+        // 监听手动输入
+        etDelayValue.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val value = s.toString().toDoubleOrNull()
+                if (value != null && value >= -10.0 && value <= 10.0) {
+                    engine.setSubtitleDelay(value)
+                    updateResetButton()
+                    // 保存设置
+                    videoUri?.let { uri ->
+                        preferencesManager.setSubtitleDelay(uri.toString(), value)
+                    }
                 }
-                
-                DialogUtils.showToastShort(this, "字幕延迟：${String.format("%.1f", roundedValue)}秒")
             }
-            dialog.dismiss()
-        }
+        })
         
-        btnCancel.setOnClickListener {
-            engine.setSubtitleDelay(currentDelay)  // 恢复原始值
-            dialog.dismiss()
-        }
+        // 配置对话框 - 与字幕杂项保持一致的位置
+        dialog.setContentView(view)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         
+        // 获取屏幕宽度，设置对话框宽度
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val dialogWidth = (screenWidth * 0.4).toInt().coerceIn(
+            (200 * displayMetrics.density).toInt(),
+            (300 * displayMetrics.density).toInt()
+        )
+        
+        // 将 dp 转换为 px
+        val marginRightDp = 65
+        val marginRightPx = (marginRightDp * displayMetrics.density).toInt()
+        
+        dialog.window?.setLayout(
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        
+        // 设置对话框位置在右边界中部（与字幕杂项一致）
+        dialog.window?.setGravity(android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.RIGHT)
+        
+        val params = dialog.window?.attributes
+        params?.x = marginRightPx
+        dialog.window?.attributes = params
+        
+        dialog.setCanceledOnTouchOutside(true)
         dialog.show()
     }
 

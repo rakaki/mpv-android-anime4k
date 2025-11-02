@@ -35,7 +35,7 @@
     <color name="overlay_medium">#CC000000</color>
     
     <!-- ==================== 对话框专用颜色（夜间） ==================== -->
-    <color name="dialog_bg_light">#1E1E1E</color>
+    <color name="dialog_bg_light">#801E1E1E</color>
     <color name="dialog_header_light">#2A2A2A</color>
     <color name="dialog_item_normal_light">#2A2A2A</color>
     <color name="dialog_item_selected_light">#3F51B5</color>
