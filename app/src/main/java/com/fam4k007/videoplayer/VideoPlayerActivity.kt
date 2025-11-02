@@ -881,6 +881,7 @@ class VideoPlayerActivity : AppCompatActivity() {
      * @param selectedPosition 当前选中位置（-1表示无选中状态）
      * @param showAbove 是否显示在按钮上方（true=上方，false=下方）
      * @param useFixedHeight 是否使用固定高度（true=固定144dp，false=自适应）
+     * @param showScrollHint 是否显示滑动提示（当项目数量 > 3时）
      * @param onItemClick 点击回调
      */
     private fun showPopupDialog(
@@ -889,6 +890,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         selectedPosition: Int = -1,
         showAbove: Boolean = true,
         useFixedHeight: Boolean = false,
+        showScrollHint: Boolean = false,
         onItemClick: (Int) -> Unit
     ) {
         val dialog = android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
@@ -899,6 +901,12 @@ class VideoPlayerActivity : AppCompatActivity() {
         
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.isVerticalScrollBarEnabled = false
+        
+        // 如果使用固定高度且需要显示滑动提示
+        if (useFixedHeight && showScrollHint && items.size > 3) {
+            val scrollHint = dialogView.findViewById<TextView>(R.id.scrollHint)
+            scrollHint?.visibility = View.VISIBLE
+        }
         
         val adapter = PopupMenuAdapter(items, selectedPosition) { position ->
             onItemClick(position)
@@ -946,6 +954,20 @@ class VideoPlayerActivity : AppCompatActivity() {
         window?.setWindowAnimations(R.style.PopupAnimation)
         
         dialog.show()
+        
+        // 如果有选中项且使用固定高度，自动滚动到选中位置
+        if (selectedPosition >= 0 && useFixedHeight) {
+            val nestedScrollView = dialogView.findViewById<androidx.core.widget.NestedScrollView>(R.id.nestedScrollViewPopup)
+            nestedScrollView?.post {
+                // 计算选中项的位置
+                val itemHeight = 48.dpToPx() // 每个选项的高度
+                val scrollViewHeight = nestedScrollView.height
+                val targetY = selectedPosition * itemHeight - (scrollViewHeight / 2) + (itemHeight / 2)
+                
+                // 滚动到目标位置，让选中项居中
+                nestedScrollView.smoothScrollTo(0, targetY.coerceAtLeast(0))
+            }
+        }
     }
 
     private fun showSubtitleDialog() {
@@ -966,7 +988,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                 // 获取字幕按钮（在顶部，对话框显示在下方）
                 val btnSubtitle = findViewById<ImageView>(R.id.btnSubtitle)
                 
-                showPopupDialog(btnSubtitle, menuItems, showAbove = false, useFixedHeight = true) { position ->
+                showPopupDialog(btnSubtitle, menuItems, showAbove = false, useFixedHeight = true, showScrollHint = true) { position ->
                     when {
                         position == menuItems.size - 2 -> {
                             // 外挂字幕
@@ -1275,7 +1297,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 获取倍速按钮（在底部，对话框显示在上方）
         val btnSpeed = findViewById<ImageView>(R.id.btnSpeed)
         
-        showPopupDialog(btnSpeed, speeds, currentSelection, showAbove = true, useFixedHeight = true) { position ->
+        showPopupDialog(btnSpeed, speeds, currentSelection, showAbove = true, useFixedHeight = true, showScrollHint = true) { position ->
             currentSpeed = speedValues[position]
             playbackEngine?.setSpeed(currentSpeed)
             DialogUtils.showToastShort(this@VideoPlayerActivity, "播放速度：${speeds[position]}")
@@ -1668,87 +1690,32 @@ class VideoPlayerActivity : AppCompatActivity() {
                     return
                 }
                 
-                showChapterListDialog(chapters)
+                // 格式化章节列表为显示文本
+                val chapterItems = chapters.map { (title, time) ->
+                    "$title (${formatChapterTime(time)})"
+                }
+                
+                // 获取更多按钮（章节是从更多菜单触发的）
+                val btnMore = findViewById<ImageView>(R.id.btnMore)
+                
+                // 使用弹窗显示章节列表
+                showPopupDialog(
+                    anchorView = btnMore,
+                    items = chapterItems,
+                    selectedPosition = -1,
+                    showAbove = false,
+                    useFixedHeight = true,
+                    showScrollHint = true
+                ) { position ->
+                    // 跳转到选中的章节
+                    val chapter = chapters[position]
+                    playbackEngine?.seekTo(chapter.second.toInt())
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error showing chapter dialog", e)
                 DialogUtils.showToastShort(this, "获取章节失败")
             }
         }
-    }
-    
-    // 显示章节列表对话框（自定义布局）
-    private fun showChapterListDialog(chapters: List<Pair<String, Double>>) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_option_list, null)
-        val dialogTitle = dialogView.findViewById<TextView>(R.id.dialogTitle)
-        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.dialogRecyclerView)
-        val scrollHint = dialogView.findViewById<TextView>(R.id.scrollHint)
-        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
-        
-        dialogTitle.text = "章节"
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        
-        // 计算章节文本的最大宽度
-        val paint = android.graphics.Paint()
-        paint.textSize = 15 * resources.displayMetrics.scaledDensity
-        var maxTextWidth = 0f
-        chapters.forEach { chapter ->
-            val titleWidth = paint.measureText(chapter.first)
-            val timeWidth = paint.measureText(formatChapterTime(chapter.second))
-            maxTextWidth = maxOf(maxTextWidth, maxOf(titleWidth, timeWidth))
-        }
-        
-        val titlePaint = android.graphics.Paint()
-        titlePaint.textSize = 16 * resources.displayMetrics.scaledDensity
-        val titleWidth = titlePaint.measureText("章节")
-        
-        // 计算对话框宽度
-        val iconWidth = 20 * resources.displayMetrics.density
-        val spacing = 12 * resources.displayMetrics.density
-        val itemPadding = 32 * resources.displayMetrics.density
-        val dialogPadding = 40 * resources.displayMetrics.density
-        
-        val contentWidth = maxOf(maxTextWidth, titleWidth)
-        val totalWidth = (contentWidth + iconWidth + spacing + itemPadding + dialogPadding).toInt()
-        val minWidth = (240 * resources.displayMetrics.density).toInt()
-        val finalWidth = maxOf(totalWidth, minWidth)
-        
-        recyclerView.layoutParams.width = (finalWidth - dialogPadding).toInt()
-        
-        // 限制最多显示3行
-        if (chapters.size > 3) {
-            val itemHeight = (60 * resources.displayMetrics.density).toInt()
-            val maxHeight = itemHeight * 3
-            recyclerView.layoutParams.height = maxHeight
-            scrollHint.visibility = android.view.View.VISIBLE
-        }
-        
-        val adapter = ChapterAdapter(chapters) { position ->
-            val chapter = chapters[position]
-            // 立即跳转，不显示提示
-            playbackEngine?.seekTo(chapter.second.toInt())
-        }
-        recyclerView.adapter = adapter
-        
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(true)
-            .create()
-        
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        
-        btnCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-        
-        dialog.show()
-        
-        // 设置对话框宽度
-        dialog.window?.setLayout(
-            finalWidth,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        
-        adapter.onItemSelected = { dialog.dismiss() }
     }
     
     // 格式化章节时间
@@ -1762,74 +1729,6 @@ class VideoPlayerActivity : AppCompatActivity() {
         } else {
             String.format("%02d:%02d", minutes, secs)
         }
-    }
-    
-    // 章节适配器
-    inner class ChapterAdapter(
-        private val chapters: List<Pair<String, Double>>,
-        private val onItemClick: (Int) -> Unit
-    ) : RecyclerView.Adapter<ChapterAdapter.ViewHolder>() {
-        
-        var onItemSelected: (() -> Unit)? = null
-        
-        inner class ViewHolder(view: android.view.View) : RecyclerView.ViewHolder(view) {
-            val chapterIcon: ImageView = view.findViewById(R.id.chapterIcon)
-            val chapterTitle: TextView = view.findViewById(R.id.chapterTitle)
-            val chapterTime: TextView = view.findViewById(R.id.chapterTime)
-        }
-        
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
-            val view = layoutInflater.inflate(R.layout.dialog_chapter_item, parent, false)
-            return ViewHolder(view)
-        }
-        
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val chapter = chapters[position]
-            holder.chapterTitle.text = chapter.first
-            holder.chapterTime.text = formatChapterTime(chapter.second)
-            
-            // 动态设置背景色
-            val normalColor = getThemeAttrColor(R.attr.colorChapterItemNormal)
-            val selectedColor = getThemeAttrColor(R.attr.colorChapterItemSelected)
-            val pressedColor = getThemeAttrColor(R.attr.colorChapterItemPressed)
-            
-            val drawable = android.graphics.drawable.StateListDrawable()
-            val normalDrawable = android.graphics.drawable.GradientDrawable().apply {
-                setColor(normalColor)
-                cornerRadius = 12.dpToPx().toFloat()
-            }
-            val selectedDrawable = android.graphics.drawable.GradientDrawable().apply {
-                setColor(selectedColor)
-                cornerRadius = 12.dpToPx().toFloat()
-            }
-            val pressedDrawable = android.graphics.drawable.GradientDrawable().apply {
-                setColor(pressedColor)
-                cornerRadius = 12.dpToPx().toFloat()
-            }
-            
-            drawable.addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-            drawable.addState(intArrayOf(android.R.attr.state_selected), selectedDrawable)
-            drawable.addState(intArrayOf(), normalDrawable)
-            
-            holder.itemView.background = drawable
-            
-            // 设置图标和文字颜色
-            holder.chapterIcon.setColorFilter(getThemeAttrColor(R.attr.colorChapterIcon))
-            holder.chapterTitle.setTextColor(getThemeAttrColor(R.attr.colorChapterText))
-            holder.chapterTime.setTextColor(getThemeAttrColor(R.attr.colorChapterTextSecondary))
-            
-            holder.itemView.setOnClickListener {
-                // 先关闭对话框，再跳转，减少卡顿感
-                onItemSelected?.invoke()
-                
-                // 使用 postDelayed 让关闭动画先执行
-                Handler(Looper.getMainLooper()).postDelayed({
-                    onItemClick(holder.adapterPosition)
-                }, 50)
-            }
-        }
-        
-        override fun getItemCount() = chapters.size
     }
     
     // 截图功能 - 直接从MPVView抓取当前画面

@@ -12,6 +12,7 @@
 
     <!-- 固定高度144dp，用于选项多的按钮（字幕、倍速） -->
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/nestedScrollViewPopup"
         android:layout_width="match_parent"
         android:layout_height="144dp"
         android:scrollbars="none"
@@ -25,5 +26,17 @@
             android:nestedScrollingEnabled="false"
             android:overScrollMode="never"/>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- 滑动提示 -->
+    <TextView
+        android:id="@+id/scrollHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="可上下滑动"
+        android:textSize="11sp"
+        android:textColor="?attr/colorDialogTextSecondary"
+        android:gravity="center"
+        android:paddingTop="8dp"
+        android:visibility="gone"/>
 
 </LinearLayout>
