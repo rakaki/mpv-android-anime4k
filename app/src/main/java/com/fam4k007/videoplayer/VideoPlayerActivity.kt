@@ -141,6 +141,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 初始化字幕文件选择器
         initializeSubtitleFilePicker()
         
+        // 初始化字体文件选择器
+        
         // 读取用户设置
         loadUserSettings()
 
@@ -543,6 +545,72 @@ class VideoPlayerActivity : AppCompatActivity() {
             }
             
             playbackEngine?.loadVideo(uri, position)
+            
+            // 延迟恢复字幕设置（等待视频加载完成）
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                restoreSubtitlePreferences(uri)
+            }, 500)
+        }
+    }
+    
+    /**
+     * 恢复视频的字幕偏好设置
+     */
+    private fun restoreSubtitlePreferences(videoUri: android.net.Uri) {
+        try {
+            val uriString = videoUri.toString()
+            Log.d(TAG, "Restoring subtitle preferences for: $uriString")
+            
+            playbackEngine?.let { engine ->
+                // 恢复 ASS 覆盖设置
+                val assOverride = preferencesManager.isAssOverrideEnabled(uriString)
+                if (assOverride) {
+                    // 延迟设置，避免在 MPV 未准备好时设置
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        engine.setAssOverride(assOverride)
+                        Log.d(TAG, "Restored ASS override: $assOverride")
+                    }, 300)
+                }
+                
+                // 恢复字幕大小
+                val savedScale = preferencesManager.getSubtitleScale(uriString)
+                if (savedScale != 1.0) {
+                    engine.setSubtitleScale(savedScale)
+                    Log.d(TAG, "Restored subtitle scale: $savedScale")
+                }
+                
+                // 恢复字幕位置
+                val savedPosition = preferencesManager.getSubtitlePosition(uriString)
+                if (savedPosition != 100) {
+                    engine.setSubtitleVerticalPosition(savedPosition)
+                    Log.d(TAG, "Restored subtitle position: $savedPosition")
+                }
+                
+                // 恢复字幕延迟
+                val savedDelay = preferencesManager.getSubtitleDelay(uriString)
+                if (savedDelay != 0.0) {
+                    engine.setSubtitleDelay(savedDelay)
+                    Log.d(TAG, "Restored subtitle delay: $savedDelay")
+                }
+                
+                // 恢复外部字幕（现在保存的是本地文件路径）
+                val savedSubtitlePath = preferencesManager.getExternalSubtitle(uriString)
+                if (savedSubtitlePath != null) {
+                    if (File(savedSubtitlePath).exists()) {
+                        try {
+                            // 使用本地文件路径直接添加字幕
+                            MPVLib.command("sub-add", savedSubtitlePath, "select")
+                            Log.d(TAG, "Restored external subtitle from path: $savedSubtitlePath")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to restore external subtitle", e)
+                        }
+                    } else {
+                        Log.w(TAG, "Saved subtitle file not found: $savedSubtitlePath")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error restoring subtitle preferences", e)
         }
     }
     
@@ -741,6 +809,14 @@ class VideoPlayerActivity : AppCompatActivity() {
                     if (subtitleManager.isSupportedSubtitleFormat(displayName)) {
                         // 添加外挂字幕（sub-add 命令会自动选中）
                         if (subtitleManager.addExternalSubtitle(this, uri)) {
+                            // 保存外部字幕的本地文件路径（不是URI）
+                            videoUri?.let { vUri ->
+                                val subtitlePath = subtitleManager.getLastAddedSubtitlePath()
+                                if (subtitlePath != null) {
+                                    preferencesManager.setExternalSubtitle(vUri.toString(), subtitlePath)
+                                    Log.d(TAG, "Saved subtitle path: $subtitlePath")
+                                }
+                            }
                             DialogUtils.showToastShort(this, "已添加字幕: $displayName")
                             Log.d(TAG, "External subtitle added successfully: $displayName")
                         } else {
@@ -768,6 +844,9 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
     }
     
+    /**
+     * 初始化字体文件选择器
+     */
     /**
      * 打开字幕选择器
      */
@@ -882,14 +961,20 @@ class VideoPlayerActivity : AppCompatActivity() {
                     menuItems.add("字幕杂项")
                 }
                 menuItems.add("外挂字幕")
+                menuItems.add("更改字体")
                 
                 // 获取字幕按钮（在顶部，对话框显示在下方）
                 val btnSubtitle = findViewById<ImageView>(R.id.btnSubtitle)
                 
                 showPopupDialog(btnSubtitle, menuItems, showAbove = false, useFixedHeight = true) { position ->
                     when {
-                        position == menuItems.size - 1 -> {
+                        position == menuItems.size - 2 -> {
+                            // 外挂字幕
                             openSubtitlePicker()
+                        }
+                        position == menuItems.size - 1 -> {
+                            // 更改字体 - 待开发
+                            DialogUtils.showToastShort(this@VideoPlayerActivity, "字体更改功能开发中...")
                         }
                         subtitleTracks.isNotEmpty() -> {
                             when (position) {
@@ -1009,6 +1094,12 @@ class VideoPlayerActivity : AppCompatActivity() {
                 val clampedValue = value.coerceIn(-10.0, 10.0)
                 val roundedValue = Math.round(clampedValue * 10.0) / 10.0
                 engine.setSubtitleDelay(roundedValue)
+                
+                // 保存字幕延迟设置
+                videoUri?.let { uri ->
+                    preferencesManager.setSubtitleDelay(uri.toString(), roundedValue)
+                }
+                
                 DialogUtils.showToastShort(this, "字幕延迟：${String.format("%.1f", roundedValue)}秒")
             }
             dialog.dismiss()
@@ -1094,7 +1185,13 @@ class VideoPlayerActivity : AppCompatActivity() {
                 updateResetButton()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                // 保存字幕大小设置
+                val scale = seekBar?.progress?.let { it / 10.0 } ?: 1.0
+                videoUri?.let { uri ->
+                    preferencesManager.setSubtitleScale(uri.toString(), scale)
+                }
+            }
         })
         
         // 字幕位置SeekBar监听器
@@ -1105,7 +1202,13 @@ class VideoPlayerActivity : AppCompatActivity() {
                 updateResetButton()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                // 保存字幕位置设置
+                val position = seekBar?.progress ?: 100
+                videoUri?.let { uri ->
+                    preferencesManager.setSubtitlePosition(uri.toString(), position)
+                }
+            }
         })
         
         // 重置按钮点击事件
@@ -1500,6 +1603,13 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 添加截图选项
         options.add("截图")
         
+        // 添加样式覆盖选项，显示当前状态
+        val assOverrideState = videoUri?.let { vUri ->
+            preferencesManager.isAssOverrideEnabled(vUri.toString())
+        } ?: false
+        val assOverrideText = if (assOverrideState) "样式覆盖: 开" else "样式覆盖: 关"
+        options.add(assOverrideText)
+        
         if (options.isEmpty()) {
             DialogUtils.showToastShort(this, "暂无可用选项")
             return
@@ -1509,11 +1619,42 @@ class VideoPlayerActivity : AppCompatActivity() {
         val btnMore = findViewById<ImageView>(R.id.btnMore)
         
         showPopupDialog(btnMore, options, -1, showAbove = false) { position ->
-            when (options[position]) {
-                "章节" -> showChapterDialog()
-                "截图" -> takeScreenshot()
+            val selectedOption = options[position]
+            when {
+                selectedOption == "章节" -> showChapterDialog()
+                selectedOption.startsWith("样式覆盖") -> toggleAssOverride()
+                selectedOption == "截图" -> takeScreenshot()
             }
         }
+    }
+    
+    /**
+     * 切换ASS样式覆盖状态
+     */
+    private fun toggleAssOverride() {
+        // 获取当前状态
+        val currentState = videoUri?.let { vUri ->
+            preferencesManager.isAssOverrideEnabled(vUri.toString())
+        } ?: false
+        
+        // 切换状态
+        val newState = !currentState
+        
+        // 保存设置
+        videoUri?.let { vUri ->
+            preferencesManager.setAssOverrideEnabled(vUri.toString(), newState)
+        }
+        
+        // 延迟应用新状态，避免在 MPV 未准备好时设置导致字幕卡住
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            playbackEngine?.setAssOverride(newState)
+            Log.d(TAG, "ASS override toggled to: $newState")
+        }, 100)
+        
+        // 立即显示提示（不等待延迟）
+        val stateText = if (newState) "已启用" else "已关闭"
+        val hint = if (newState) "自定义字体对所有字幕生效" else "ASS字幕保持原样式"
+        DialogUtils.showToastShort(this, "样式覆盖 $stateText\n$hint")
     }
     
     // 显示章节选择对话框

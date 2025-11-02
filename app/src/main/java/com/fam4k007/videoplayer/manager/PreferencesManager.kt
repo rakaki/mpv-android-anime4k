@@ -126,6 +126,78 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().remove(videoUri).apply()
     }
     
+    // ==================== 字幕偏好设置（针对每个视频）====================
+    
+    /**
+     * 获取视频的外部字幕路径
+     */
+    fun getExternalSubtitle(videoUri: String): String? {
+        return sharedPreferences.getString("${videoUri}_subtitle", null)
+    }
+    
+    /**
+     * 保存视频的外部字幕路径
+     */
+    fun setExternalSubtitle(videoUri: String, subtitlePath: String) {
+        sharedPreferences.edit().putString("${videoUri}_subtitle", subtitlePath).apply()
+    }
+    
+    /**
+     * 获取视频的字幕大小
+     */
+    fun getSubtitleScale(videoUri: String): Double {
+        return sharedPreferences.getFloat("${videoUri}_sub_scale", 1.0f).toDouble()
+    }
+    
+    /**
+     * 保存视频的字幕大小
+     */
+    fun setSubtitleScale(videoUri: String, scale: Double) {
+        sharedPreferences.edit().putFloat("${videoUri}_sub_scale", scale.toFloat()).apply()
+    }
+    
+    /**
+     * 获取视频的字幕位置
+     */
+    fun getSubtitlePosition(videoUri: String): Int {
+        return sharedPreferences.getInt("${videoUri}_sub_pos", 100)
+    }
+    
+    /**
+     * 保存视频的字幕位置
+     */
+    fun setSubtitlePosition(videoUri: String, position: Int) {
+        sharedPreferences.edit().putInt("${videoUri}_sub_pos", position).apply()
+    }
+    
+    /**
+     * 获取视频的字幕延迟
+     */
+    fun getSubtitleDelay(videoUri: String): Double {
+        return sharedPreferences.getFloat("${videoUri}_sub_delay", 0f).toDouble()
+    }
+    
+    /**
+     * 保存视频的字幕延迟
+     */
+    fun setSubtitleDelay(videoUri: String, delay: Double) {
+        sharedPreferences.edit().putFloat("${videoUri}_sub_delay", delay.toFloat()).apply()
+    }
+    
+    /**
+     * 获取是否启用ASS字幕样式覆盖
+     */
+    fun isAssOverrideEnabled(videoUri: String): Boolean {
+        return sharedPreferences.getBoolean("${videoUri}_ass_override", false)
+    }
+    
+    /**
+     * 保存ASS字幕样式覆盖设置
+     */
+    fun setAssOverrideEnabled(videoUri: String, enabled: Boolean) {
+        sharedPreferences.edit().putBoolean("${videoUri}_ass_override", enabled).apply()
+    }
+    
     // ==================== 主题设置 ====================
     
     /**

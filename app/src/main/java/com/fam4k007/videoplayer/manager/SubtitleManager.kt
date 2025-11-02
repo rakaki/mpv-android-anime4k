@@ -15,6 +15,9 @@ class SubtitleManager {
     companion object {
         private const val TAG = "SubtitleManager"
     }
+    
+    // 保存最后添加的字幕文件路径
+    private var lastAddedSubtitlePath: String? = null
 
     /**
      * 添加外挂字幕
@@ -31,6 +34,9 @@ class SubtitleManager {
             if (path != null) {
                 Log.d(TAG, "===== Adding external subtitle =====")
                 Log.d(TAG, "Path: $path")
+                
+                // 保存路径供外部使用
+                lastAddedSubtitlePath = path
                 
                 // 执行 sub-add 命令，使用 "select" 标志自动选中字幕
                 // sub-add <path> [select|insert-next|append] [title]
@@ -106,25 +112,34 @@ class SubtitleManager {
     /**
      * 将 content:// URI 的文件复制到应用缓存目录
      * 返回缓存文件的实际路径供 MPV 使用
+     * 修改：使用 filesDir 而不是 cacheDir，确保文件持久化
      */
     private fun copyContentUriToFile(context: Context, uri: Uri): String? {
         return try {
             val displayName = getSubtitleDisplayName(context, uri)
-            val cacheFile = File(context.cacheDir, "subtitles_$displayName")
+            // 使用 filesDir/subtitles 目录存储字幕，确保持久化
+            val subtitleDir = File(context.filesDir, "subtitles")
+            if (!subtitleDir.exists()) {
+                subtitleDir.mkdirs()
+            }
             
-            Log.d(TAG, "Copying content URI to cache: ${cacheFile.absolutePath}")
+            // 使用 URI 的哈希值作为文件名的一部分，避免冲突
+            val fileName = "${uri.hashCode()}_$displayName"
+            val subtitleFile = File(subtitleDir, fileName)
+            
+            Log.d(TAG, "Copying content URI to persistent storage: ${subtitleFile.absolutePath}")
             
             context.contentResolver.openInputStream(uri)?.use { input ->
-                cacheFile.outputStream().use { output ->
+                subtitleFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             }
             
-            if (cacheFile.exists()) {
-                Log.d(TAG, "Cache file created successfully: ${cacheFile.absolutePath} (${cacheFile.length()} bytes)")
-                cacheFile.absolutePath
+            if (subtitleFile.exists()) {
+                Log.d(TAG, "Subtitle file created successfully: ${subtitleFile.absolutePath} (${subtitleFile.length()} bytes)")
+                subtitleFile.absolutePath
             } else {
-                Log.e(TAG, "Failed to create cache file")
+                Log.e(TAG, "Failed to create subtitle file")
                 null
             }
         } catch (e: Exception) {
@@ -176,5 +191,12 @@ class SubtitleManager {
         )
         val extension = filename.substringAfterLast('.', "").lowercase()
         return extension in supportedExtensions
+    }
+    
+    /**
+     * 获取最后添加的字幕文件路径
+     */
+    fun getLastAddedSubtitlePath(): String? {
+        return lastAddedSubtitlePath
     }
 }

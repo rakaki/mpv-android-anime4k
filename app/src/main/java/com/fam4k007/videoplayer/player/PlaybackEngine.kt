@@ -660,6 +660,36 @@ class PlaybackEngine(
             0.0
         }
     }
+    
+    /**
+     * 启用或禁用 ASS/SSA 字幕样式覆盖
+     * 参考 mpvKt 实现：使用 "force" 和 "scale"
+     * @param enable true=完全覆盖ASS样式；false=默认模式（保持动画）
+     */
+    fun setAssOverride(enable: Boolean) {
+        try {
+            // "force" - 强制覆盖所有 ASS 样式（用于后续样式自定义）
+            // "scale" - 默认模式，保持 ASS 动画和特效
+            val value = if (enable) "force" else "scale"
+            MPVLib.setPropertyString("sub-ass-override", value)
+            Log.d(TAG, "ASS override set to: $value")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set ASS override", e)
+        }
+    }
+    
+    /**
+     * 获取当前ASS覆盖设置
+     */
+    fun getAssOverride(): Boolean {
+        return try {
+            val value = MPVLib.getPropertyString("sub-ass-override") ?: "scale"
+            value == "force"
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get ASS override", e)
+            false
+        }
+    }
 
     /**
      * 检查是否有章节
