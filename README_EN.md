@@ -12,7 +12,7 @@ An Android local video player based on libmpv, supporting multiple video formats
 - **V**ideo - Video
 - **4K** - Ultra high definition resolution
 
-This name reflects the software's primary positioning as a high-definition local video player optimized for anime enthusiasts.
+This project aims to optimize and upscale anime-style videos, though it can also be used as a regular video player.
 
 ## Screenshots
 
@@ -30,10 +30,15 @@ This name reflects the software's primary positioning as a high-definition local
 - **Playlist Management**: Automatic folder scanning, video sorting and categorization
 - **Subtitle Handling**: Built-in subtitle parsing, external subtitle import, subtitle position and size adjustment
 - **Audio Tracks**: Multi-track audio switching
+- **Volume Boost**: Toggle volume boost feature with fine-grained 0.1% adjustment
+- **Danmaku Support**: Load XML format danmaku files, toggle danmaku display, adjust danmaku styles
 - **Gesture Controls**:
   - Left swipe: Adjust brightness
   - Right swipe: Adjust volume
-  - Two-finger pinch: Video zoom
+  - Horizontal swipe: Fast forward/rewind
+  - Double tap: Pause/play
+  - Long press: Speed up playback
+  - Progress bar drag: Precise positioning
 - **Playback Controls**: Fast forward/rewind, speed control, subtitle delay adjustment
 - **Super-Resolution**: Integrated Anime4K for real-time video upscaling
 - **Resume Playback**: Automatically saves playback progress and resumes from where you left off
@@ -51,7 +56,6 @@ This name reflects the software's primary positioning as a high-definition local
 
 The following features are planned but not yet implemented:
 
-- Danmaku (bullet comments)
 - Frame interpolation
 - Subtitle font customization
 - Font selection
@@ -73,6 +77,8 @@ This project would not be possible without the support of the following open-sou
 | [abdallahmehiz/mpvKt](https://github.com/abdallahmehiz/mpvKt) | Reference for gesture controls, swipe handling, and external subtitle import |
 | [bloc97/Anime4K](https://github.com/bloc97/Anime4K) | Source of super-resolution GLSL shader files |
 | [Predidit/Kazumi](https://github.com/Predidit/Kazumi) | Project development inspiration and original requirements |
+| [xyoye/DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid) | This project extensively references the danmaku implementation from this project. Many thanks! |
+| [bilibili/DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster) | The danmaku core engine for this project is Bilibili's open-source danmaku library. Many thanks! |
 
 ## Development Notes
 
@@ -99,6 +105,6 @@ If you encounter any issues or have suggestions, please feel free to report them
 
 ---
 
-**Last Updated:** 2025-10-26
+**Last Updated:** 2025-11-05
 
 **[中文版本](README.md) | [English Version](README_EN.md)**
