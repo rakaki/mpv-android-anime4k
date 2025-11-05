@@ -81,6 +81,8 @@ dependencies {
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.google.android.material:material:1.9.0'
     implementation(name: 'mpv-android-lib-v0.1.10', ext: 'aar')
+    // Danmaku - 弹幕库
+    implementation(name: 'DanmakuFlameMaster', ext: 'aar')
     // Glide - image loading for video thumbnails
     implementation 'com.github.bumptech.glide:glide:4.15.1'
     // Lifecycle and Coroutines

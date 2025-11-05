@@ -304,6 +304,128 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().putString("theme_mode", mode).apply()
     }
     
+    // ==================== 弹幕设置 ====================
+    
+    fun getDanmakuEnabled(): Boolean {
+        return sharedPreferences.getBoolean("danmaku_enabled", true)
+    }
+    
+    fun setDanmakuEnabled(enabled: Boolean) {
+        sharedPreferences.edit().putBoolean("danmaku_enabled", enabled).apply()
+    }
+    
+    fun getDanmakuSize(): Int {
+        return sharedPreferences.getInt("danmaku_size", 50)
+    }
+    
+    fun setDanmakuSize(size: Int) {
+        sharedPreferences.edit().putInt("danmaku_size", size).apply()
+    }
+    
+    fun getDanmakuSpeed(): Int {
+        return sharedPreferences.getInt("danmaku_speed", 50)
+    }
+    
+    fun setDanmakuSpeed(speed: Int) {
+        sharedPreferences.edit().putInt("danmaku_speed", speed).apply()
+    }
+    
+    fun getDanmakuAlpha(): Int {
+        return sharedPreferences.getInt("danmaku_alpha", 100)
+    }
+    
+    fun setDanmakuAlpha(alpha: Int) {
+        sharedPreferences.edit().putInt("danmaku_alpha", alpha).apply()
+    }
+    
+    fun getDanmakuStroke(): Int {
+        return sharedPreferences.getInt("danmaku_stroke", 50)
+    }
+    
+    fun setDanmakuStroke(stroke: Int) {
+        sharedPreferences.edit().putInt("danmaku_stroke", stroke).apply()
+    }
+    
+    fun getDanmakuOffsetTime(): Long {
+        return sharedPreferences.getLong("danmaku_offset_time", 0L)
+    }
+    
+    fun setDanmakuOffsetTime(time: Long) {
+        sharedPreferences.edit().putLong("danmaku_offset_time", time).apply()
+    }
+    
+    fun getDanmakuShowScroll(): Boolean {
+        return sharedPreferences.getBoolean("danmaku_show_scroll", true)
+    }
+    
+    fun setDanmakuShowScroll(show: Boolean) {
+        sharedPreferences.edit().putBoolean("danmaku_show_scroll", show).apply()
+    }
+    
+    fun getDanmakuShowTop(): Boolean {
+        return sharedPreferences.getBoolean("danmaku_show_top", true)
+    }
+    
+    fun setDanmakuShowTop(show: Boolean) {
+        sharedPreferences.edit().putBoolean("danmaku_show_top", show).apply()
+    }
+    
+    fun getDanmakuShowBottom(): Boolean {
+        return sharedPreferences.getBoolean("danmaku_show_bottom", true)
+    }
+    
+    fun setDanmakuShowBottom(show: Boolean) {
+        sharedPreferences.edit().putBoolean("danmaku_show_bottom", show).apply()
+    }
+    
+    fun getDanmakuMaxScrollLine(): Int {
+        return sharedPreferences.getInt("danmaku_max_scroll_line", 0)
+    }
+    
+    fun setDanmakuMaxScrollLine(line: Int) {
+        sharedPreferences.edit().putInt("danmaku_max_scroll_line", line).apply()
+    }
+    
+    fun getDanmakuMaxTopLine(): Int {
+        return sharedPreferences.getInt("danmaku_max_top_line", 0)
+    }
+    
+    fun setDanmakuMaxTopLine(line: Int) {
+        sharedPreferences.edit().putInt("danmaku_max_top_line", line).apply()
+    }
+    
+    fun getDanmakuMaxBottomLine(): Int {
+        return sharedPreferences.getInt("danmaku_max_bottom_line", 0)
+    }
+    
+    fun setDanmakuMaxBottomLine(line: Int) {
+        sharedPreferences.edit().putInt("danmaku_max_bottom_line", line).apply()
+    }
+    
+    fun getDanmakuMaxScreenNum(): Int {
+        return sharedPreferences.getInt("danmaku_max_screen_num", 0)
+    }
+    
+    fun setDanmakuMaxScreenNum(num: Int) {
+        sharedPreferences.edit().putInt("danmaku_max_screen_num", num).apply()
+    }
+    
+    fun getDanmakuUseChoreographer(): Boolean {
+        return sharedPreferences.getBoolean("danmaku_use_choreographer", false)
+    }
+    
+    fun setDanmakuUseChoreographer(use: Boolean) {
+        sharedPreferences.edit().putBoolean("danmaku_use_choreographer", use).apply()
+    }
+    
+    fun getDanmakuDebug(): Boolean {
+        return sharedPreferences.getBoolean("danmaku_debug", false)
+    }
+    
+    fun setDanmakuDebug(debug: Boolean) {
+        sharedPreferences.edit().putBoolean("danmaku_debug", debug).apply()
+    }
+    
     // ==================== 批量操作 ====================
     
     /**

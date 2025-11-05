@@ -65,9 +65,11 @@ class VideoPlayerActivity : AppCompatActivity() {
     private lateinit var gestureHandler: GestureHandler
     private lateinit var seriesManager: SeriesManager
     private lateinit var anime4KManager: Anime4KManager
+    private lateinit var danmakuManager: com.fam4k007.videoplayer.danmaku.DanmakuManager
 
     // ========== UI 组件（仅保留必需的引用）==========
     private lateinit var mpvView: CustomMPVView
+    private lateinit var danmakuView: com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
     private lateinit var clickArea: View
     
     // 进度恢复提示框
@@ -113,8 +115,14 @@ class VideoPlayerActivity : AppCompatActivity() {
     // 字幕文件选择器
     private lateinit var subtitlePickerLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>
     
+    // 弹幕文件选择器
+    private lateinit var danmakuPickerLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>
+    
     // 记录打开字幕选择器前的播放状态
     private var wasPlayingBeforeSubtitlePicker = false
+    
+    // 记录打开弹幕选择器前的播放状态
+    private var wasPlayingBeforeDanmakuPicker = false
     
     // 双击进度累积（用于连续双击）
     private var seekAccumulator = 0
@@ -141,6 +149,9 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 初始化字幕文件选择器
         initializeSubtitleFilePicker()
         
+        // 初始化弹幕文件选择器
+        initializeDanmakuFilePicker()
+        
         // 初始化字体文件选择器
         
         // 读取用户设置
@@ -162,6 +173,7 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         // 初始化UI组件
         mpvView = findViewById(R.id.surfaceView)
+        danmakuView = findViewById(R.id.danmakuView)
         clickArea = findViewById(R.id.clickArea)
         
         // ========== 关键修复: 在Activity中初始化MPV ==========
@@ -204,6 +216,10 @@ class VideoPlayerActivity : AppCompatActivity() {
         speedHint = findViewById(R.id.speedHint)
         speedHintText = findViewById(R.id.speedHintText)
         
+        // 初始化弹幕管理器
+        danmakuManager = com.fam4k007.videoplayer.danmaku.DanmakuManager(this, danmakuView)
+        danmakuManager.initialize()
+        
         // 初始化所有管理器
         initializeManagers()
         
@@ -226,6 +242,13 @@ class VideoPlayerActivity : AppCompatActivity() {
                     this@VideoPlayerActivity.isPlaying = isPlaying
                     // 更新播放/暂停按钮状态
                     controlsManager?.updatePlayPauseButton(isPlaying)
+                    
+                    // 同步弹幕播放状态
+                    if (isPlaying) {
+                        danmakuManager.resume()
+                    } else {
+                        danmakuManager.pause()
+                    }
                 }
                 
                 override fun onProgressUpdate(position: Double, duration: Double) {
@@ -233,6 +256,10 @@ class VideoPlayerActivity : AppCompatActivity() {
                     this@VideoPlayerActivity.duration = duration
                     // 更新进度条和时间显示
                     controlsManager?.updateProgress(position, duration)
+                    
+                    // 参考 DanDanPlay: 弹幕会自动跟随时间轴播放
+                    // 不需要在每次进度更新时调用 seekTo
+                    // 只在用户手动 seek 或恢复进度时才需要同步（已在 prepared() 回调中处理）
                 }
                 
                 override fun onFileLoaded() {
@@ -304,6 +331,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                     if (currentSpeed != 1.0) {
                         currentSpeed = 1.0
                         playbackEngine?.setSpeed(1.0)
+                        danmakuManager.setSpeed(1.0f)
                     }
                 }
                 
@@ -325,6 +353,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                         
                         currentSpeed = longPressSpeed.toDouble()
                         playbackEngine?.setSpeed(longPressSpeed.toDouble())
+                        danmakuManager.setSpeed(longPressSpeed)
                         
                         speedHintText.text = "正在${String.format("%.1f", longPressSpeed)}倍速播放"
                         speedHint.visibility = View.VISIBLE
@@ -342,6 +371,8 @@ class VideoPlayerActivity : AppCompatActivity() {
                         val newPos = (currentPosition + seekSeconds).coerceIn(0.0, duration).toInt()
                         val usePrecise = gestureHandler.isPreciseSeekingEnabled()
                         playbackEngine?.seekTo(newPos, usePrecise)
+                        // 用户手势 seek 时同步弹幕进度
+                        danmakuManager.seekTo((newPos * 1000).toLong())
                         
                         // 显示进度提示（带动画）
                         val currentTime = FormatUtils.formatProgressTime(newPos.toDouble())
@@ -383,11 +414,17 @@ class VideoPlayerActivity : AppCompatActivity() {
                 override fun onRewindClick() {
                     Log.d(SEEK_DEBUG, "onRewindClick: seekTimeSeconds = $seekTimeSeconds, currentPosition = $currentPosition, seekBy = -$seekTimeSeconds")
                     playbackEngine.seekBy(-seekTimeSeconds)
+                    // 快退时同步弹幕
+                    val newPos = (currentPosition - seekTimeSeconds).coerceAtLeast(0.0)
+                    danmakuManager.seekTo((newPos * 1000).toLong())
                 }
                 
                 override fun onForwardClick() {
                     Log.d(SEEK_DEBUG, "onForwardClick: seekTimeSeconds = $seekTimeSeconds, currentPosition = $currentPosition, seekBy = $seekTimeSeconds")
                     playbackEngine.seekBy(seekTimeSeconds)
+                    // 快进时同步弹幕
+                    val newPos = (currentPosition + seekTimeSeconds).coerceAtMost(duration)
+                    danmakuManager.seekTo((newPos * 1000).toLong())
                 }
                 
                 override fun onSubtitleClick() {
@@ -417,6 +454,8 @@ class VideoPlayerActivity : AppCompatActivity() {
                 override fun onSeekBarChange(position: Double) {
                     val usePrecise = gestureHandler.isPreciseSeekingEnabled()
                     playbackEngine.seekTo(position.toInt(), usePrecise)
+                    // 用户手动 seek 时同步弹幕进度
+                    danmakuManager.seekTo((position * 1000).toLong())
                 }
                 
                 override fun onBackClick() {
@@ -494,6 +533,12 @@ class VideoPlayerActivity : AppCompatActivity() {
             tvResumeConfirm = findViewById(R.id.tvResumeConfirm)
         )
         
+        // 绑定弹幕按钮点击事件
+        val btnDanmaku = findViewById<ImageView>(R.id.btnDanmaku)
+        btnDanmaku.setOnClickListener {
+            showDanmakuDialog()
+        }
+        
         // 初始化控制管理器
         controlsManager.initialize()
         
@@ -546,10 +591,28 @@ class VideoPlayerActivity : AppCompatActivity() {
             
             playbackEngine?.loadVideo(uri, position)
             
+            // 加载弹幕文件
+            loadDanmakuForVideo(uri)
+            
             // 延迟恢复字幕设置（等待视频加载完成）
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 restoreSubtitlePreferences(uri)
             }, 500)
+        }
+    }
+    
+    /**
+     * 加载视频对应的弹幕文件
+     */
+    private fun loadDanmakuForVideo(videoUri: android.net.Uri) {
+        try {
+            val videoPath = videoUri.resolveUri(this)
+            if (videoPath != null) {
+                Log.d(TAG, "Loading danmaku for video: $videoPath")
+                danmakuManager.loadDanmakuForVideo(videoUri.toString(), videoPath)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading danmaku", e)
         }
     }
     
@@ -890,6 +953,86 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
     
     /**
+     * 初始化弹幕文件选择器
+     */
+    private fun initializeDanmakuFilePicker() {
+        // 创建文件选择器 Launcher
+        danmakuPickerLauncher = registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            try {
+                if (uri != null) {
+                    Log.d(TAG, "Danmaku file selected: $uri")
+                    
+                    // 获取文件名
+                    val fileName = getFileNameFromUri(uri)
+                    Log.d(TAG, "Danmaku file name: $fileName")
+                    
+                    // 检查是否为XML文件
+                    if (fileName.endsWith(".xml", ignoreCase = true)) {
+                        // 复制到缓存目录
+                        val cachedFile = copyDanmakuToCache(uri, fileName)
+                        if (cachedFile != null) {
+                            // 加载弹幕文件
+                            val loaded = danmakuManager.loadDanmakuFile(cachedFile.absolutePath)
+                            if (loaded) {
+                                DialogUtils.showToastShort(this, "弹幕加载成功: $fileName")
+                                Log.d(TAG, "Danmaku loaded successfully: $fileName")
+                                
+                                // 启动弹幕
+                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                    danmakuManager.start()
+                                }, 500)
+                            } else {
+                                DialogUtils.showToastShort(this, "弹幕加载失败")
+                                Log.w(TAG, "Failed to load danmaku: $fileName")
+                            }
+                        } else {
+                            DialogUtils.showToastShort(this, "无法读取弹幕文件")
+                            Log.w(TAG, "Failed to copy danmaku file")
+                        }
+                    } else {
+                        DialogUtils.showToastShort(this, "请选择 XML 格式的弹幕文件")
+                        Log.w(TAG, "Unsupported danmaku format: $fileName")
+                    }
+                } else {
+                    Log.d(TAG, "Danmaku file selection cancelled")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error handling danmaku file selection", e)
+                DialogUtils.showToastShort(this, "加载弹幕出错: ${e.message}")
+            } finally {
+                // 恢复之前的播放状态
+                if (wasPlayingBeforeDanmakuPicker) {
+                    Log.d(TAG, "Resuming playback after danmaku picker")
+                    playbackEngine?.play()
+                    wasPlayingBeforeDanmakuPicker = false
+                }
+            }
+        }
+    }
+    
+    /**
+     * 复制弹幕文件到缓存目录
+     */
+    private fun copyDanmakuToCache(uri: Uri, fileName: String): File? {
+        try {
+            val inputStream = contentResolver.openInputStream(uri) ?: return null
+            val cacheFile = File(cacheDir, "danmaku_$fileName")
+            
+            cacheFile.outputStream().use { output ->
+                inputStream.copyTo(output)
+            }
+            
+            Log.d(TAG, "Danmaku file copied to: ${cacheFile.absolutePath}")
+            return cacheFile
+        } catch (e: Exception) {
+            Log.e(TAG, "Error copying danmaku file", e)
+            return null
+        }
+    }
+    
+    /**
      * 初始化字体文件选择器
      */
     /**
@@ -913,6 +1056,31 @@ class VideoPlayerActivity : AppCompatActivity() {
                     "text/plain",
                     "application/x-ssa",
                     "application/x-ass",
+                    "*/*"
+                )
+            )
+        }
+    }
+
+    /**
+     * 打开弹幕选择器
+     */
+    private fun openDanmakuPicker() {
+        if (::danmakuPickerLauncher.isInitialized) {
+            // 记录当前播放状态
+            wasPlayingBeforeDanmakuPicker = isPlaying
+            
+            // 如果正在播放，暂停视频
+            if (isPlaying) {
+                Log.d(TAG, "Pausing playback before opening danmaku picker")
+                playbackEngine?.pause()
+            }
+            
+            // 启动文件选择器，只允许选择 XML 文件
+            danmakuPickerLauncher.launch(
+                arrayOf(
+                    "text/xml",
+                    "application/xml",
                     "*/*"
                 )
             )
@@ -1682,6 +1850,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         showPopupDialog(btnSpeed, speeds, currentSelection, showAbove = true, useFixedHeight = true, showScrollHint = true) { position ->
             currentSpeed = speedValues[position]
             playbackEngine?.setSpeed(currentSpeed)
+            danmakuManager.setSpeed(currentSpeed.toFloat())
             DialogUtils.showToastShort(this@VideoPlayerActivity, "播放速度：${speeds[position]}")
             Log.d(TAG, "Speed changed to: $currentSpeed")
         }
@@ -1723,6 +1892,9 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 清理进度恢复提示框的handler
         resumePromptHandler.removeCallbacksAndMessages(null)
         
+        // 释放弹幕资源
+        danmakuManager.release()
+        
         // 清理所有管理器
         playbackEngine?.destroy()
         controlsManager?.cleanup()
@@ -1742,10 +1914,18 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 重新应用音量增强设置(如果开启)
         // 这样可以确保从后台返回时，音量设置正确
         gestureHandler?.reapplyVolumeBoostSettings()
+        
+        // 恢复弹幕播放（只有在弹幕应该显示时才恢复）
+        if (danmakuManager.isVisible()) {
+            danmakuManager.resume()
+            Log.d(TAG, "Danmaku resumed")
+        }
     }
 
     override fun onPause() {
         super.onPause()
+        // 暂停弹幕
+        danmakuManager.pause()
         // 保存当前播放进度
         savePlaybackPosition()
         // 保存播放历史
@@ -2203,6 +2383,130 @@ class VideoPlayerActivity : AppCompatActivity() {
             Log.e(TAG, "Failed to save bitmap", e)
             DialogUtils.showToastShort(this, "保存截图失败: ${e.message}")
         }
+    }
+    
+    /**
+     * 显示弹幕对话框
+     */
+    private fun showDanmakuDialog() {
+        val options = mutableListOf<String>()
+        
+        // 1. 常驻选项：显示/隐藏弹幕（根据当前状态动态显示）
+        // 只有加载了弹幕才显示切换选项，否则显示"未加载弹幕"
+        if (danmakuView.isPrepared) {
+            val visibilityText = if (danmakuView.isShown) "隐藏弹幕" else "显示弹幕"
+            options.add(visibilityText)
+        } else {
+            options.add("未加载弹幕")
+        }
+        
+        // 2. 常驻选项：本地弹幕
+        options.add("本地弹幕")
+        
+        // 3. 常驻选项：下载弹幕
+        options.add("下载弹幕")
+        
+        // 4. 常驻选项：弹幕样式
+        options.add("弹幕样式")
+        
+        // 获取弹幕按钮
+        val btnDanmaku = findViewById<ImageView>(R.id.btnDanmaku)
+        
+        showPopupDialog(btnDanmaku, options, -1, showAbove = false) { position ->
+            val selectedOption = options[position]
+            when (selectedOption) {
+                "本地弹幕" -> openDanmakuPicker()
+                "显示弹幕" -> {
+                    danmakuView.show()
+                    Log.d(TAG, "Danmaku shown")
+                }
+                "隐藏弹幕" -> {
+                    danmakuView.hide()
+                    Log.d(TAG, "Danmaku hidden")
+                }
+                "未加载弹幕" -> {
+                    Toast.makeText(this, "请先加载弹幕文件", Toast.LENGTH_SHORT).show()
+                }
+                "弹幕样式" -> showDanmakuSettingsDialog()
+                "下载弹幕" -> {
+                    Toast.makeText(this, "下载弹幕功能开发中...", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    /**
+     * 显示弹幕设置对话框
+     */
+    private fun showDanmakuSettingsDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_danmaku_settings, null)
+        
+        // 获取所有控件
+        val seekBarSize = dialogView.findViewById<SeekBar>(R.id.seekBarDanmakuSize)
+        val tvSizeValue = dialogView.findViewById<TextView>(R.id.tvDanmakuSizeValue)
+        val seekBarSpeed = dialogView.findViewById<SeekBar>(R.id.seekBarDanmakuSpeed)
+        val tvSpeedValue = dialogView.findViewById<TextView>(R.id.tvDanmakuSpeedValue)
+        val seekBarAlpha = dialogView.findViewById<SeekBar>(R.id.seekBarDanmakuAlpha)
+        val tvAlphaValue = dialogView.findViewById<TextView>(R.id.tvDanmakuAlphaValue)
+        val seekBarStroke = dialogView.findViewById<SeekBar>(R.id.seekBarDanmakuStroke)
+        val tvStrokeValue = dialogView.findViewById<TextView>(R.id.tvDanmakuStrokeValue)
+        
+        // 初始化当前值
+        seekBarSize.progress = com.fam4k007.videoplayer.danmaku.DanmakuConfig.size
+        tvSizeValue.text = "${com.fam4k007.videoplayer.danmaku.DanmakuConfig.size}%"
+        seekBarSpeed.progress = com.fam4k007.videoplayer.danmaku.DanmakuConfig.speed
+        tvSpeedValue.text = "${com.fam4k007.videoplayer.danmaku.DanmakuConfig.speed}%"
+        seekBarAlpha.progress = com.fam4k007.videoplayer.danmaku.DanmakuConfig.alpha
+        tvAlphaValue.text = "${com.fam4k007.videoplayer.danmaku.DanmakuConfig.alpha}%"
+        seekBarStroke.progress = com.fam4k007.videoplayer.danmaku.DanmakuConfig.stroke
+        tvStrokeValue.text = "${com.fam4k007.videoplayer.danmaku.DanmakuConfig.stroke}%"
+        
+        // 设置监听器
+        seekBarSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                tvSizeValue.text = "$progress%"
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setSize(progress)
+                danmakuManager.updateSize()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        seekBarSpeed.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                tvSpeedValue.text = "$progress%"
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setSpeed(progress)
+                danmakuManager.updateSpeed()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        seekBarAlpha.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                tvAlphaValue.text = "$progress%"
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setAlpha(progress)
+                danmakuManager.updateAlpha()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        seekBarStroke.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                tvStrokeValue.text = "$progress%"
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setStroke(progress)
+                danmakuManager.updateStroke()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        AlertDialog.Builder(this)
+            .setTitle("弹幕设置")
+            .setView(dialogView)
+            .setPositiveButton("确定", null)
+            .show()
     }
     
     override fun finish() {

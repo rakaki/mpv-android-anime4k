@@ -10,6 +10,13 @@
         android:layout_height="match_parent"
         android:layout_centerInParent="true" />
 
+    <!-- 弹幕视图 - 覆盖在视频播放器上方 -->
+    <com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
+        android:id="@+id/danmakuView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true" />
+
     <!-- 点击区域，用于显示/隐藏控制面板 -->
     <View
         android:id="@+id/clickArea"
@@ -106,6 +113,19 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:src="@drawable/ic_subtitle"
+                    android:tint="#FFFFFF"
+                    android:padding="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_marginStart="4dp" />
+
+                <!-- 弹幕按钮（新增） -->
+                <ImageView
+                    android:id="@+id/btnDanmaku"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_danmaku_new"
                     android:tint="#FFFFFF"
                     android:padding="6dp"
                     android:clickable="true"
@@ -275,7 +295,7 @@
                     android:id="@+id/btnRewind"
                     android:layout_width="44dp"
                     android:layout_height="44dp"
-                    android:src="@drawable/rewind"
+                    android:src="@drawable/ic_rewind_new"
                     android:tint="#FFFFFF"
                     android:padding="8dp"
                     android:clickable="true"
@@ -302,7 +322,7 @@
                     android:id="@+id/btnForward"
                     android:layout_width="44dp"
                     android:layout_height="44dp"
-                    android:src="@drawable/forward"
+                    android:src="@drawable/ic_forward_new"
                     android:tint="#FFFFFF"
                     android:padding="8dp"
                     android:clickable="true"
