@@ -29,11 +29,12 @@ class VideoListActivity : AppCompatActivity() {
     private lateinit var rvVideoList: RecyclerView
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var tvFolderTitle: TextView
-    private lateinit var tvVideoCount: TextView
     private lateinit var btnBack: View
-    private lateinit var btnSort: Button
-    private lateinit var etSearch: android.widget.EditText
-    private lateinit var btnClearSearch: android.widget.ImageView
+    private lateinit var btnSort: View
+    private lateinit var btnSearch: View
+    private lateinit var searchOverlay: View
+    private lateinit var etSearchOverlay: android.widget.EditText
+    private lateinit var btnClearSearchOverlay: android.widget.ImageView
 
     private val videoList = mutableListOf<VideoFileParcelable>()
     private val filteredList = mutableListOf<VideoFileParcelable>()
@@ -44,12 +45,24 @@ class VideoListActivity : AppCompatActivity() {
     private enum class SortOrder { ASCENDING, DESCENDING }
     private var currentSortType = SortType.NAME
     private var currentSortOrder = SortOrder.ASCENDING
+    
+    // 搜索状态
+    private var isSearchMode = false
+    
+    // PreferencesManager
+    private lateinit var preferencesManager: com.fam4k007.videoplayer.manager.PreferencesManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video_list)
 
+        // 初始化 PreferencesManager
+        preferencesManager = com.fam4k007.videoplayer.manager.PreferencesManager.getInstance(this)
+        
+        // 读取保存的排序设置
+        loadSortSettings()
+        
         initViews()
         loadVideoList()
         setupRecyclerView()
@@ -59,14 +72,16 @@ class VideoListActivity : AppCompatActivity() {
         rvVideoList = findViewById(R.id.rvVideoList)
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
         tvFolderTitle = findViewById(R.id.tvFolderTitle)
-        tvVideoCount = findViewById(R.id.tvVideoCount)
         btnBack = findViewById(R.id.btnBack)
         btnSort = findViewById(R.id.btnSort)
-        etSearch = findViewById(R.id.etSearch)
-        btnClearSearch = findViewById(R.id.btnClearSearch)
+        btnSearch = findViewById(R.id.btnSearch)
+        searchOverlay = findViewById(R.id.searchOverlay)
+        etSearchOverlay = findViewById(R.id.etSearchOverlay)
+        btnClearSearchOverlay = findViewById(R.id.btnClearSearchOverlay)
 
-        btnBack.setOnClickListener { finish() }
+        btnBack.setOnClickListener { handleBackPressed() }
         btnSort.setOnClickListener { showSortDialog() }
+        btnSearch.setOnClickListener { showSearchOverlay() }
         
         // 设置下拉刷新动画（无实际刷新，仅动画，延长时间）
         swipeRefreshLayout.setOnRefreshListener {
@@ -81,19 +96,95 @@ class VideoListActivity : AppCompatActivity() {
         )
         
         // 搜索框监听
-        etSearch.addTextChangedListener(object : android.text.TextWatcher {
+        etSearchOverlay.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) {
                 val query = s?.toString() ?: ""
-                btnClearSearch.visibility = if (query.isEmpty()) View.GONE else View.VISIBLE
+                btnClearSearchOverlay.visibility = if (query.isEmpty()) View.GONE else View.VISIBLE
                 filterVideos(query)
             }
         })
         
-        btnClearSearch.setOnClickListener {
-            etSearch.text.clear()
+        // 搜索框焦点监听 - 检测是否处于输入状态
+        etSearchOverlay.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus && etSearchOverlay.text.isEmpty()) {
+                // 失去焦点且内容为空时，自动隐藏输入法
+                hideKeyboard()
+            }
         }
+        
+        btnClearSearchOverlay.setOnClickListener {
+            etSearchOverlay.text.clear()
+        }
+    }
+    
+    private fun showSearchOverlay() {
+        isSearchMode = true
+        searchOverlay.visibility = View.VISIBLE
+        etSearchOverlay.requestFocus()
+        
+        // 显示输入法
+        val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        imm.showSoftInput(etSearchOverlay, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+    }
+    
+    private fun hideSearchOverlay() {
+        isSearchMode = false
+        searchOverlay.visibility = View.GONE
+        etSearchOverlay.text.clear()
+        etSearchOverlay.clearFocus()
+        hideKeyboard()
+        
+        // 恢复显示所有视频
+        filterVideos("")
+    }
+    
+    private fun hideKeyboard() {
+        val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        imm.hideSoftInputFromWindow(etSearchOverlay.windowToken, 0)
+    }
+    
+    private fun handleBackPressed() {
+        if (isSearchMode) {
+            hideSearchOverlay()
+        } else {
+            finish()
+        }
+    }
+    
+    private fun loadSortSettings() {
+        val sortType = preferencesManager.getVideoSortType()
+        val sortOrder = preferencesManager.getVideoSortOrder()
+        
+        currentSortType = when (sortType) {
+            "DATE" -> SortType.DATE
+            else -> SortType.NAME
+        }
+        
+        currentSortOrder = when (sortOrder) {
+            "DESCENDING" -> SortOrder.DESCENDING
+            else -> SortOrder.ASCENDING
+        }
+        
+        Log.d(TAG, "加载排序设置: $currentSortType $currentSortOrder")
+    }
+    
+    private fun saveSortSettings() {
+        val sortTypeStr = when (currentSortType) {
+            SortType.NAME -> "NAME"
+            SortType.DATE -> "DATE"
+        }
+        
+        val sortOrderStr = when (currentSortOrder) {
+            SortOrder.ASCENDING -> "ASCENDING"
+            SortOrder.DESCENDING -> "DESCENDING"
+        }
+        
+        preferencesManager.setVideoSortType(sortTypeStr)
+        preferencesManager.setVideoSortOrder(sortOrderStr)
+        
+        Log.d(TAG, "保存排序设置: $sortTypeStr $sortOrderStr")
     }
 
     private fun loadVideoList() {
@@ -101,11 +192,36 @@ class VideoListActivity : AppCompatActivity() {
         val videos = intent.getParcelableArrayListExtra<VideoFileParcelable>("video_list") ?: arrayListOf()
 
         tvFolderTitle.text = folderName
-        tvVideoCount.text = "${videos.size} 个视频"
         videoList.addAll(videos)
-        filteredList.addAll(videos) // 初始化过滤列表
-
+        
         Log.d(TAG, "加载文件夹: $folderName, 包含 ${videos.size} 个视频")
+        
+        // 应用保存的排序设置（在添加到videoList之后，在初始化filteredList之前）
+        applySavedSort()
+        
+        filteredList.addAll(videoList) // 使用排序后的videoList初始化过滤列表
+    }
+    
+    private fun applySavedSort() {
+        val sortedList = when (currentSortType) {
+            SortType.NAME -> {
+                if (currentSortOrder == SortOrder.ASCENDING) {
+                    videoList.sortedBy { it.name.lowercase() }
+                } else {
+                    videoList.sortedByDescending { it.name.lowercase() }
+                }
+            }
+            SortType.DATE -> {
+                if (currentSortOrder == SortOrder.ASCENDING) {
+                    videoList.sortedBy { it.dateAdded }
+                } else {
+                    videoList.sortedByDescending { it.dateAdded }
+                }
+            }
+        }
+        
+        videoList.clear()
+        videoList.addAll(sortedList)
     }
 
     private fun setupRecyclerView() {
@@ -138,62 +254,95 @@ class VideoListActivity : AppCompatActivity() {
     
     private fun showSortDialog() {
         Log.d(TAG, "显示排序对话框")
-        val dialog = android.app.Dialog(this)
-        dialog.setContentView(R.layout.dialog_sort_options)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         
-        val rgSortType = dialog.findViewById<RadioGroup>(R.id.rgSortType)
-        val rgSortOrder = dialog.findViewById<RadioGroup>(R.id.rgSortOrder)
-        val rbSortByName = dialog.findViewById<RadioButton>(R.id.rbSortByName)
-        val rbSortByDate = dialog.findViewById<RadioButton>(R.id.rbSortByDate)
-        val rbAscending = dialog.findViewById<RadioButton>(R.id.rbAscending)
-        val rbDescending = dialog.findViewById<RadioButton>(R.id.rbDescending)
-        val btnCancel = dialog.findViewById<Button>(R.id.btnCancel)
-        val btnConfirm = dialog.findViewById<Button>(R.id.btnConfirm)
+        val dialog = android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+        val view = layoutInflater.inflate(R.layout.dialog_sort_popup, null)
         
-        // 设置当前选中状�?
-        when (currentSortType) {
-            SortType.NAME -> rbSortByName.isChecked = true
-            SortType.DATE -> rbSortByDate.isChecked = true
-        }
-        when (currentSortOrder) {
-            SortOrder.ASCENDING -> rbAscending.isChecked = true
-            SortOrder.DESCENDING -> rbDescending.isChecked = true
-        }
+        val tvSortNameAsc = view.findViewById<TextView>(R.id.tvSortNameAsc)
+        val tvSortNameDesc = view.findViewById<TextView>(R.id.tvSortNameDesc)
+        val tvSortDateAsc = view.findViewById<TextView>(R.id.tvSortDateAsc)
+        val tvSortDateDesc = view.findViewById<TextView>(R.id.tvSortDateDesc)
         
-        btnCancel.setOnClickListener {
-            Log.d(TAG, "取消排序")
+        // 设置主题颜色 - 高亮当前选中的排序方式
+        val primaryColor = ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary)
+        val normalColor = getColor(android.R.color.black)
+        
+        tvSortNameAsc.setTextColor(if (currentSortType == SortType.NAME && currentSortOrder == SortOrder.ASCENDING) primaryColor else normalColor)
+        tvSortNameDesc.setTextColor(if (currentSortType == SortType.NAME && currentSortOrder == SortOrder.DESCENDING) primaryColor else normalColor)
+        tvSortDateAsc.setTextColor(if (currentSortType == SortType.DATE && currentSortOrder == SortOrder.ASCENDING) primaryColor else normalColor)
+        tvSortDateDesc.setTextColor(if (currentSortType == SortType.DATE && currentSortOrder == SortOrder.DESCENDING) primaryColor else normalColor)
+        
+        // 名称升序
+        tvSortNameAsc.setOnClickListener {
+            currentSortType = SortType.NAME
+            currentSortOrder = SortOrder.ASCENDING
+            saveSortSettings()
+            sortVideoListWithAnimation()
             dialog.dismiss()
         }
         
-        btnConfirm.setOnClickListener {
-            Log.d(TAG, "确认排序")
-            // 获取选中的排序类�?
-            currentSortType = when (rgSortType.checkedRadioButtonId) {
-                R.id.rbSortByName -> SortType.NAME
-                R.id.rbSortByDate -> SortType.DATE
-                else -> SortType.NAME
-            }
-            
-            // 获取选中的排序顺�?
-            currentSortOrder = when (rgSortOrder.checkedRadioButtonId) {
-                R.id.rbAscending -> SortOrder.ASCENDING
-                R.id.rbDescending -> SortOrder.DESCENDING
-                else -> SortOrder.ASCENDING
-            }
-            
-            Log.d(TAG, "排序类型: $currentSortType, 排序顺序: $currentSortOrder")
-            
-            // 执行排序
-            sortVideoList()
+        // 名称降序
+        tvSortNameDesc.setOnClickListener {
+            currentSortType = SortType.NAME
+            currentSortOrder = SortOrder.DESCENDING
+            saveSortSettings()
+            sortVideoListWithAnimation()
             dialog.dismiss()
         }
+        
+        // 日期升序
+        tvSortDateAsc.setOnClickListener {
+            currentSortType = SortType.DATE
+            currentSortOrder = SortOrder.ASCENDING
+            saveSortSettings()
+            sortVideoListWithAnimation()
+            dialog.dismiss()
+        }
+        
+        // 日期降序
+        tvSortDateDesc.setOnClickListener {
+            currentSortType = SortType.DATE
+            currentSortOrder = SortOrder.DESCENDING
+            saveSortSettings()
+            sortVideoListWithAnimation()
+            dialog.dismiss()
+        }
+        
+        dialog.setContentView(view)
+        dialog.setCanceledOnTouchOutside(true)
+        
+        // 获取排序按钮在屏幕上的位置
+        val location = IntArray(2)
+        btnSort.getLocationOnScreen(location)
+        val anchorX = location[0]
+        val anchorY = location[1]
+        
+        // 测量对话框大小
+        view.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val dialogWidth = view.measuredWidth.coerceAtLeast(btnSort.width)
+        val dialogHeight = view.measuredHeight
+        
+        // 设置对话框位置在排序按钮下方
+        val window = dialog.window
+        val layoutParams = window?.attributes
+        layoutParams?.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+        layoutParams?.x = anchorX + (btnSort.width - dialogWidth) / 2
+        layoutParams?.y = anchorY + btnSort.height + 10 // 显示在按钮下方，留10px间距
+        layoutParams?.width = dialogWidth
+        layoutParams?.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        window?.attributes = layoutParams
+        
+        // 设置进场和出场动画
+        window?.setWindowAnimations(R.style.PopupAnimation)
         
         dialog.show()
     }
     
-    private fun sortVideoList() {
-        Log.d(TAG, "开始排序，当前列表大小: ${videoList.size}")
+    private fun sortVideoListWithAnimation() {
+        Log.d(TAG, "开始排序动画，当前列表大小: ${videoList.size}")
         
         val sortedList = when (currentSortType) {
             SortType.NAME -> {
@@ -216,7 +365,47 @@ class VideoListActivity : AppCompatActivity() {
         videoList.addAll(sortedList)
         
         // 同步更新过滤列表
-        val query = etSearch.text.toString()
+        val query = etSearchOverlay.text.toString()
+        if (query.isEmpty()) {
+            filteredList.clear()
+            filteredList.addAll(videoList)
+        } else {
+            filterVideos(query)
+        }
+        
+        // 使用 notifyDataSetChanged 配合 RecyclerView 的默认动画
+        adapter.notifyDataSetChanged()
+        
+        val sortTypeText = if (currentSortType == SortType.NAME) "名称" else "日期"
+        val sortOrderText = if (currentSortOrder == SortOrder.ASCENDING) "升序" else "降序"
+        Log.d(TAG, "排序完成: $sortTypeText $sortOrderText")
+    }
+    
+    private fun sortVideoList() {
+        Log.d(TAG, "开始排序（无动画），当前列表大小: ${videoList.size}")
+        
+        val sortedList = when (currentSortType) {
+            SortType.NAME -> {
+                if (currentSortOrder == SortOrder.ASCENDING) {
+                    videoList.sortedBy { it.name.lowercase() }
+                } else {
+                    videoList.sortedByDescending { it.name.lowercase() }
+                }
+            }
+            SortType.DATE -> {
+                if (currentSortOrder == SortOrder.ASCENDING) {
+                    videoList.sortedBy { it.dateAdded }
+                } else {
+                    videoList.sortedByDescending { it.dateAdded }
+                }
+            }
+        }
+        
+        videoList.clear()
+        videoList.addAll(sortedList)
+        
+        // 同步更新过滤列表
+        val query = etSearchOverlay.text.toString()
         if (query.isEmpty()) {
             filteredList.clear()
             filteredList.addAll(videoList)
@@ -328,13 +517,6 @@ class VideoListActivity : AppCompatActivity() {
             })
         }
         
-        // 更新显示的视频数量
-        tvVideoCount.text = if (query.isEmpty()) {
-            "${videoList.size} 个视频"
-        } else {
-            "${filteredList.size} / ${videoList.size} 个视频"
-        }
-        
         adapter.notifyDataSetChanged()
         Log.d(TAG, "搜索: $query, 找到 ${filteredList.size} 个结果")
     }
@@ -402,19 +584,18 @@ class VideoListActivity : AppCompatActivity() {
                             // 重新应用当前排序
                             sortVideoList()
                             
-                            tvVideoCount.text = "${videoList.size} 个视频"
-                            swipeRefreshLayout.setRefreshing(false)
+                            swipeRefreshLayout.isRefreshing = false
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            swipeRefreshLayout.setRefreshing(false)
+                            swipeRefreshLayout.isRefreshing = false
                         }
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "刷新视频列表失败", e)
                 withContext(Dispatchers.Main) {
-                    swipeRefreshLayout.setRefreshing(false)
+                    swipeRefreshLayout.isRefreshing = false
                 }
             }
         }
@@ -427,7 +608,11 @@ class VideoListActivity : AppCompatActivity() {
     }
     
     override fun onBackPressed() {
-        super.onBackPressed()
-        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        if (isSearchMode) {
+            hideSearchOverlay()
+        } else {
+            super.onBackPressed()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
     }
 }

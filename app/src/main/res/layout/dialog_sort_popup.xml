@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    排序弹窗对话框 - 使用弹出菜单样式
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="120dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_popup_menu"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/tvSortNameAsc"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="名称升序"
+        android:textSize="16sp"
+        android:textColor="#333333"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground" />
+
+    <TextView
+        android:id="@+id/tvSortNameDesc"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="名称降序"
+        android:textSize="16sp"
+        android:textColor="#333333"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground" />
+
+    <TextView
+        android:id="@+id/tvSortDateAsc"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="日期升序"
+        android:textSize="16sp"
+        android:textColor="#333333"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground" />
+
+    <TextView
+        android:id="@+id/tvSortDateDesc"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="日期降序"
+        android:textSize="16sp"
+        android:textColor="#333333"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground" />
+
+</LinearLayout>

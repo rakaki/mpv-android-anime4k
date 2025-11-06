@@ -426,6 +426,36 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().putBoolean("danmaku_debug", debug).apply()
     }
     
+    // ==================== 视频列表排序设置 ====================
+    
+    /**
+     * 获取视频列表排序类型 (NAME, DATE)
+     */
+    fun getVideoSortType(): String {
+        return sharedPreferences.getString("video_sort_type", "NAME") ?: "NAME"
+    }
+    
+    /**
+     * 保存视频列表排序类型
+     */
+    fun setVideoSortType(type: String) {
+        sharedPreferences.edit().putString("video_sort_type", type).apply()
+    }
+    
+    /**
+     * 获取视频列表排序顺序 (ASCENDING, DESCENDING)
+     */
+    fun getVideoSortOrder(): String {
+        return sharedPreferences.getString("video_sort_order", "ASCENDING") ?: "ASCENDING"
+    }
+    
+    /**
+     * 保存视频列表排序顺序
+     */
+    fun setVideoSortOrder(order: String) {
+        sharedPreferences.edit().putString("video_sort_order", order).apply()
+    }
+    
     // ==================== 批量操作 ====================
     
     /**

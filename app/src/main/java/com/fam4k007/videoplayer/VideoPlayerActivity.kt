@@ -2412,7 +2412,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 获取弹幕按钮
         val btnDanmaku = findViewById<ImageView>(R.id.btnDanmaku)
         
-        showPopupDialog(btnDanmaku, options, -1, showAbove = false) { position ->
+        showPopupDialog(btnDanmaku, options, -1, showAbove = false, useFixedHeight = true, showScrollHint = true) { position ->
             val selectedOption = options[position]
             when (selectedOption) {
                 "本地弹幕" -> openDanmakuPicker()
@@ -2439,6 +2439,7 @@ class VideoPlayerActivity : AppCompatActivity() {
      * 显示弹幕设置对话框
      */
     private fun showDanmakuSettingsDialog() {
+        val dialog = android.app.Dialog(this)
         val dialogView = layoutInflater.inflate(R.layout.dialog_danmaku_settings, null)
         
         // 获取所有控件
@@ -2450,6 +2451,13 @@ class VideoPlayerActivity : AppCompatActivity() {
         val tvAlphaValue = dialogView.findViewById<TextView>(R.id.tvDanmakuAlphaValue)
         val seekBarStroke = dialogView.findViewById<SeekBar>(R.id.seekBarDanmakuStroke)
         val tvStrokeValue = dialogView.findViewById<TextView>(R.id.tvDanmakuStrokeValue)
+        val btnReset = dialogView.findViewById<Button>(R.id.btnResetDanmaku)
+        
+        // 定义默认值
+        val defaultSize = 50
+        val defaultSpeed = 50
+        val defaultAlpha = 100
+        val defaultStroke = 50
         
         // 初始化当前值
         seekBarSize.progress = com.fam4k007.videoplayer.danmaku.DanmakuConfig.size
@@ -2461,12 +2469,42 @@ class VideoPlayerActivity : AppCompatActivity() {
         seekBarStroke.progress = com.fam4k007.videoplayer.danmaku.DanmakuConfig.stroke
         tvStrokeValue.text = "${com.fam4k007.videoplayer.danmaku.DanmakuConfig.stroke}%"
         
-        // 设置监听器
+        // 设置主题颜色
+        val primaryColor = ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary)
+        tvSizeValue.setTextColor(primaryColor)
+        tvSpeedValue.setTextColor(primaryColor)
+        tvAlphaValue.setTextColor(primaryColor)
+        tvStrokeValue.setTextColor(primaryColor)
+        
+        // 设置SeekBar颜色
+        fun setSeekBarColor(seekBar: SeekBar) {
+            seekBar.progressDrawable?.setColorFilter(primaryColor, android.graphics.PorterDuff.Mode.SRC_IN)
+            seekBar.thumb?.setColorFilter(primaryColor, android.graphics.PorterDuff.Mode.SRC_IN)
+        }
+        setSeekBarColor(seekBarSize)
+        setSeekBarColor(seekBarSpeed)
+        setSeekBarColor(seekBarAlpha)
+        setSeekBarColor(seekBarStroke)
+        
+        // 更新重置按钮状态
+        fun updateResetButton() {
+            val isSizeAtDefault = seekBarSize.progress == defaultSize
+            val isSpeedAtDefault = seekBarSpeed.progress == defaultSpeed
+            val isAlphaAtDefault = seekBarAlpha.progress == defaultAlpha
+            val isStrokeAtDefault = seekBarStroke.progress == defaultStroke
+            val isAllDefault = isSizeAtDefault && isSpeedAtDefault && isAlphaAtDefault && isStrokeAtDefault
+            
+            btnReset.isEnabled = !isAllDefault
+        }
+        updateResetButton()
+        
+        // 设置监听器 - 实时生效
         seekBarSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 tvSizeValue.text = "$progress%"
                 com.fam4k007.videoplayer.danmaku.DanmakuConfig.setSize(progress)
                 danmakuManager.updateSize()
+                updateResetButton()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
@@ -2477,6 +2515,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                 tvSpeedValue.text = "$progress%"
                 com.fam4k007.videoplayer.danmaku.DanmakuConfig.setSpeed(progress)
                 danmakuManager.updateSpeed()
+                updateResetButton()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
@@ -2487,6 +2526,7 @@ class VideoPlayerActivity : AppCompatActivity() {
                 tvAlphaValue.text = "$progress%"
                 com.fam4k007.videoplayer.danmaku.DanmakuConfig.setAlpha(progress)
                 danmakuManager.updateAlpha()
+                updateResetButton()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
@@ -2497,16 +2537,66 @@ class VideoPlayerActivity : AppCompatActivity() {
                 tvStrokeValue.text = "$progress%"
                 com.fam4k007.videoplayer.danmaku.DanmakuConfig.setStroke(progress)
                 danmakuManager.updateStroke()
+                updateResetButton()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
         
-        AlertDialog.Builder(this)
-            .setTitle("弹幕设置")
-            .setView(dialogView)
-            .setPositiveButton("确定", null)
-            .show()
+        // 重置按钮点击事件
+        btnReset.setOnClickListener {
+            seekBarSize.progress = defaultSize
+            seekBarSpeed.progress = defaultSpeed
+            seekBarAlpha.progress = defaultAlpha
+            seekBarStroke.progress = defaultStroke
+            tvSizeValue.text = "$defaultSize%"
+            tvSpeedValue.text = "$defaultSpeed%"
+            tvAlphaValue.text = "$defaultAlpha%"
+            tvStrokeValue.text = "$defaultStroke%"
+            com.fam4k007.videoplayer.danmaku.DanmakuConfig.setSize(defaultSize)
+            com.fam4k007.videoplayer.danmaku.DanmakuConfig.setSpeed(defaultSpeed)
+            com.fam4k007.videoplayer.danmaku.DanmakuConfig.setAlpha(defaultAlpha)
+            com.fam4k007.videoplayer.danmaku.DanmakuConfig.setStroke(defaultStroke)
+            danmakuManager.updateSize()
+            danmakuManager.updateSpeed()
+            danmakuManager.updateAlpha()
+            danmakuManager.updateStroke()
+            updateResetButton()
+        }
+        
+        // 配置对话框 - 与字幕杂项保持一致
+        dialog.setContentView(dialogView)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        // 获取屏幕宽度，设置对话框宽度（与字幕杂项一致）
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val dialogWidth = (screenWidth * 0.4).toInt().coerceIn(
+            (200 * displayMetrics.density).toInt(),
+            (450 * displayMetrics.density).toInt()
+        )
+        
+        // 将 dp 转换为 px
+        val marginRightDp = 65
+        val marginRightPx = (marginRightDp * displayMetrics.density).toInt()
+        
+        dialog.window?.setLayout(
+            dialogWidth,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        
+        // 设置对话框位置在右边界中部（与字幕杂项一致）
+        dialog.window?.setGravity(android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.RIGHT)
+        
+        // 设置右边距
+        val params = dialog.window?.attributes
+        params?.x = marginRightPx
+        dialog.window?.attributes = params
+        
+        // 点击外部关闭对话框
+        dialog.setCanceledOnTouchOutside(true)
+        
+        dialog.show()
     }
     
     override fun finish() {
