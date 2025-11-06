@@ -1,6 +1,14 @@
-MIT License
+DUAL LICENSE
 
-Copyright (c) 2025 FAM4K007
+Copyright (c) 2025 azxcvn (FAM4K007 Project)
+
+This project is dual-licensed under both the MIT License and the 
+GNU General Public License v3.0 (GPLv3). You may choose to use this 
+software under either license.
+
+================================================================================
+OPTION 1: MIT License
+================================================================================
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +27,87 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+================================================================================
+OPTION 2: GNU General Public License v3.0 (GPLv3)
+================================================================================
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+For the full text of the GNU General Public License v3.0, please visit:
+https://www.gnu.org/licenses/gpl-3.0.html
+
+================================================================================
+
+Third-Party Licenses and Attributions
+================================================================================
+
+This project incorporates or depends on the following open-source projects.
+Please refer to their respective licenses for terms and conditions.
+
+--------------------------------------------------------------------------------
+mpv - Video Player
+--------------------------------------------------------------------------------
+Copyright (c) mpv-player/mpv contributors
+License: GNU General Public License v2.0 or later (GPLv2+)
+Source: https://github.com/mpv-player/mpv
+
+Note: This project uses libmpv as a shared library. The use of libmpv under
+the LGPL license allows this project to remain under MIT license.
+
+--------------------------------------------------------------------------------
+mpv-android
+--------------------------------------------------------------------------------
+Copyright (c) mpv-android contributors
+License: GNU General Public License v3.0
+Source: https://github.com/mpv-android/mpv-android
+
+--------------------------------------------------------------------------------
+mpvKt
+--------------------------------------------------------------------------------
+Copyright (c) abdallahmehiz
+License: GNU General Public License v3.0
+Source: https://github.com/abdallahmehiz/mpvKt
+
+--------------------------------------------------------------------------------
+Anime4K - Upscaling/Denoising Shaders
+--------------------------------------------------------------------------------
+Copyright (c) 2019-2022 bloc97
+License: MIT License
+Source: https://github.com/bloc97/Anime4K
+
+--------------------------------------------------------------------------------
+DanmakuFlameMaster - Bilibili Danmaku Engine
+--------------------------------------------------------------------------------
+Copyright (c) 2015 Bilibili
+License: Apache License 2.0
+Source: https://github.com/bilibili/DanmakuFlameMaster
+
+--------------------------------------------------------------------------------
+DanDanPlayForAndroid
+--------------------------------------------------------------------------------
+Copyright (c) xyoye
+License: GNU General Public License v3.0
+Source: https://github.com/xyoye/DanDanPlayForAndroid
+
+================================================================================
+
+IMPORTANT NOTICE:
+Some dependencies of this project are licensed under the GNU General Public 
+License (GPL). While this project's original code is released under the MIT 
+License, the combined work may be subject to GPL terms when distributed as 
+a binary application. Users and distributors should be aware of and comply 
+with all applicable license requirements.
+
+================================================================================

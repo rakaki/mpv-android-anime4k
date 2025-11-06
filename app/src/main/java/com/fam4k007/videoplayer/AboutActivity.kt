@@ -91,6 +91,15 @@ class AboutActivity : BaseActivity() {
     private fun showAboutDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_about_detail, null)
         
+        // 动态获取并设置版本号
+        try {
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            val versionName = packageInfo.versionName
+            dialogView.findViewById<android.widget.TextView>(R.id.tvVersion).text = "Version $versionName"
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .create()

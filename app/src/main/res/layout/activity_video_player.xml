@@ -56,12 +56,12 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:layout_marginEnd="8dp" />
 
-            <!-- 左侧区域：标题（占2/3宽度） -->
+            <!-- 左侧区域:标题(占1/2宽度) -->
             <TextView
                 android:id="@+id/tvFileName"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="2"
+                android:layout_weight="1"
                 android:text="视频文件名"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp"
@@ -70,7 +70,7 @@
                 android:ellipsize="end"
                 android:lineSpacingMultiplier="0.85" />
 
-            <!-- 右侧区域：状态+按钮（占1/3宽度，预留导航栏空间） -->
+            <!-- 右侧区域:状态+按钮(占1/2宽度,预留导航栏空间) -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"

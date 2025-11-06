@@ -41,6 +41,7 @@
 
             <!-- 版本号 -->
             <TextView
+                android:id="@+id/tvVersion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Version 1.0.0"

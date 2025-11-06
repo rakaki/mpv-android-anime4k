@@ -116,7 +116,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="• 系统音量达最大值后继续向上滑动\n• 进入增强模式支持超过100%的音量\n• 最高可提升至200%音量\n• 音量指示器显示百分比(如150%)\n• 向下滑动降至100%以下自动退出"
+                        android:text="• 最高可提升至300%音量\n• 需在设置里开启\n• 系统音量达最大值后继续向上滑动\n• 进入增强模式支持超过100%的音量\n• 音量指示器显示百分比(如150%)"
                         android:textSize="14sp"
                         android:textColor="#7F8C8D"
                         android:lineSpacingExtra="6dp"
@@ -178,7 +178,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="• 单击屏幕 - 显示/隐藏控制面板\n• 双击屏幕 - 暂停/播放\n• 长按屏幕 - 2倍速播放(松开恢复)\n• 左右滑动 - 调整进度(100px = 5秒)"
+                        android:text="• 单击屏幕 - 显示/隐藏控制面板\n• 双击屏幕 - 暂停/播放\n• 长按屏幕 - 2倍速播放(松开恢复)\n• 左右滑动 - 调整进度(100px = 5秒)\n• 长按倍速与快进后退的时间可以在设置里设置"
                         android:textSize="14sp"
                         android:textColor="#7F8C8D"
                         android:lineSpacingExtra="6dp"
@@ -307,6 +307,68 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="• Anime4K 专为 1080p 原生动画优化\n• 首次使用建议「模式 B + 平衡」\n• 视频模糊尝试模式 A (强力重建)\n• 视频有噪点尝试模式 C (降噪)\n• 卡顿时降低质量或切换基础模式\n• 不同视频源效果不同，多尝试"
+                        android:textSize="14sp"
+                        android:textColor="#7F8C8D"
+                        android:lineSpacingExtra="6dp"
+                        android:layout_marginLeft="8dp" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 字幕样式设置说明 - 卡片4 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginLeft="12dp"
+                android:layout_marginRight="12dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/card_background"
+                android:elevation="2dp"
+                android:padding="20dp">
+
+                <!-- 分类标题 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <View
+                        android:layout_width="4dp"
+                        android:layout_height="24dp"
+                        android:background="#F39C12"
+                        android:layout_marginRight="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📝 字幕样式设置"
+                        android:textSize="18sp"
+                        android:textColor="#2C3E50"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 内容 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="样式设置需知"
+                        android:textSize="15sp"
+                        android:textColor="#34495E"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="• 如果调整样式后发现无效果,请在更多设置里打开样式覆盖\n• 样式设置里文本颜色、描边颜色、背景颜色均可以自定义颜色\n• 请点击色块旁边的铅笔按钮展开自定义颜色选择器"
                         android:textSize="14sp"
                         android:textColor="#7F8C8D"
                         android:lineSpacingExtra="6dp"
