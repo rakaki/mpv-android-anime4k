@@ -1,16 +1,8 @@
-# FAMPV4K - Local Video Player
+# XiaoMiao Player - Local Video Player
+
+**[中文版本](README.md) | [English Version](README_EN.md)**
 
 An Android local video player based on libmpv, supporting multiple video formats, subtitle processing, gesture controls, and real-time upscaling features.
-
-## About the Name
-
-**FAMPV4K** is an abbreviation for **For Anime Media Player Video 4K**:
-- **F**or - For
-- **A**nime - Anime
-- **M**edia - Media
-- **P**layer - Player
-- **V**ideo - Video
-- **4K** - Ultra high definition resolution
 
 This project aims to optimize and upscale anime-style videos, though it can also be used as a regular video player.
 
@@ -105,6 +97,6 @@ If you encounter any issues or have suggestions, please feel free to report them
 
 ---
 
-**Last Updated:** 2025-11-05
+**Last Updated:** 2025-11-06
 
 **[中文版本](README.md) | [English Version](README_EN.md)**

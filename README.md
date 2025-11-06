@@ -1,18 +1,8 @@
-# FAMPV4K - 本地动漫视频实时超分播放器
+# 小喵player - 本地动漫视频实时超分播放器
 
 **[中文版本](README.md) | [English Version](README_EN.md)**
 
 一个基于 libmpv 的 Android 本地视频播放器，支持多种视频格式、字幕处理、手势控制和实时超分等功能。
-
-## 软件名称
-
-**FAMPV4K** 是 **For Anime Media Player Video 4K** 的首字母简称：
-- **F**or - 为了
-- **A**nime - 动画
-- **M**edia - 媒体
-- **P**layer - 播放器
-- **V**ideo - 视频
-- **4K** - 超高清分辨率
 
 本项目旨在将二次元动漫/动画/番剧风格的视频进行优化超分，当然你也可以当作普通的播放器使用。
 
@@ -106,4 +96,4 @@
 
 ---
 
-**Last Updated:** 2025-11-05
+**Last Updated:** 2025-11-06
