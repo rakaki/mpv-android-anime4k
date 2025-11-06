@@ -157,8 +157,22 @@ class VideoPlayerActivity : AppCompatActivity() {
         // 读取用户设置
         loadUserSettings()
 
-        // 获取视频URI
-        videoUri = intent.data
+        // 获取视频URI - 支持多种Intent类型
+        videoUri = when {
+            // ACTION_VIEW - 从文件管理器或浏览器打开
+            intent.action == android.content.Intent.ACTION_VIEW -> intent.data
+            // ACTION_SEND - 从分享功能打开
+            intent.action == android.content.Intent.ACTION_SEND -> {
+                if (intent.type?.startsWith("video/") == true || intent.type?.startsWith("audio/") == true) {
+                    intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM)
+                } else {
+                    intent.data
+                }
+            }
+            // 默认 - 从应用内部打开
+            else -> intent.data
+        }
+        
         if (videoUri == null) {
             DialogUtils.showToastShort(this, "无效的视频路径")
             finish()
