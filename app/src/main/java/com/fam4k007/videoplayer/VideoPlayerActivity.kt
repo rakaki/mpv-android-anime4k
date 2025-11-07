@@ -81,6 +81,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     // ========== 数据 ==========
     private var videoUri: Uri? = null
     private lateinit var preferencesManager: PreferencesManager
+    private lateinit var historyManager: PlaybackHistoryManager
     private val subtitleManager = SubtitleManager()
     private var savedPosition = 0.0
     private var hasRestoredPosition = false
@@ -145,6 +146,9 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         // 初始化PreferencesManager
         preferencesManager = PreferencesManager.getInstance(this)
+        
+        // 初始化 PlaybackHistoryManager
+        historyManager = PlaybackHistoryManager(this)
         
         // 初始化字幕文件选择器
         initializeSubtitleFilePicker()
@@ -280,6 +284,10 @@ class VideoPlayerActivity : AppCompatActivity() {
                     // 视频加载完成
                     isPlaying = true
                     controlsManager?.updatePlayPauseButton(true)
+                    
+                    // 启动弹幕（参考 DanDanPlay 在视频开始播放时启动弹幕）
+                    danmakuManager.start()
+                    Log.d(TAG, "Danmaku started on video loaded")
                 }
                 
                 override fun onEndOfFile() {
@@ -608,6 +616,15 @@ class VideoPlayerActivity : AppCompatActivity() {
             // 加载弹幕文件
             loadDanmakuForVideo(uri)
             
+            // 延迟同步弹幕进度（等待视频和弹幕加载完成）
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                // 同步弹幕到当前播放位置
+                if (position > 0) {
+                    danmakuManager.seekTo((position * 1000).toLong())
+                    Log.d(TAG, "Synced danmaku to position: $position seconds")
+                }
+            }, 800)
+            
             // 延迟恢复字幕设置（等待视频加载完成）
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 restoreSubtitlePreferences(uri)
@@ -617,16 +634,57 @@ class VideoPlayerActivity : AppCompatActivity() {
     
     /**
      * 加载视频对应的弹幕文件
+     * 参考 DanDanPlay 的弹幕加载逻辑：优先使用历史记录，其次自动查找
      */
     private fun loadDanmakuForVideo(videoUri: android.net.Uri) {
         try {
-            val videoPath = videoUri.resolveUri(this)
-            if (videoPath != null) {
-                Log.d(TAG, "Loading danmaku for video: $videoPath")
-                danmakuManager.loadDanmakuForVideo(videoUri.toString(), videoPath)
+            Log.d(TAG, "Loading danmaku for video: $videoUri")
+            
+            // 1. 先从历史记录恢复弹幕（参考 DanDanPlay 的 PlayRecorder）
+            val history = historyManager.getHistoryForUri(videoUri)
+            
+            if (history?.danmuPath != null && File(history.danmuPath).exists()) {
+                // 加载历史记录中的弹幕文件
+                Log.d(TAG, "Restoring danmaku from history: ${history.danmuPath}")
+                val loaded = danmakuManager.loadDanmakuFile(
+                    history.danmuPath,
+                    autoShow = history.danmuVisible  // 恢复显示状态
+                )
+                
+                if (loaded) {
+                    Log.d(TAG, "Danmaku restored successfully, visible: ${history.danmuVisible}")
+                    
+                    // TODO: 应用时间偏移（如果需要）
+                    // if (history.danmuOffsetTime != 0L) {
+                    //     danmakuManager.setOffsetTime(history.danmuOffsetTime)
+                    // }
+                } else {
+                    Log.w(TAG, "Failed to restore danmaku, trying auto-find")
+                    // 加载失败，尝试自动查找
+                    autoFindAndLoadDanmaku(videoUri)
+                }
+            } else {
+                // 2. 没有历史记录或文件不存在，自动查找同名弹幕
+                Log.d(TAG, "No danmaku history found, auto-finding...")
+                autoFindAndLoadDanmaku(videoUri)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading danmaku", e)
+        }
+    }
+    
+    /**
+     * 自动查找并加载同名弹幕文件
+     */
+    private fun autoFindAndLoadDanmaku(videoUri: android.net.Uri) {
+        try {
+            val videoPath = videoUri.resolveUri(this)
+            if (videoPath != null) {
+                Log.d(TAG, "Auto-finding danmaku for: $videoPath")
+                danmakuManager.loadDanmakuForVideo(videoUri.toString(), videoPath)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error auto-finding danmaku", e)
         }
     }
     
@@ -993,6 +1051,16 @@ class VideoPlayerActivity : AppCompatActivity() {
                                 DialogUtils.showToastShort(this, "弹幕加载成功: $fileName")
                                 Log.d(TAG, "Danmaku loaded successfully: $fileName")
                                 
+                                // 保存弹幕路径到历史记录（参考 DanDanPlay 的 updateDanmu）
+                                videoUri?.let { uri ->
+                                    historyManager.updateDanmu(
+                                        uri = uri,
+                                        danmuPath = cachedFile.absolutePath,
+                                        danmuVisible = true
+                                    )
+                                    Log.d(TAG, "Danmaku path saved to history")
+                                }
+                                
                                 // 启动弹幕
                                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                                     danmakuManager.start()
@@ -1028,11 +1096,15 @@ class VideoPlayerActivity : AppCompatActivity() {
     
     /**
      * 复制弹幕文件到缓存目录
+     * 优化：使用视频 URI 哈希避免不同视频的弹幕文件冲突（参考 DanDanPlay）
      */
     private fun copyDanmakuToCache(uri: Uri, fileName: String): File? {
         try {
             val inputStream = contentResolver.openInputStream(uri) ?: return null
-            val cacheFile = File(cacheDir, "danmaku_$fileName")
+            
+            // 使用视频 URI 的哈希值作为前缀，避免冲突
+            val videoHash = videoUri?.toString()?.hashCode()?.toString(16) ?: "unknown"
+            val cacheFile = File(cacheDir, "danmaku_${videoHash}_$fileName")
             
             cacheFile.outputStream().use { output ->
                 inputStream.copyTo(output)
@@ -1942,8 +2014,10 @@ class VideoPlayerActivity : AppCompatActivity() {
         danmakuManager.pause()
         // 保存当前播放进度
         savePlaybackPosition()
-        // 保存播放历史
+        // 保存播放历史（包括弹幕状态 - 参考 DanDanPlay 的 PlayRecorder）
         savePlaybackHistory()
+        // 保存弹幕状态
+        saveDanmakuState()
         
         Log.d(TAG, "Activity paused, isFinishing: $isFinishing")
     }
@@ -1954,6 +2028,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         savePlaybackPosition()
         // 保存播放历史
         savePlaybackHistory()
+        // 保存弹幕状态
+        saveDanmakuState()
         
         Log.d(TAG, "Activity stopped, isFinishing: $isFinishing")
     }
@@ -1978,7 +2054,6 @@ class VideoPlayerActivity : AppCompatActivity() {
     private fun savePlaybackHistory() {
         videoUri?.let { uri ->
             if (duration > 5.0) {  // 只保存时长大于5秒的视频
-                val historyManager = PlaybackHistoryManager(this)
                 val fileName = getFileNameFromUri(uri)
                 val folderName = intent.getStringExtra("folderName") ?: "未知文件夹"
                 
@@ -1991,6 +2066,31 @@ class VideoPlayerActivity : AppCompatActivity() {
                 )
                 Log.d(TAG, "Saved to playback history: $fileName")
             }
+        }
+    }
+
+    /**
+     * 保存弹幕状态（参考 DanDanPlay 的 PlayRecorder.recordProgress）
+     */
+    private fun saveDanmakuState() {
+        val uri = videoUri ?: return
+        
+        try {
+            val currentPath = danmakuManager.getCurrentDanmakuPath()
+            val isVisible = danmakuManager.isVisible()
+            
+            // 只有当弹幕已加载时才保存
+            if (currentPath != null) {
+                historyManager.updateDanmu(
+                    uri = uri,
+                    danmuPath = currentPath,
+                    danmuVisible = isVisible,
+                    danmuOffsetTime = 0L  // TODO: 如果需要支持视频独立偏移，在此设置
+                )
+                Log.d(TAG, "Danmaku state saved: path=$currentPath, visible=$isVisible")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save danmaku state", e)
         }
     }
 

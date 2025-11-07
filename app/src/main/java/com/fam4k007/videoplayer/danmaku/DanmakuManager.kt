@@ -18,6 +18,9 @@ class DanmakuManager(
     }
 
     private var isInitialized = false
+    
+    // 记录当前加载的弹幕文件路径（参考 DanDanPlay 的 mAddedTrack）
+    private var currentDanmakuPath: String? = null
 
     /**
      * 初始化弹幕配置
@@ -53,7 +56,7 @@ class DanmakuManager(
      * 加载弹幕文件
      * 自动根据视频文件路径查找同名的 .xml 弹幕文件
      */
-    fun loadDanmakuForVideo(videoUri: String, videoPath: String): Boolean {
+    fun loadDanmakuForVideo(videoUri: String, videoPath: String, autoShow: Boolean = true): Boolean {
         if (!isInitialized) {
             Log.e(TAG, "DanmakuManager not initialized")
             return false
@@ -74,17 +77,23 @@ class DanmakuManager(
         // 加载弹幕
         val loaded = danmakuView.loadDanmaku(danmakuFile.absolutePath)
         if (loaded) {
-            // 默认显示弹幕
-            danmakuView.show()
-            Log.d(TAG, "Danmaku loaded and shown: ${danmakuFile.absolutePath}")
+            currentDanmakuPath = danmakuFile.absolutePath
+            // 根据参数决定是否自动显示（参考 DanDanPlay 的 setTrackSelected）
+            if (autoShow) {
+                danmakuView.show()
+                Log.d(TAG, "Danmaku loaded and shown: ${danmakuFile.absolutePath}")
+            } else {
+                Log.d(TAG, "Danmaku loaded (hidden): ${danmakuFile.absolutePath}")
+            }
         }
         return loaded
     }
 
     /**
-     * 加载指定的弹幕文件（用户手动选择）
+     * 加载指定的弹幕文件（用户手动选择或历史恢复）
+     * 参考 DanDanPlay 的 addTrack 方法
      */
-    fun loadDanmakuFile(danmakuPath: String): Boolean {
+    fun loadDanmakuFile(danmakuPath: String, autoShow: Boolean = true): Boolean {
         if (!isInitialized) {
             Log.e(TAG, "DanmakuManager not initialized")
             return false
@@ -92,10 +101,15 @@ class DanmakuManager(
 
         val loaded = danmakuView.loadDanmaku(danmakuPath)
         
-        // 如果加载成功，自动显示弹幕
+        // 如果加载成功，记录路径并根据参数决定是否显示
         if (loaded) {
-            danmakuView.show()
-            Log.d(TAG, "Danmaku loaded and automatically shown")
+            currentDanmakuPath = danmakuPath
+            if (autoShow) {
+                danmakuView.show()
+                Log.d(TAG, "Danmaku loaded and shown: $danmakuPath")
+            } else {
+                Log.d(TAG, "Danmaku loaded (hidden): $danmakuPath")
+            }
         }
         
         return loaded
@@ -199,9 +213,17 @@ class DanmakuManager(
     }
 
     /**
+     * 获取当前加载的弹幕文件路径（参考 DanDanPlay 的 getAddedTrack）
+     */
+    fun getCurrentDanmakuPath(): String? {
+        return currentDanmakuPath
+    }
+
+    /**
      * 释放资源
      */
     fun release() {
+        currentDanmakuPath = null
         danmakuView.releaseDanmaku()
     }
 

@@ -28,7 +28,10 @@ class PlaybackHistoryManager(context: Context) {
         val position: Long,      // 播放位置（毫秒）
         val duration: Long,      // 总时长（毫秒）
         val lastPlayed: Long,    // 最后播放时间戳
-        val folderName: String   // 所属文件夹
+        val folderName: String,  // 所属文件夹
+        val danmuPath: String? = null,        // 弹幕文件路径（参考 DanDanPlay）
+        val danmuVisible: Boolean = true,     // 弹幕显示状态（参考 DanDanPlay）
+        val danmuOffsetTime: Long = 0L        // 弹幕时间偏移（毫秒，参考 DanDanPlay）
     ) {
         fun toJson(): JSONObject {
             return JSONObject().apply {
@@ -38,6 +41,10 @@ class PlaybackHistoryManager(context: Context) {
                 put("duration", duration)
                 put("lastPlayed", lastPlayed)
                 put("folderName", folderName)
+                // 弹幕相关字段（参考 DanDanPlay 的 PlayHistoryEntity）
+                put("danmuPath", danmuPath ?: "")
+                put("danmuVisible", danmuVisible)
+                put("danmuOffsetTime", danmuOffsetTime)
             }
         }
 
@@ -49,7 +56,11 @@ class PlaybackHistoryManager(context: Context) {
                     position = json.getLong("position"),
                     duration = json.getLong("duration"),
                     lastPlayed = json.getLong("lastPlayed"),
-                    folderName = json.optString("folderName", "未知文件夹")
+                    folderName = json.optString("folderName", "未知文件夹"),
+                    // 兼容旧数据：使用 optString/optBoolean/optLong
+                    danmuPath = json.optString("danmuPath", null).takeIf { it?.isNotEmpty() == true },
+                    danmuVisible = json.optBoolean("danmuVisible", true),
+                    danmuOffsetTime = json.optLong("danmuOffsetTime", 0L)
                 )
             }
         }
@@ -257,6 +268,53 @@ class PlaybackHistoryManager(context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save history", e)
             // 降级处理：不中断主流程
+        }
+    }
+
+    /**
+     * 更新弹幕信息（参考 DanDanPlay 的 PlayHistoryDao.updateDanmu）
+     */
+    fun updateDanmu(
+        uri: Uri,
+        danmuPath: String?,
+        danmuVisible: Boolean = true,
+        danmuOffsetTime: Long = 0L
+    ) {
+        try {
+            val history = getHistory().toMutableList()
+            val uriString = uri.toString()
+            
+            // 查找对应的历史记录
+            val index = history.indexOfFirst { it.uri == uriString }
+            if (index >= 0) {
+                val oldItem = history[index]
+                // 创建新的 HistoryItem（只更新弹幕相关字段）
+                val newItem = oldItem.copy(
+                    danmuPath = danmuPath,
+                    danmuVisible = danmuVisible,
+                    danmuOffsetTime = danmuOffsetTime
+                )
+                history[index] = newItem
+                saveHistory(history)
+                Log.d(TAG, "Danmu info updated for: ${oldItem.fileName}, path: $danmuPath, visible: $danmuVisible")
+            } else {
+                Log.w(TAG, "No history found for URI: $uriString")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update danmu info", e)
+        }
+    }
+
+    /**
+     * 获取指定 URI 的历史记录（用于恢复弹幕状态）
+     */
+    fun getHistoryForUri(uri: Uri): HistoryItem? {
+        return try {
+            val uriString = uri.toString()
+            getHistory().firstOrNull { it.uri == uriString }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get history for URI", e)
+            null
         }
     }
 }
