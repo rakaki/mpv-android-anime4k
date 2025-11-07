@@ -2,6 +2,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
 }
 
 apply plugin: 'kotlin-parcelize'
@@ -88,6 +89,10 @@ dependencies {
     // Lifecycle and Coroutines
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    // Room Database
+    implementation 'androidx.room:room-runtime:2.5.2'
+    implementation 'androidx.room:room-ktx:2.5.2'
+    kapt 'androidx.room:room-compiler:2.5.2'
     // If you use annotation processing for Glide's generated API, enable kapt and add the compiler below:
     // kapt 'com.github.bumptech.glide:compiler:4.15.1'
 }

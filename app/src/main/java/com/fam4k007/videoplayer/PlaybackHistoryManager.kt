@@ -31,7 +31,8 @@ class PlaybackHistoryManager(context: Context) {
         val folderName: String,  // 所属文件夹
         val danmuPath: String? = null,        // 弹幕文件路径（参考 DanDanPlay）
         val danmuVisible: Boolean = true,     // 弹幕显示状态（参考 DanDanPlay）
-        val danmuOffsetTime: Long = 0L        // 弹幕时间偏移（毫秒，参考 DanDanPlay）
+        val danmuOffsetTime: Long = 0L,       // 弹幕时间偏移（毫秒，参考 DanDanPlay）
+        val thumbnailPath: String? = null     // 视频缩略图路径（在当前播放位置截取）
     ) {
         fun toJson(): JSONObject {
             return JSONObject().apply {
@@ -45,6 +46,8 @@ class PlaybackHistoryManager(context: Context) {
                 put("danmuPath", danmuPath ?: "")
                 put("danmuVisible", danmuVisible)
                 put("danmuOffsetTime", danmuOffsetTime)
+                // 缩略图路径
+                put("thumbnailPath", thumbnailPath ?: "")
             }
         }
 
@@ -60,7 +63,8 @@ class PlaybackHistoryManager(context: Context) {
                     // 兼容旧数据：使用 optString/optBoolean/optLong
                     danmuPath = json.optString("danmuPath", null).takeIf { it?.isNotEmpty() == true },
                     danmuVisible = json.optBoolean("danmuVisible", true),
-                    danmuOffsetTime = json.optLong("danmuOffsetTime", 0L)
+                    danmuOffsetTime = json.optLong("danmuOffsetTime", 0L),
+                    thumbnailPath = json.optString("thumbnailPath", null).takeIf { it?.isNotEmpty() == true }
                 )
             }
         }
@@ -302,6 +306,30 @@ class PlaybackHistoryManager(context: Context) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update danmu info", e)
+        }
+    }
+
+    /**
+     * 更新视频缩略图路径
+     */
+    fun updateThumbnail(uri: Uri, thumbnailPath: String?) {
+        try {
+            val history = getHistory().toMutableList()
+            val uriString = uri.toString()
+            
+            // 查找对应的历史记录
+            val index = history.indexOfFirst { it.uri == uriString }
+            if (index >= 0) {
+                val oldItem = history[index]
+                val newItem = oldItem.copy(thumbnailPath = thumbnailPath)
+                history[index] = newItem
+                saveHistory(history)
+                Log.d(TAG, "Thumbnail updated for: ${oldItem.fileName}, path: $thumbnailPath")
+            } else {
+                Log.w(TAG, "No history found for URI: $uriString")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update thumbnail", e)
         }
     }
 
