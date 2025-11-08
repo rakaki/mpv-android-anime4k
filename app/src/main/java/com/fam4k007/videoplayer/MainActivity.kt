@@ -5,20 +5,21 @@ import android.os.Bundle
 import android.widget.Toast
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import com.fam4k007.videoplayer.databinding.ActivityMainBinding
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.fam4k007.videoplayer.utils.ThemeManager
 
 class MainActivity : AppCompatActivity() {
     
-    private lateinit var bottomNav: BottomNavigationView
+    private lateinit var binding: ActivityMainBinding
     
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        bottomNav = findViewById(R.id.bottomNavigationView)
-        val btnSelectVideo = findViewById<Button>(R.id.btnSelectVideo)
-        bottomNav.setOnNavigationItemSelectedListener {
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        
+        binding.bottomNavigationView.setOnNavigationItemSelectedListener {
             when (it.itemId) {
                 R.id.nav_home -> true
                 R.id.nav_settings -> {
@@ -30,7 +31,8 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
-        btnSelectVideo.setOnClickListener {
+        
+        binding.btnSelectVideo.setOnClickListener {
             // 打开视频浏览器
             val intent = android.content.Intent(this, VideoBrowserActivity::class.java)
             startActivity(intent)
@@ -41,6 +43,6 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         // 从设置页面返回时,重置底部导航栏到主页状态
-        bottomNav.selectedItemId = R.id.nav_home
+        binding.bottomNavigationView.selectedItemId = R.id.nav_home
     }
 }

@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.lifecycle.lifecycleScope
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.fam4k007.videoplayer.databinding.ActivityVideoListBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -26,15 +27,7 @@ class VideoListActivity : AppCompatActivity() {
         private const val TAG = "VideoListActivity"
     }
 
-    private lateinit var rvVideoList: RecyclerView
-    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
-    private lateinit var tvFolderTitle: TextView
-    private lateinit var btnBack: View
-    private lateinit var btnSort: View
-    private lateinit var btnSearch: View
-    private lateinit var searchOverlay: View
-    private lateinit var etSearchOverlay: android.widget.EditText
-    private lateinit var btnClearSearchOverlay: android.widget.ImageView
+    private lateinit var binding: ActivityVideoListBinding
 
     private val videoList = mutableListOf<VideoFileParcelable>()
     private val filteredList = mutableListOf<VideoFileParcelable>()
@@ -55,7 +48,8 @@ class VideoListActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_video_list)
+        binding = ActivityVideoListBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         // 初始化 PreferencesManager
         preferencesManager = com.fam4k007.videoplayer.manager.PreferencesManager.getInstance(this)
@@ -69,71 +63,61 @@ class VideoListActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
-        rvVideoList = findViewById(R.id.rvVideoList)
-        swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
-        tvFolderTitle = findViewById(R.id.tvFolderTitle)
-        btnBack = findViewById(R.id.btnBack)
-        btnSort = findViewById(R.id.btnSort)
-        btnSearch = findViewById(R.id.btnSearch)
-        searchOverlay = findViewById(R.id.searchOverlay)
-        etSearchOverlay = findViewById(R.id.etSearchOverlay)
-        btnClearSearchOverlay = findViewById(R.id.btnClearSearchOverlay)
-
-        btnBack.setOnClickListener { handleBackPressed() }
-        btnSort.setOnClickListener { showSortDialog() }
-        btnSearch.setOnClickListener { showSearchOverlay() }
+        binding.btnBack.setOnClickListener { handleBackPressed() }
+        binding.btnSort.setOnClickListener { showSortDialog() }
+        binding.btnSearch.setOnClickListener { showSearchOverlay() }
         
         // 设置下拉刷新动画（无实际刷新，仅动画，延长时间）
-        swipeRefreshLayout.setOnRefreshListener {
-            swipeRefreshLayout.postDelayed({
-                swipeRefreshLayout.isRefreshing = false
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            binding.swipeRefreshLayout.postDelayed({
+                binding.swipeRefreshLayout.isRefreshing = false
             }, 800)
         }
-        swipeRefreshLayout.setColorSchemeResources(
+        binding.swipeRefreshLayout.setColorSchemeResources(
             R.color.primary,
             R.color.accent,
             R.color.primary
         )
         
         // 搜索框监听
-        etSearchOverlay.addTextChangedListener(object : android.text.TextWatcher {
+        binding.etSearchOverlay.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: android.text.Editable?) {
                 val query = s?.toString() ?: ""
-                btnClearSearchOverlay.visibility = if (query.isEmpty()) View.GONE else View.VISIBLE
+                binding.btnClearSearchOverlay.visibility = if (query.isEmpty()) View.GONE else View.VISIBLE
                 filterVideos(query)
             }
         })
         
         // 搜索框焦点监听 - 检测是否处于输入状态
-        etSearchOverlay.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus && etSearchOverlay.text.isEmpty()) {
+        binding.etSearchOverlay.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus && binding.etSearchOverlay.text.isEmpty()) {
                 // 失去焦点且内容为空时，自动隐藏输入法
                 hideKeyboard()
             }
         }
         
-        btnClearSearchOverlay.setOnClickListener {
-            etSearchOverlay.text.clear()
+        binding.btnClearSearchOverlay.setOnClickListener {
+            binding.etSearchOverlay.text.clear()
         }
     }
     
     private fun showSearchOverlay() {
         isSearchMode = true
-        searchOverlay.visibility = View.VISIBLE
-        etSearchOverlay.requestFocus()
+        binding.searchOverlay.visibility = View.VISIBLE
+        binding.etSearchOverlay.requestFocus()
         
         // 显示输入法
         val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-        imm.showSoftInput(etSearchOverlay, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        imm.showSoftInput(binding.etSearchOverlay, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
     }
     
     private fun hideSearchOverlay() {
         isSearchMode = false
-        searchOverlay.visibility = View.GONE
-        etSearchOverlay.text.clear()
-        etSearchOverlay.clearFocus()
+        binding.searchOverlay.visibility = View.GONE
+        binding.etSearchOverlay.text.clear()
+        binding.etSearchOverlay.clearFocus()
         hideKeyboard()
         
         // 恢复显示所有视频
@@ -142,7 +126,7 @@ class VideoListActivity : AppCompatActivity() {
     
     private fun hideKeyboard() {
         val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-        imm.hideSoftInputFromWindow(etSearchOverlay.windowToken, 0)
+        imm.hideSoftInputFromWindow(binding.etSearchOverlay.windowToken, 0)
     }
     
     private fun handleBackPressed() {
@@ -191,7 +175,7 @@ class VideoListActivity : AppCompatActivity() {
         val folderName = intent.getStringExtra("folder_name") ?: "视频列表"
         val videos = intent.getParcelableArrayListExtra<VideoFileParcelable>("video_list") ?: arrayListOf()
 
-        tvFolderTitle.text = folderName
+        binding.tvFolderTitle.text = folderName
         videoList.addAll(videos)
         
         Log.d(TAG, "加载文件夹: $folderName, 包含 ${videos.size} 个视频")
@@ -235,8 +219,8 @@ class VideoListActivity : AppCompatActivity() {
                 showVideoInfoDialog(video)
             }
         )
-        rvVideoList.layoutManager = LinearLayoutManager(this)
-        rvVideoList.adapter = adapter
+        binding.rvVideoList.layoutManager = LinearLayoutManager(this)
+        binding.rvVideoList.adapter = adapter
     }
 
     private fun openVideoPlayer(video: VideoFileParcelable, currentIndex: Int) {
@@ -246,7 +230,7 @@ class VideoListActivity : AppCompatActivity() {
         intent.data = Uri.parse(video.uri)
         intent.putExtra("video_name", video.name)
         intent.putExtra("current_index", currentIndex)
-        intent.putExtra("folderName", tvFolderTitle.text.toString())  // 传递文件夹名称
+        intent.putExtra("folderName", binding.tvFolderTitle.text.toString())  // 传递文件夹名称
         intent.putParcelableArrayListExtra("video_list", ArrayList(videoList))
         startActivity(intent)
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -313,7 +297,7 @@ class VideoListActivity : AppCompatActivity() {
         
         // 获取排序按钮在屏幕上的位置
         val location = IntArray(2)
-        btnSort.getLocationOnScreen(location)
+        binding.btnSort.getLocationOnScreen(location)
         val anchorX = location[0]
         val anchorY = location[1]
         
@@ -322,15 +306,15 @@ class VideoListActivity : AppCompatActivity() {
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
-        val dialogWidth = view.measuredWidth.coerceAtLeast(btnSort.width)
+        val dialogWidth = view.measuredWidth.coerceAtLeast(binding.btnSort.width)
         val dialogHeight = view.measuredHeight
         
         // 设置对话框位置在排序按钮下方
         val window = dialog.window
         val layoutParams = window?.attributes
         layoutParams?.gravity = android.view.Gravity.TOP or android.view.Gravity.START
-        layoutParams?.x = anchorX + (btnSort.width - dialogWidth) / 2
-        layoutParams?.y = anchorY + btnSort.height + 10 // 显示在按钮下方，留10px间距
+        layoutParams?.x = anchorX + (binding.btnSort.width - dialogWidth) / 2
+        layoutParams?.y = anchorY + binding.btnSort.height + 10 // 显示在按钮下方，留10px间距
         layoutParams?.width = dialogWidth
         layoutParams?.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
         window?.attributes = layoutParams
@@ -365,7 +349,7 @@ class VideoListActivity : AppCompatActivity() {
         videoList.addAll(sortedList)
         
         // 同步更新过滤列表
-        val query = etSearchOverlay.text.toString()
+        val query = binding.etSearchOverlay.text.toString()
         if (query.isEmpty()) {
             filteredList.clear()
             filteredList.addAll(videoList)
@@ -405,7 +389,7 @@ class VideoListActivity : AppCompatActivity() {
         videoList.addAll(sortedList)
         
         // 同步更新过滤列表
-        val query = etSearchOverlay.text.toString()
+        val query = binding.etSearchOverlay.text.toString()
         if (query.isEmpty()) {
             filteredList.clear()
             filteredList.addAll(videoList)
@@ -584,18 +568,18 @@ class VideoListActivity : AppCompatActivity() {
                             // 重新应用当前排序
                             sortVideoList()
                             
-                            swipeRefreshLayout.isRefreshing = false
+                            binding.swipeRefreshLayout.isRefreshing = false
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            swipeRefreshLayout.isRefreshing = false
+                            binding.swipeRefreshLayout.isRefreshing = false
                         }
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "刷新视频列表失败", e)
                 withContext(Dispatchers.Main) {
-                    swipeRefreshLayout.isRefreshing = false
+                    binding.swipeRefreshLayout.isRefreshing = false
                 }
             }
         }

@@ -14,9 +14,9 @@ class Anime4KManager(private val context: Context) {
 
     // 着色器质量等级
     enum class Quality(val suffix: String) {
-        FAST("S"),      // 快速（Small�?
-        BALANCED("M"),  // 平衡（Medium�?
-        HIGH("L")       // 高质量（Large�?
+        FAST("S"),      // 快速（Small）
+        BALANCED("M"),  // 平衡（Medium）
+        HIGH("L")       // 高质量（Large）
     }
 
     // Anime4K模式
@@ -25,8 +25,8 @@ class Anime4KManager(private val context: Context) {
         A,      // 优化1080p动画
         B,      // 优化720p动画
         C,      // 优化480p动画
-        A_PLUS, // A+A 最高感知质�?
-        B_PLUS, // B+B 高感知质�?
+        A_PLUS, // A+A 最高感知质量
+        B_PLUS, // B+B 高感知质量
         C_PLUS  // C+A 略高感知质量
     }
 
@@ -35,7 +35,7 @@ class Anime4KManager(private val context: Context) {
     private var currentQuality: Quality = Quality.BALANCED
 
     /**
-     * 初始化：将着色器从assets复制到内部存�?
+     * 初始化：将着色器从assets复制到内部存储
      */
     fun initialize(): Boolean {
         return try {
@@ -79,7 +79,7 @@ class Anime4KManager(private val context: Context) {
     }
 
     /**
-     * 获取指定模式和质量的着色器�?
+     * 获取指定模式和质量的着色器链
      */
     fun getShaderChain(mode: Mode, quality: Quality): String {
         if (mode == Mode.OFF) {
@@ -146,7 +146,7 @@ class Anime4KManager(private val context: Context) {
                 shaders.add(getShaderPath("Anime4K_Upscale_CNN_x2_$q.glsl"))
             }
             Mode.OFF -> {
-                // 已在开头处�?
+                // 已在开头处理
             }
         }
 
@@ -180,9 +180,9 @@ class Anime4KManager(private val context: Context) {
      */
     fun getQualityDescription(quality: Quality): String {
         return when (quality) {
-            Quality.FAST -> "快�?(S) - 低GPU占用"
+            Quality.FAST -> "快速(S) - 低GPU占用"
             Quality.BALANCED -> "平衡 (M) - 推荐"
-            Quality.HIGH -> "高质�?(L) - 高GPU占用"
+            Quality.HIGH -> "高质量(L) - 高GPU占用"
         }
     }
 

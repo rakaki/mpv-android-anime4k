@@ -248,8 +248,8 @@ class GestureHandler(
             hideIndicatorDelayed(brightnessIndicator, 1500)
             hideIndicatorDelayed(volumeIndicator, 1500)
             
-            // 延迟重置手势标志
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            // 使用已有handler延迟重置手势标志
+            hideHandler.postDelayed({
                 isAdjusting = false
             }, 100)
         }

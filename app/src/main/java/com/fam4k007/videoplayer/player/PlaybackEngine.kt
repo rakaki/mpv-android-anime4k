@@ -251,8 +251,8 @@ class PlaybackEngine(
             MPVLib.command("seek", safeTargetPos.toString(), "absolute")
             Log.d(TAG, "Seek by: $seconds, position before: $currentPos, target: $targetPos, safe target: $safeTargetPos")
             
-            // 异步检查seek后的位置
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            // 使用已有handler异步检查seek后的位置
+            handler.postDelayed({
                 try {
                     val newPos = MPVLib.getPropertyDouble("time-pos") ?: currentPos
                     val actualDiff = newPos - currentPos
@@ -292,6 +292,33 @@ class PlaybackEngine(
     fun setAudioTrack(trackId: Int) {
         MPVLib.setPropertyInt("aid", trackId)
         Log.d(TAG, "Audio track set to: $trackId")
+    }
+    
+    /**
+     * 设置字幕轨道
+     */
+    fun setSubtitleTrack(trackId: Int) {
+        MPVLib.setPropertyInt("sid", trackId)
+        Log.d(TAG, "Subtitle track set to: $trackId")
+    }
+    
+    /**
+     * 获取当前字幕轨道
+     */
+    fun getCurrentSubtitleTrack(): Int {
+        return try {
+            MPVLib.getPropertyInt("sid") ?: 0
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get current subtitle track", e)
+            0
+        }
+    }
+    
+    /**
+     * 设置字幕位置（垂直方向）
+     */
+    fun setSubtitlePosition(position: Int) {
+        setSubtitleVerticalPosition(position)
     }
 
     /**
@@ -766,6 +793,24 @@ class PlaybackEngine(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to check chapters", e)
             false
+        }
+    }
+    
+    /**
+     * 设置着色器列表（用于Anime4K等）
+     */
+    fun setShaderList(shaders: List<String>) {
+        try {
+            if (shaders.isEmpty()) {
+                MPVLib.setPropertyString("glsl-shaders", "")
+                Log.d(TAG, "Cleared shader list")
+            } else {
+                val shaderString = shaders.joinToString(":")
+                MPVLib.setPropertyString("glsl-shaders", shaderString)
+                Log.d(TAG, "Set shaders: $shaderString")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to set shader list", e)
         }
     }
 

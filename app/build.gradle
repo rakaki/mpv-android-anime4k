@@ -56,6 +56,10 @@ android {
         jvmTarget = "17"
     }
     
+    buildFeatures {
+        viewBinding true
+    }
+    
     // ========== 为分包 APK 设置不同的版本号 ==========
     // 这样 Google Play 可以为不同设备提供正确的 APK
     applicationVariants.all { variant ->

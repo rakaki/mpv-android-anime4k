@@ -456,6 +456,22 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().putString("video_sort_order", order).apply()
     }
     
+    // ==================== 硬件解码 ====================
+    
+    /**
+     * 获取硬件解码设置
+     */
+    fun getHardwareDecoder(): Boolean {
+        return sharedPreferences.getBoolean("hardware_decoder", true)
+    }
+    
+    /**
+     * 保存硬件解码设置
+     */
+    fun setHardwareDecoder(enabled: Boolean) {
+        sharedPreferences.edit().putBoolean("hardware_decoder", enabled).apply()
+    }
+    
     // ==================== 批量操作 ====================
     
     /**

@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
 import com.fam4k007.videoplayer.utils.ThumbnailCacheManager
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
 
@@ -52,7 +53,7 @@ class VideoListAdapter(
         holder.tvVideoDuration.text = formatDuration(video.duration)
         holder.tvVideoSize.text = formatFileSize(video.size)
 
-        // 加载视频缩略�?
+        // 加载视频缩略图
         try {
             val context = holder.itemView.context
             val uri = Uri.parse(video.uri)
@@ -61,7 +62,7 @@ class VideoListAdapter(
             holder.ivThumb.setImageResource(android.R.drawable.ic_media_play)
 
             // 使用缓存管理器加载缩略图（带缓存）
-            val job = CoroutineScope(Dispatchers.Main).launch {
+            val job = lifecycleOwner.lifecycleScope.launch {
                 try {
                     val bitmap = thumbnailCacheManager.getThumbnail(context, uri, video.duration)
                     if (bitmap != null) {
@@ -78,7 +79,7 @@ class VideoListAdapter(
             }
             thumbnailJobs[holder.adapterPosition] = job
         } catch (e: Exception) {
-            android.util.Log.e("VideoListAdapter", "缩略图加载异�? ${e.message}")
+            android.util.Log.e("VideoListAdapter", "缩略图加载异常: ${e.message}")
             holder.ivThumb.setImageResource(android.R.drawable.ic_menu_report_image)
         }
 
@@ -100,9 +101,9 @@ class VideoListAdapter(
             // 获取视频时长并计算中间帧的时间位置
             val video = videos.find { it.uri == uri.toString() }
             val frameTime = if (video != null && video.duration > 0) {
-                (video.duration * 1000L) / 2 // 取中间位置（微秒�?
+                (video.duration * 1000L) / 2 // 取中间位置（微秒）
             } else {
-                5000000L // 如果无法获取时长，默认提取5秒位�?
+                5000000L // 如果无法获取时长，默认提取5秒位置
             }
             
             Glide.with(context)
@@ -110,7 +111,7 @@ class VideoListAdapter(
                 .load(uri)
                 .apply(
                     RequestOptions()
-                        .frame(frameTime) // 提取中间位置的�?
+                        .frame(frameTime) // 提取中间位置的帧
                         .override(384, 216) // 16:9 比例，适配 96dp x 54dp
                         .centerCrop()
                 )
@@ -130,87 +131,6 @@ class VideoListAdapter(
         super.onViewRecycled(holder)
         thumbnailJobs[holder.adapterPosition]?.cancel()
         thumbnailJobs.remove(holder.adapterPosition)
-    }
-
-    /**
-     * 使用 MediaMetadataRetriever 直接提取视频中间帧
-     * 这种方法对下载的视频兼容性更好
-     * @deprecated 此方法已被 ThumbnailCacheManager 取代
-     */
-    @Deprecated("Use ThumbnailCacheManager instead")
-    private fun extractThumbnailWithRetriever(context: android.content.Context, uri: Uri, duration: Long): android.graphics.Bitmap? {
-        val retriever = android.media.MediaMetadataRetriever()
-        try {
-            // 使用 content:// URI 设置数据源，兼容 SAF
-            retriever.setDataSource(context, uri)
-            
-            // 计算中间帧的时间位置（微秒）
-            val frameTimeMicros = if (duration > 0) {
-                (duration * 1000L) / 2 // duration是毫秒，转为微秒并取中间
-            } else {
-                // 如果没有时长信息，尝试从 retriever 获取
-                val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                val videoDuration = durationStr?.toLongOrNull() ?: 0L
-                if (videoDuration > 0) {
-                    (videoDuration * 1000L) / 2
-                } else {
-                    5000000L // 默认5秒位置
-                }
-            }
-            
-            // 提取指定时间位置的帧
-            // 注意：getFrameAtTime 返回的 bitmap 已经是正确的显示方向
-            val bitmap = retriever.getFrameAtTime(frameTimeMicros, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                ?: return null
-            
-            // 等比缩放并居中裁剪到目标尺寸（384x216）
-            val targetWidth = 384
-            val targetHeight = 216
-            val srcWidth = bitmap.width
-            val srcHeight = bitmap.height
-            val targetRatio = targetWidth.toFloat() / targetHeight
-            val srcRatio = if (srcHeight != 0) srcWidth.toFloat() / srcHeight else 1f
-            
-            val scale: Float
-            val scaledWidth: Int
-            val scaledHeight: Int
-            
-            if (srcRatio > targetRatio) {
-                // 横屏：按高度缩放
-                scale = targetHeight.toFloat() / srcHeight
-                scaledWidth = (srcWidth * scale).toInt()
-                scaledHeight = targetHeight
-            } else {
-                // 竖屏：按宽度缩放
-                scale = targetWidth.toFloat() / srcWidth
-                scaledWidth = targetWidth
-                scaledHeight = (srcHeight * scale).toInt()
-            }
-            
-            val scaledBitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
-            if (scaledBitmap != bitmap) {
-                bitmap.recycle()
-            }
-            
-            // 居中裁剪
-            val x = ((scaledWidth - targetWidth) / 2).coerceAtLeast(0)
-            val y = ((scaledHeight - targetHeight) / 2).coerceAtLeast(0)
-            val finalBitmap = android.graphics.Bitmap.createBitmap(scaledBitmap, x, y, targetWidth, targetHeight)
-            if (finalBitmap != scaledBitmap) {
-                scaledBitmap.recycle()
-            }
-            
-            return finalBitmap
-        } catch (e: Exception) {
-            android.util.Log.e("VideoListAdapter", "MediaMetadataRetriever 提取失败: ${e.message}")
-            return null
-        } finally {
-            try {
-                retriever.release()
-            } catch (e: Exception) {
-                android.util.Log.e("VideoListAdapter", "MediaMetadataRetriever release failed: ${e.message}")
-            }
-        }
     }
 
     override fun getItemCount(): Int = videos.size
