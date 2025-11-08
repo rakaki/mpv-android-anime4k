@@ -304,12 +304,20 @@ class PlayerDialogManager(
         val currentScale = preferencesManager.getSubtitleScale(uriString).toFloat()
         val currentPosition = preferencesManager.getSubtitlePosition(uriString)
         val currentBorderSize = preferencesManager.getSubtitleBorderSize(uriString)
+        val currentTextColor = preferencesManager.getSubtitleTextColor(uriString)
+        val currentBorderColor = preferencesManager.getSubtitleBorderColor(uriString)
+        val currentBackColor = preferencesManager.getSubtitleBackColor(uriString)
+        val currentBorderStyle = preferencesManager.getSubtitleBorderStyle(uriString)
 
         composeOverlayManager.showSubtitleSettingsDrawer(
             currentDelay = currentDelay,
             currentScale = currentScale,
             currentPosition = currentPosition,
             currentBorderSize = currentBorderSize,
+            currentTextColor = currentTextColor,
+            currentBorderColor = currentBorderColor,
+            currentBackColor = currentBackColor,
+            currentBorderStyle = currentBorderStyle,
             onDelayChange = { newDelay ->
                 playbackEngine.setSubtitleDelay(newDelay)
                 preferencesManager.setSubtitleDelay(uriString, newDelay)
@@ -325,6 +333,22 @@ class PlayerDialogManager(
             onBorderSizeChange = { newSize ->
                 playbackEngine.setSubtitleBorderSize(newSize)
                 preferencesManager.setSubtitleBorderSize(uriString, newSize)
+            },
+            onTextColorChange = { newColor ->
+                playbackEngine.setSubtitleTextColor(newColor)
+                preferencesManager.setSubtitleTextColor(uriString, newColor)
+            },
+            onBorderColorChange = { newColor ->
+                playbackEngine.setSubtitleBorderColor(newColor)
+                preferencesManager.setSubtitleBorderColor(uriString, newColor)
+            },
+            onBackColorChange = { newColor ->
+                playbackEngine.setSubtitleBackColor(newColor)
+                preferencesManager.setSubtitleBackColor(uriString, newColor)
+            },
+            onBorderStyleChange = { newStyle ->
+                playbackEngine.setSubtitleBorderStyle(newStyle)
+                preferencesManager.setSubtitleBorderStyle(uriString, newStyle)
             }
         )
     }

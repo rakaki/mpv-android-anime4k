@@ -6,6 +6,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,11 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -39,10 +43,18 @@ fun SubtitleSettingsDrawer(
     currentScale: Float,
     currentPosition: Int,
     currentBorderSize: Int,
+    currentTextColor: String,
+    currentBorderColor: String,
+    currentBackColor: String,
+    currentBorderStyle: String,
     onDelayChange: (Double) -> Unit,
     onScaleChange: (Float) -> Unit,
     onPositionChange: (Int) -> Unit,
     onBorderSizeChange: (Int) -> Unit,
+    onTextColorChange: (String) -> Unit,
+    onBorderColorChange: (String) -> Unit,
+    onBackColorChange: (String) -> Unit,
+    onBorderStyleChange: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var expandedSection by remember { mutableStateOf<String?>(null) }
@@ -165,15 +177,23 @@ fun SubtitleSettingsDrawer(
                             ) {
                                 SubtitleStyleContent(
                                     currentBorderSize = currentBorderSize,
-                                    onBorderSizeChange = onBorderSizeChange
+                                    currentTextColor = currentTextColor,
+                                    currentBorderColor = currentBorderColor,
+                                    currentBackColor = currentBackColor,
+                                    currentBorderStyle = currentBorderStyle,
+                                    onBorderSizeChange = onBorderSizeChange,
+                                    onTextColorChange = onTextColorChange,
+                                    onBorderColorChange = onBorderColorChange,
+                                    onBackColorChange = onBackColorChange,
+                                    onBorderStyleChange = onBorderStyleChange
                                 )
                             }
                         }
                         
-                        // 字幕大小位置设置
+                        // 字幕杂项设置
                         item {
                             ExpandableSection(
-                                title = "字幕大小位置设置",
+                                title = "字幕杂项设置",
                                 isExpanded = expandedSection == "misc",
                                 onToggle = { expandedSection = if (expandedSection == "misc") null else "misc" }
                             ) {
@@ -186,10 +206,10 @@ fun SubtitleSettingsDrawer(
                             }
                         }
                         
-                        // 字体设置
+                        // 字幕字体设置
                         item {
                             ExpandableSection(
-                                title = "字体设置",
+                                title = "字幕字体设置",
                                 isExpanded = expandedSection == "font",
                                 onToggle = { expandedSection = if (expandedSection == "font") null else "font" }
                             ) {
@@ -399,13 +419,370 @@ fun SubtitleDelayContent(
 @Composable
 fun SubtitleStyleContent(
     currentBorderSize: Int,
-    onBorderSizeChange: (Int) -> Unit
+    currentTextColor: String,
+    currentBorderColor: String,
+    currentBackColor: String,
+    currentBorderStyle: String,
+    onBorderSizeChange: (Int) -> Unit,
+    onTextColorChange: (String) -> Unit,
+    onBorderColorChange: (String) -> Unit,
+    onBackColorChange: (String) -> Unit,
+    onBorderStyleChange: (String) -> Unit
 ) {
-    var borderSize by remember { mutableStateOf(currentBorderSize.toFloat()) }
+    var expandedColorSection by remember { mutableStateOf<String?>(null) }
+    
+    // 管理各个颜色区域的选中状态
+    var textColorSelectedIndex by remember { mutableStateOf<Int?>(null) }
+    var borderColorSelectedIndex by remember { mutableStateOf<Int?>(null) }
+    var backColorSelectedIndex by remember { mutableStateOf<Int?>(null) }
+    
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // 提示文本
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = Color(0x1A64B5F6),
+                    shape = RoundedCornerShape(6.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "ℹ️",
+                fontSize = 13.sp,
+                modifier = Modifier.padding(end = 6.dp)
+            )
+            Text(
+                text = "若未生效，请在更多中开启样式覆盖",
+                fontSize = 11.sp,
+                color = Color(0xFFCCCCCC),
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+        
+        // 字幕颜色
+        ColorPickerSection(
+            title = "字幕颜色",
+            currentColor = currentTextColor,
+            isExpanded = expandedColorSection == "text",
+            onToggle = { expandedColorSection = if (expandedColorSection == "text") null else "text" },
+            presetColors = listOf(
+                Color.White, Color.Black, Color.Red, Color.Green,
+                Color.Blue, Color.Yellow, Color.Cyan, Color.Magenta
+            ),
+            selectedColorIndex = textColorSelectedIndex,
+            onSelectedIndexChange = { textColorSelectedIndex = it },
+            onColorSelected = { color -> 
+                onTextColorChange(colorToHexString(color))
+            }
+        )
+        
+        // 字幕背景颜色
+        ColorPickerSection(
+            title = "背景颜色",
+            currentColor = currentBackColor,
+            isExpanded = expandedColorSection == "background",
+            onToggle = { expandedColorSection = if (expandedColorSection == "background") null else "background" },
+            presetColors = listOf(
+                Color.Transparent, Color.Black, Color.White, Color(0x80FF0000),
+                Color(0x8000FF00), Color(0x800000FF), Color(0x80FFFF00), Color(0x80808080)
+            ),
+            selectedColorIndex = backColorSelectedIndex,
+            onSelectedIndexChange = { backColorSelectedIndex = it },
+            onColorSelected = { color ->
+                onBackColorChange(colorToHexString(color))
+            }
+        )
+        
+        // 描边颜色
+        ColorPickerSection(
+            title = "描边颜色",
+            currentColor = currentBorderColor,
+            isExpanded = expandedColorSection == "border",
+            onToggle = { expandedColorSection = if (expandedColorSection == "border") null else "border" },
+            presetColors = listOf(
+                Color.White, Color.Black, Color.Red, Color.Green,
+                Color.Blue, Color.Yellow, Color.Cyan, Color.Magenta
+            ),
+            selectedColorIndex = borderColorSelectedIndex,
+            onSelectedIndexChange = { borderColorSelectedIndex = it },
+            onColorSelected = { color ->
+                onBorderColorChange(colorToHexString(color))
+            }
+        )
+        
+        // 描边粗细大小
+        BorderSizeSection(
+            currentSize = currentBorderSize,
+            onSizeChange = onBorderSizeChange
+        )
+        
+        // 描边模式选择
+        BorderStyleSection(
+            currentStyle = currentBorderStyle,
+            onStyleSelected = onBorderStyleChange
+        )
+        
+        // 重置所有颜色按钮
+        TextButton(
+            onClick = {
+                // 重置颜色值
+                onTextColorChange("#FFFFFFFF")      // 白色
+                onBorderColorChange("#FF000000")    // 黑色
+                onBackColorChange("#00000000")      // 透明
+                onBorderSizeChange(3)
+                onBorderStyleChange("outline-and-shadow")
+                
+                // 清空所有选中状态
+                textColorSelectedIndex = null
+                borderColorSelectedIndex = null
+                backColorSelectedIndex = null
+            },
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = Color(0xFFFF6666)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("重置所有样式为默认值")
+        }
+    }
+}
 
-    Column {
+/**
+ * 将Compose Color转换为Hex字符串 (#AARRGGBB格式)
+ */
+fun colorToHexString(color: Color): String {
+    val alpha = (color.alpha * 255).toInt()
+    val red = (color.red * 255).toInt()
+    val green = (color.green * 255).toInt()
+    val blue = (color.blue * 255).toInt()
+    return String.format("#%02X%02X%02X%02X", alpha, red, green, blue)
+}
+
+/**
+ * 颜色选择器分组
+ */
+@Composable
+fun ColorPickerSection(
+    title: String,
+    currentColor: String,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    presetColors: List<Color>,
+    selectedColorIndex: Int?,
+    onSelectedIndexChange: (Int?) -> Unit,
+    onColorSelected: (Color) -> Unit
+) {
+    // 初始化时根据当前颜色匹配预设色块
+    LaunchedEffect(currentColor) {
+        val matchedIndex = presetColors.take(4).indexOfFirst { color ->
+            colorToHexString(color).equals(currentColor, ignoreCase = true)
+        }
+        onSelectedIndexChange(if (matchedIndex >= 0) matchedIndex else null)
+    }
+    
+    val rotationAngle by animateFloatAsState(
+        targetValue = if (isExpanded) 90f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = Color(0x1AFFFFFF),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(12.dp)
+    ) {
+        // 标题行：带预设色块和展开按钮
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White,
+                modifier = Modifier.weight(1f)
+            )
+            
+            // 预设色块
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                presetColors.take(4).forEachIndexed { index, color ->
+                    val isSelected = selectedColorIndex == index
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(color, CircleShape)
+                            .border(
+                                width = if (isSelected) 3.dp else 1.dp,
+                                color = if (isSelected) Color(0xFF64B5F6) else Color(0x33FFFFFF),
+                                shape = CircleShape
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = rememberRipple(bounded = false, radius = 18.dp)
+                            ) {
+                                onSelectedIndexChange(index)
+                                onColorSelected(color)
+                            }
+                    )
+                }
+            }
+            
+            // 展开按钮
+            Text(
+                text = "▶",
+                fontSize = 12.sp,
+                color = Color(0xFF64B5F6),
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .rotate(rotationAngle)
+                    .clickable { onToggle() }
+            )
+        }
+        
+        // RGBA调节滑块（展开时显示）
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy)),
+            exit = shrinkVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp)
+            ) {
+                RGBASliders(
+                    onColorChanged = { 
+                        onSelectedIndexChange(null) // 清除预设选中状态
+                        onColorSelected(it) 
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * RGBA滑块组件
+ */
+@Composable
+fun RGBASliders(onColorChanged: (Color) -> Unit) {
+    var r by remember { mutableStateOf(255) }
+    var g by remember { mutableStateOf(255) }
+    var b by remember { mutableStateOf(255) }
+    var a by remember { mutableStateOf(255) }
+    
+    fun updateColor() {
+        val color = Color(r, g, b, a)
+        onColorChanged(color)
+    }
+    
+    // R 滑块
+    SliderRow(label = "R", value = r, color = Color(0xFFFF6666)) { value ->
+        r = value
+        updateColor()
+    }
+    
+    // G 滑块
+    SliderRow(label = "G", value = g, color = Color(0xFF66FF66)) { value ->
+        g = value
+        updateColor()
+    }
+    
+    // B 滑块
+    SliderRow(label = "B", value = b, color = Color(0xFF6666FF)) { value ->
+        b = value
+        updateColor()
+    }
+    
+    // A 滑块
+    SliderRow(label = "A", value = a, color = Color.White) { value ->
+        a = value
+        updateColor()
+    }
+}
+
+/**
+ * 单个滑块行
+ */
+@Composable
+fun SliderRow(
+    label: String,
+    value: Int,
+    color: Color,
+    onValueChange: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(
-            text = "边框大小：${borderSize.toInt()}",
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            modifier = Modifier.width(20.dp)
+        )
+        
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValueChange(it.toInt()) },
+            valueRange = 0f..255f,
+            modifier = Modifier.weight(1f),
+            colors = SliderDefaults.colors(
+                thumbColor = Color(0xFF64B5F6),
+                activeTrackColor = Color(0xFF64B5F6),
+                inactiveTrackColor = Color(0xFF555555)
+            )
+        )
+        
+        Text(
+            text = value.toString(),
+            fontSize = 12.sp,
+            color = Color.White,
+            modifier = Modifier.width(35.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.End
+        )
+    }
+}
+
+/**
+ * 描边粗细大小设置
+ */
+@Composable
+fun BorderSizeSection(
+    currentSize: Int,
+    onSizeChange: (Int) -> Unit
+) {
+    var borderSize by remember { mutableStateOf(currentSize.toFloat()) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = Color(0x1AFFFFFF),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(12.dp)
+    ) {
+        Text(
+            text = "描边粗细：${borderSize.toInt()}",
             fontSize = 14.sp,
             color = Color.White,
             fontWeight = FontWeight.Medium
@@ -417,10 +794,10 @@ fun SubtitleStyleContent(
             value = borderSize,
             onValueChange = {
                 borderSize = it
-                onBorderSizeChange(it.toInt())
+                onSizeChange(it.toInt())
             },
-            valueRange = 0f..10f,
-            steps = 9,
+            valueRange = 0f..100f,
+            steps = 99,
             colors = SliderDefaults.colors(
                 thumbColor = Color(0xFF64B5F6),
                 activeTrackColor = Color(0xFF64B5F6),
@@ -428,18 +805,171 @@ fun SubtitleStyleContent(
             )
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(
             onClick = {
                 borderSize = 3f
-                onBorderSizeChange(3)
+                onSizeChange(3)
             },
             colors = ButtonDefaults.textButtonColors(
                 contentColor = Color(0xFF64B5F6)
             )
         ) {
             Text("重置为 3")
+        }
+    }
+}
+
+/**
+ * 描边模式选择
+ */
+@Composable
+fun BorderStyleSection(
+    currentStyle: String,
+    onStyleSelected: (String) -> Unit
+) {
+    var selectedStyle by remember { mutableStateOf(currentStyle) }
+    
+    // 监听外部状态变化，同步更新内部状态
+    LaunchedEffect(currentStyle) {
+        selectedStyle = currentStyle
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = Color(0x1AFFFFFF),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(12.dp)
+    ) {
+        Text(
+            text = "描边模式",
+            fontSize = 14.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Medium
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 三种模式的单选按钮（添加切换动画）
+        BorderStyleOption(
+            title = "模式A",
+            description = "通过描边颜色项修改",
+            isSelected = selectedStyle == "outline-and-shadow",
+            onClick = {
+                selectedStyle = "outline-and-shadow"
+                onStyleSelected("outline-and-shadow")
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        BorderStyleOption(
+            title = "模式B",
+            description = "通过描边颜色项修改",
+            isSelected = selectedStyle == "opaque-box",
+            onClick = {
+                selectedStyle = "opaque-box"
+                onStyleSelected("opaque-box")
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        BorderStyleOption(
+            title = "模式C",
+            description = "通过背景颜色项修改",
+            isSelected = selectedStyle == "background-box",
+            onClick = {
+                selectedStyle = "background-box"
+                onStyleSelected("background-box")
+            }
+        )
+    }
+}
+
+/**
+ * 单个描边模式选项（添加动画效果）
+ */
+@Composable
+fun BorderStyleOption(
+    title: String,
+    description: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    // 背景颜色动画
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) Color(0x33FFFFFF) else Color.Transparent,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "background"
+    )
+    
+    // 边框颜色动画
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) Color(0xFF64B5F6) else Color(0xFF666666),
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "border"
+    )
+    
+    // 内圆缩放动画
+    val innerCircleScale by animateFloatAsState(
+        targetValue = if (isSelected) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = backgroundColor,
+                shape = RoundedCornerShape(6.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 单选圆圈
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .border(
+                    width = 2.dp,
+                    color = borderColor,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // 内圆有缩放动画
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .scale(innerCircleScale)
+                    .background(Color(0xFF64B5F6), CircleShape)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                color = Color.White,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            )
+            Text(
+                text = description,
+                fontSize = 11.sp,
+                color = Color(0x99FFFFFF)
+            )
         }
     }
 }
@@ -519,7 +1049,7 @@ fun SubtitleMiscContent(
         )
         
         Text(
-            text = "范围: -100 (上移) ~ +100 (下移)",
+            text = "范围: 0 (顶部) ~ 100 (底部)",
             fontSize = 11.sp,
             color = Color(0x99FFFFFF),
             modifier = Modifier.padding(top = 2.dp)
@@ -533,8 +1063,8 @@ fun SubtitleMiscContent(
                 position = it
                 onPositionChange(it.toInt())
             },
-            valueRange = -100f..100f,
-            steps = 199,
+            valueRange = 0f..100f,
+            steps = 99,
             colors = SliderDefaults.colors(
                 thumbColor = Color(0xFF64B5F6),
                 activeTrackColor = Color(0xFF64B5F6),
@@ -578,7 +1108,7 @@ fun QuickButton(text: String, onClick: () -> Unit) {
 }
 
 /**
- * 字体设置内容
+ * 字幕字体设置内容
  */
 @Composable
 fun SubtitleFontContent() {

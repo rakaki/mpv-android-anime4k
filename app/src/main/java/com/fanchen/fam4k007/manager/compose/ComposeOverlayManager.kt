@@ -68,10 +68,18 @@ class ComposeOverlayManager(
         currentScale: Float,
         currentPosition: Int,
         currentBorderSize: Int,
+        currentTextColor: String,
+        currentBorderColor: String,
+        currentBackColor: String,
+        currentBorderStyle: String,
         onDelayChange: (Double) -> Unit,
         onScaleChange: (Float) -> Unit,
         onPositionChange: (Int) -> Unit,
-        onBorderSizeChange: (Int) -> Unit
+        onBorderSizeChange: (Int) -> Unit,
+        onTextColorChange: (String) -> Unit,
+        onBorderColorChange: (String) -> Unit,
+        onBackColorChange: (String) -> Unit,
+        onBorderStyleChange: (String) -> Unit
     ) {
         setContent {
             SubtitleSettingsDrawer(
@@ -79,10 +87,18 @@ class ComposeOverlayManager(
                 currentScale = currentScale,
                 currentPosition = currentPosition,
                 currentBorderSize = currentBorderSize,
+                currentTextColor = currentTextColor,
+                currentBorderColor = currentBorderColor,
+                currentBackColor = currentBackColor,
+                currentBorderStyle = currentBorderStyle,
                 onDelayChange = onDelayChange,
                 onScaleChange = onScaleChange,
                 onPositionChange = onPositionChange,
                 onBorderSizeChange = onBorderSizeChange,
+                onTextColorChange = onTextColorChange,
+                onBorderColorChange = onBorderColorChange,
+                onBackColorChange = onBackColorChange,
+                onBorderStyleChange = onBorderStyleChange,
                 onDismiss = { clearContent() }
             )
         }

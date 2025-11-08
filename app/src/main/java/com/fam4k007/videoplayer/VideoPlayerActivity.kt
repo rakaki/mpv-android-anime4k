@@ -730,11 +730,10 @@ class VideoPlayerActivity : AppCompatActivity(),
                     Log.d(TAG, "Restored subtitle back color: $savedBackColor")
                 }
                 
+                // 总是应用描边样式，即使是默认值，确保MPV状态正确
                 val savedBorderStyle = preferencesManager.getSubtitleBorderStyle(uriString)
-                if (savedBorderStyle != "outline-and-shadow") {
-                    engine.setSubtitleBorderStyle(savedBorderStyle)
-                    Log.d(TAG, "Restored subtitle border style: $savedBorderStyle")
-                }
+                engine.setSubtitleBorderStyle(savedBorderStyle)
+                Log.d(TAG, "Restored subtitle border style: $savedBorderStyle")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error restoring subtitle preferences", e)
