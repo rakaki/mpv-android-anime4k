@@ -8,13 +8,21 @@ This project aims to optimize and upscale anime-style videos, though it can also
 
 ## Screenshots
 
-| Home | Settings | Playback |
-|------|----------|----------|
-| ![Home](docs/screenshots/Screenshot_20251026_114205.jpg) | ![Playback](docs/screenshots/Screenshot_20251026_114217.jpg) | ![Settings](docs/screenshots/Screenshot_20251026_114259.jpg) |
+### Application Interface (Portrait)
 
-| Subtitle Management | Playback Control |
-|-------------------|------------------|
-| ![Subtitles](docs/screenshots/Screenshot_20251026_114420.jpg) | ![Control](docs/screenshots/IMG_20251026_114329.jpg) |
+| Home | Video List & Sorting | Playback History | Settings |
+|------|---------------------|------------------|----------|
+| ![Home](docs/screenshots/主页.jpg) | ![Video List](docs/screenshots/排序功能与视频列表.jpg) | ![History](docs/screenshots/播放历史.jpg) | ![Settings](docs/screenshots/设置页.jpg) |
+
+### Player Interface (Landscape)
+
+| Danmaku Feature | Danmaku Styling |
+|----------------|----------------|
+| ![Danmaku](docs/screenshots/弹幕功能.jpg) | ![Danmaku Style](docs/screenshots/弹幕样式设置.jpg) |
+
+| Subtitle Styling | Super-Resolution |
+|-----------------|------------------|
+| ![Subtitle Style](docs/screenshots/字幕样式设置.jpg) | ![Super-Resolution](docs/screenshots/超分功能.jpg) |
 
 ## Key Features
 
@@ -23,7 +31,13 @@ This project aims to optimize and upscale anime-style videos, though it can also
 - **Subtitle Handling**: Built-in subtitle parsing, external subtitle import, subtitle position and size adjustment
 - **Audio Tracks**: Multi-track audio switching
 - **Volume Boost**: Toggle volume boost feature with fine-grained 0.1% adjustment
-- **Danmaku Support**: Load XML format danmaku files, toggle danmaku display, adjust danmaku styles
+- **Danmaku Features**:
+  - Support for importing local XML format danmaku files
+  - Customizable danmaku styles (size, speed, transparency, stroke, etc.)
+  - Danmaku track management, show/hide different types of danmaku
+  - Auto-save danmaku files and display states
+  - High refresh rate screen adaptation (supports 90Hz/120Hz/144Hz)
+  - Danmaku synchronization with video progress, supports chapter jumping
 - **Gesture Controls**:
   - Left swipe: Adjust brightness
   - Right swipe: Adjust volume
@@ -97,6 +111,6 @@ If you encounter any issues or have suggestions, please feel free to report them
 
 ---
 
-**Last Updated:** 2025-11-06
+**Last Updated:** 2025-11-08
 
 **[中文版本](README.md) | [English Version](README_EN.md)**
