@@ -18,6 +18,7 @@ import com.fam4k007.videoplayer.manager.PreferencesManager
 import com.fam4k007.videoplayer.utils.DialogUtils
 import com.fam4k007.videoplayer.utils.ThemeManager
 import `is`.xyz.mpv.MPVLib
+import java.io.File
 import java.lang.ref.WeakReference
 
 /**
@@ -590,6 +591,16 @@ class PlayerDialogManager(
                 showScrollHint = true
             ) { position ->
                 MPVLib.setPropertyInt("chapter", position)
+                
+                // 同步弹幕位置
+                try {
+                    val chapterTime = MPVLib.getPropertyDouble("chapter-list/$position/time") ?: 0.0
+                    danmakuManager.seekTo((chapterTime * 1000).toLong())
+                    Log.d(TAG, "Chapter jump: synced danmaku to ${chapterTime}s")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to sync danmaku on chapter jump", e)
+                }
+                
                 DialogUtils.showToastShort(activity, "已跳转到: ${chapters[position]}")
             }
         } catch (e: Exception) {
@@ -605,16 +616,21 @@ class PlayerDialogManager(
 
         val btnDanmaku = activity.findViewById<ImageView>(R.id.btnDanmaku)
         
+        // 检查是否已加载弹幕文件
+        val hasLoadedDanmaku = danmakuManager.getCurrentDanmakuPath() != null
+        
         // 动态确定第一个选项的文本
-        val firstOption = when {
-            danmakuManager.getCurrentDanmakuPath() == null -> "未加载文件"
-            danmakuManager.isVisible() -> "隐藏弹幕"
-            else -> "显示弹幕"
+        val visibilityOption = if (hasLoadedDanmaku) {
+            if (danmakuManager.isVisible()) "隐藏弹幕" else "显示弹幕"
+        } else {
+            "显示弹幕"
         }
         
+        // 常驻菜单项
         val menuItems = listOf(
-            firstOption,
+            visibilityOption,
             "本地弹幕",
+            "弹幕轨道",
             "弹幕设置"
         )
 
@@ -628,21 +644,72 @@ class PlayerDialogManager(
         ) { position ->
             when (position) {
                 0 -> {
-                    // 检查是否已加载弹幕文件
-                    if (danmakuManager.getCurrentDanmakuPath() == null) {
+                    // 显示/隐藏弹幕
+                    if (!hasLoadedDanmaku) {
                         DialogUtils.showToastShort(activity, "请先加载弹幕文件")
                     } else if (danmakuManager.isVisible()) {
                         danmakuManager.setVisibility(false)
                         com.fam4k007.videoplayer.danmaku.DanmakuConfig.setEnabled(false)
-                        DialogUtils.showToastShort(activity, "弹幕已隐藏")
+                        (activity as? DanmakuDialogCallback)?.onDanmakuVisibilityChanged(false)
                     } else {
                         danmakuManager.setVisibility(true)
                         com.fam4k007.videoplayer.danmaku.DanmakuConfig.setEnabled(true)
-                        DialogUtils.showToastShort(activity, "弹幕已显示")
+                        (activity as? DanmakuDialogCallback)?.onDanmakuVisibilityChanged(true)
                     }
                 }
                 1 -> (activity as? DanmakuDialogCallback)?.onImportDanmaku()
-                2 -> showDanmakuSettingsDialog()
+                2 -> {
+                    // 弹幕轨道
+                    showDanmakuTrackDialog()
+                }
+                3 -> showDanmakuSettingsDialog()
+            }
+        }
+    }
+    
+    /**
+     * 显示弹幕轨道对话框
+     */
+    private fun showDanmakuTrackDialog() {
+        val activity = activityRef.get() ?: return
+        
+        val currentPath = danmakuManager.getCurrentDanmakuPath()
+        if (currentPath == null) {
+            DialogUtils.showToastShort(activity, "未加载弹幕文件")
+            return
+        }
+        
+        // 获取文件名
+        val fileName = File(currentPath).name
+        
+        val btnDanmaku = activity.findViewById<ImageView>(R.id.btnDanmaku)
+        
+        val menuItems = listOf(
+            "✓ $fileName",
+            "取消弹幕轨道"
+        )
+        
+        showPopupDialog(
+            btnDanmaku,
+            menuItems,
+            selectedPosition = 0,  // 默认选中当前轨道
+            showAbove = false,
+            useFixedHeight = false,
+            showScrollHint = false
+        ) { position ->
+            when (position) {
+                0 -> {
+                    // 保持当前轨道,不做任何操作
+                    DialogUtils.showToastShort(activity, "弹幕轨道已选中")
+                }
+                1 -> {
+                    // 取消弹幕轨道(类似 DanDanPlay 的 removeTrack)
+                    danmakuManager.setTrackSelected(false)
+                    danmakuManager.setVisibility(false)
+                    com.fam4k007.videoplayer.danmaku.DanmakuConfig.setEnabled(false)
+                    (activity as? DanmakuDialogCallback)?.onDanmakuVisibilityChanged(false)
+                    DialogUtils.showToastShort(activity, "已取消弹幕轨道")
+                }
             }
         }
     }
@@ -818,6 +885,7 @@ interface SubtitleDialogCallback {
 
 interface DanmakuDialogCallback {
     fun onImportDanmaku()
+    fun onDanmakuVisibilityChanged(visible: Boolean)
 }
 
 interface MoreOptionsCallback {

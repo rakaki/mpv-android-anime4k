@@ -138,16 +138,21 @@ class FilePickerManager(
                 if (danmakuPath != null) {
                     DialogUtils.showToastShort(activity, "弹幕导入成功")
                     
-                    // 加载弹幕文件
+                    // 加载弹幕文件（autoShow=true 会调用show()设置可见）
                     val loaded = danmakuManager.loadDanmakuFile(danmakuPath, autoShow = true)
                     if (loaded) {
                         // 同步弹幕到当前播放位置
                         val currentPosition = (playbackEngine.currentPosition * 1000).toLong()
                         danmakuManager.seekTo(currentPosition)
                         
-                        // 如果正在播放，启动弹幕
+                        // 如果视频正在播放，立即启动弹幕
                         if (wasPlayingBeforeDanmakuPicker) {
-                            danmakuManager.start()
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                danmakuManager.resume()
+                                Log.d(TAG, "Danmaku resumed (video playing)")
+                            }, 300)
+                        } else {
+                            Log.d(TAG, "Danmaku loaded but not started (video paused)")
                         }
                         
                         Log.d(TAG, "Danmaku loaded and synced to position: $currentPosition")

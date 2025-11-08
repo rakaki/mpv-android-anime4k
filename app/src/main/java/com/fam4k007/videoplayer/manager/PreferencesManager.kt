@@ -411,7 +411,7 @@ class PreferencesManager private constructor(context: Context) {
     }
     
     fun getDanmakuUseChoreographer(): Boolean {
-        return sharedPreferences.getBoolean("danmaku_use_choreographer", false)
+        return sharedPreferences.getBoolean("danmaku_use_choreographer", true)
     }
     
     fun setDanmakuUseChoreographer(use: Boolean) {

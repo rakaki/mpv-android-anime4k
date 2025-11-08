@@ -79,12 +79,14 @@ class DanmakuManager(
         val loaded = danmakuView.loadDanmaku(danmakuFile.absolutePath)
         if (loaded) {
             currentDanmakuPath = danmakuFile.absolutePath
-            // 根据参数决定是否自动显示（参考 DanDanPlay 的 setTrackSelected）
+            // 参考 DanDanPlay: addTrack 成功后自动调用 selectTrack
+            danmakuView.setTrackSelected(true)
+            
+            // 根据参数决定是否自动显示
             if (autoShow) {
-                danmakuView.show()
-                Log.d(TAG, "Danmaku loaded and shown: ${danmakuFile.absolutePath}")
+                Log.d(TAG, "Danmaku loaded, track selected and shown: ${danmakuFile.absolutePath}")
             } else {
-                Log.d(TAG, "Danmaku loaded (hidden): ${danmakuFile.absolutePath}")
+                Log.d(TAG, "Danmaku loaded, track selected (hidden): ${danmakuFile.absolutePath}")
             }
         }
         return loaded
@@ -102,18 +104,12 @@ class DanmakuManager(
 
         val loaded = danmakuView.loadDanmaku(danmakuPath)
         
-        // 如果加载成功，记录路径并根据配置决定是否显示
+        // 如果加载成功，记录路径并设置轨道选中状态（参考 DanDanPlay 的 addTrack → selectTrack 流程）
         if (loaded) {
             currentDanmakuPath = danmakuPath
-            // 使用保存的开关状态，而不是autoShow参数
-            val shouldShow = if (autoShow) DanmakuConfig.isEnabled else false
-            if (shouldShow) {
-                danmakuView.show()
-                Log.d(TAG, "Danmaku loaded and shown: $danmakuPath")
-            } else {
-                danmakuView.hide()
-                Log.d(TAG, "Danmaku loaded (hidden): $danmakuPath")
-            }
+            // 参考 DanDanPlay: addTrack 成功后自动调用 selectTrack
+            danmakuView.setTrackSelected(true)
+            Log.d(TAG, "Danmaku loaded and track selected: $danmakuPath, autoShow=$autoShow")
         }
         
         return loaded
@@ -211,7 +207,6 @@ class DanmakuManager(
      * 开始播放弹幕
      */
     fun start() {
-        if (!DanmakuConfig.isEnabled) return
         danmakuView.startDanmaku()
     }
 
@@ -226,7 +221,6 @@ class DanmakuManager(
      * 恢复弹幕
      */
     fun resume() {
-        if (!DanmakuConfig.isEnabled) return
         danmakuView.resumeDanmaku()
     }
 
@@ -243,6 +237,15 @@ class DanmakuManager(
     fun toggleVisibility() {
         danmakuView.toggleDanmakuVisibility()
         Log.d(TAG, "Danmaku visibility toggled to: ${danmakuView.isShown}")
+    }
+
+    /**
+     * 设置弹幕轨道选中状态（参考 DanDanPlay 的 setTrackSelected）
+     * @param selected true=选中轨道并显示弹幕，false=取消选中并隐藏弹幕
+     */
+    fun setTrackSelected(selected: Boolean) {
+        danmakuView.setTrackSelected(selected)
+        Log.d(TAG, "Danmaku track selected: $selected")
     }
 
     /**

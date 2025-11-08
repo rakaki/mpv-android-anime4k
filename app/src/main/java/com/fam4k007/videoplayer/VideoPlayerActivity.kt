@@ -221,6 +221,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                     controlsManager?.updatePlayPauseButton(isPlaying)
                     
                     if (isPlaying) {
+                        // 只调用 resume，不要调用 start
+                        // start() 会清空弹幕状态，只应该在首次加载时调用
                         danmakuManager.resume()
                     } else {
                         danmakuManager.pause()
@@ -238,8 +240,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                     isPlaying = true
                     controlsManager?.updatePlayPauseButton(true)
                     
-                    danmakuManager.start()
-                    Log.d(TAG, "Danmaku started on video loaded")
+                    // 不在这里启动弹幕，弹幕的启动由 onPlaybackStateChanged 统一管理
+                    Log.d(TAG, "Video file loaded")
                 }
                 
                 override fun onEndOfFile() {
@@ -607,14 +609,26 @@ class VideoPlayerActivity : AppCompatActivity(),
             
             if (history?.danmuPath != null && File(history.danmuPath).exists()) {
                 Log.d(TAG, "Restoring danmaku from history: ${history.danmuPath}")
+                // 恢复用户上次的弹幕可见性设置
+                val autoShow = history.danmuVisible
                 val loaded = danmakuManager.loadDanmakuFile(
                     history.danmuPath,
-                    autoShow = history.danmuVisible  // 恢复显示状态
+                    autoShow = autoShow
                 )
                 
                 if (loaded) {
-                    Log.d(TAG, "Danmaku restored successfully, visible: ${history.danmuVisible}")
+                    Log.d(TAG, "Danmaku restored successfully, autoShow=$autoShow")
+                    Log.d(TAG, "Current danmaku visibility: ${danmakuManager.isVisible()}")
                     
+                    // 如果视频正在播放，启动弹幕
+                    if (isPlaying) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            danmakuManager.resume()
+                            Log.d(TAG, "Danmaku resumed after restore, isPlaying=$isPlaying")
+                        }, 300)
+                    } else {
+                        Log.d(TAG, "Video not playing yet, danmaku will start when video plays")
+                    }
                 } else {
                     Log.w(TAG, "Failed to restore danmaku, trying auto-find")
                     autoFindAndLoadDanmaku(videoUri)
@@ -637,6 +651,7 @@ class VideoPlayerActivity : AppCompatActivity(),
             if (videoPath != null) {
                 Log.d(TAG, "Auto-finding danmaku for: $videoPath")
                 danmakuManager.loadDanmakuForVideo(videoUri.toString(), videoPath)
+                // prepared回调会自动处理弹幕启动，这里不需要手动启动
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error auto-finding danmaku", e)
@@ -913,6 +928,18 @@ class VideoPlayerActivity : AppCompatActivity(),
                     folderName = folderName
                 )
                 Log.d(TAG, "History saved: $fileName")
+                
+                // 3. 保存弹幕信息到历史记录
+                val danmakuPath = danmakuManager.getCurrentDanmakuPath()
+                if (danmakuPath != null) {
+                    historyManager.updateDanmu(
+                        uri = uri,
+                        danmuPath = danmakuPath,
+                        danmuVisible = danmakuManager.isVisible(),
+                        danmuOffsetTime = 0L
+                    )
+                    Log.d(TAG, "Danmu info saved: path=$danmakuPath, visible=${danmakuManager.isVisible()}")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save playback state", e)
@@ -954,6 +981,19 @@ class VideoPlayerActivity : AppCompatActivity(),
     
     override fun onImportDanmaku() {
         filePickerManager.importDanmaku(isPlaying)
+    }
+    
+    override fun onDanmakuVisibilityChanged(visible: Boolean) {
+        // 更新历史记录中的弹幕可见性状态
+        videoUri?.let { uri ->
+            historyManager.updateDanmu(
+                uri = uri,
+                danmuPath = danmakuManager.getCurrentDanmakuPath(),
+                danmuVisible = visible,
+                danmuOffsetTime = 0L
+            )
+            Log.d(TAG, "Danmaku visibility updated in history: $visible")
+        }
     }
     
     override fun onScreenshot() {

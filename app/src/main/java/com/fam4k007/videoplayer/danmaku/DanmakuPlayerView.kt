@@ -36,6 +36,15 @@ class DanmakuPlayerView @JvmOverloads constructor(
 
     // 当前加载的弹幕文件路径
     private var currentDanmakuPath: String? = null
+    
+    // 弹幕是否加载完成（prepared回调触发后为true）
+    private var danmakuLoaded = false
+    
+    // 待应用的seek位置（在prepared之前调用seekTo会保存在这里）
+    private var pendingSeekPosition: Long = -1L
+    
+    // 弹幕轨道是否被选中（参考 DanDanPlay 的 mTrackSelected）
+    private var trackSelected = false
 
     init {
         // 显示 FPS（调试用）
@@ -52,7 +61,28 @@ class DanmakuPlayerView @JvmOverloads constructor(
 
             override fun prepared() {
                 // 弹幕准备完成
-                Log.d(TAG, "Danmaku prepared")
+                danmakuLoaded = true
+                Log.d(TAG, "Danmaku prepared, trackSelected=$trackSelected, isShown=$isShown, isPaused=$isPaused")
+                
+                // 如果有待应用的seek位置，现在应用它
+                if (pendingSeekPosition >= 0) {
+                    seekTo(pendingSeekPosition)
+                    pendingSeekPosition = -1L
+                    Log.d(TAG, "Applied pending seek position")
+                }
+                
+                // 如果弹幕轨道被选中，应用可见性
+                if (trackSelected) {
+                    setDanmuVisible(true)
+                    
+                    // 如果视频未暂停，自动启动弹幕
+                    if (!isPaused) {
+                        start()
+                        Log.d(TAG, "Danmaku shown and started after prepared")
+                    } else {
+                        Log.d(TAG, "Danmaku shown (video paused)")
+                    }
+                }
             }
 
             override fun updateTimer(timer: DanmakuTimer?) {
@@ -145,9 +175,11 @@ class DanmakuPlayerView @JvmOverloads constructor(
      * 开始播放弹幕
      */
     fun startDanmaku() {
-        if (isPrepared) {
+        if (isPrepared && trackSelected) {
             start()
             Log.d(TAG, "Danmaku started")
+        } else {
+            Log.d(TAG, "Danmaku not started: isPrepared=$isPrepared, trackSelected=$trackSelected")
         }
     }
 
@@ -165,9 +197,11 @@ class DanmakuPlayerView @JvmOverloads constructor(
      * 恢复弹幕
      */
     fun resumeDanmaku() {
-        if (isPrepared) {
+        if (isPrepared && trackSelected) {
             resume()
             Log.d(TAG, "Danmaku resumed")
+        } else {
+            Log.d(TAG, "Danmaku not resumed: isPrepared=$isPrepared, trackSelected=$trackSelected")
         }
     }
 
@@ -175,10 +209,14 @@ class DanmakuPlayerView @JvmOverloads constructor(
      * 同步弹幕进度
      */
     fun seekDanmaku(timeMs: Long) {
-        if (isPrepared) {
+        if (isPrepared && danmakuLoaded) {
             val adjustedTime = timeMs + DanmakuConfig.offsetTime
             seekTo(adjustedTime)
             Log.d(TAG, "Danmaku seeked to: $adjustedTime ms")
+        } else {
+            // 如果弹幕还没准备好，保存位置等prepared后再应用
+            pendingSeekPosition = timeMs + DanmakuConfig.offsetTime
+            Log.d(TAG, "Danmaku not ready, pending seek to: $pendingSeekPosition ms")
         }
     }
 
@@ -187,6 +225,8 @@ class DanmakuPlayerView @JvmOverloads constructor(
      */
     fun releaseDanmaku() {
         currentDanmakuPath = null
+        danmakuLoaded = false
+        pendingSeekPosition = -1L
         hide()
         clear()
         clearDanmakusOnScreen()
@@ -198,12 +238,48 @@ class DanmakuPlayerView @JvmOverloads constructor(
      * 显示/隐藏弹幕
      */
     fun toggleDanmakuVisibility() {
+        if (trackSelected.not()) {
+            Log.d(TAG, "Danmaku track not selected, cannot toggle visibility")
+            return
+        }
+        
         if (isShown) {
             hide()
             Log.d(TAG, "Danmaku hidden")
         } else {
             show()
-            Log.d(TAG, "Danmaku shown")
+            // 显示弹幕时，如果已经prepared且不是暂停状态，立即启动
+            if (isPrepared && !isPaused) {
+                resume()
+                Log.d(TAG, "Danmaku shown and resumed")
+            } else {
+                Log.d(TAG, "Danmaku shown (paused state)")
+            }
+        }
+    }
+    
+    /**
+     * 设置弹幕轨道选中状态（参考 DanDanPlay 的 setTrackSelected）
+     */
+    fun setTrackSelected(selected: Boolean) {
+        trackSelected = selected
+        Log.d(TAG, "Danmaku track selected: $selected, isPrepared=$isPrepared")
+        
+        // 只在已经 prepared 的情况下立即应用可见性
+        if (isPrepared) {
+            setDanmuVisible(selected)
+        }
+        // 否则等待 prepared 回调来处理
+    }
+    
+    /**
+     * 设置弹幕可见性（参考 DanDanPlay 的 setDanmuVisible）
+     */
+    private fun setDanmuVisible(visible: Boolean) {
+        if (visible) {
+            show()
+        } else {
+            hide()
         }
     }
 
