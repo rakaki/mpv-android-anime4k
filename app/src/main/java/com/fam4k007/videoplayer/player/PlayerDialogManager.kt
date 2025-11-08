@@ -62,36 +62,62 @@ class PlayerDialogManager(
         val activity = activityRef.get() ?: return
 
         try {
-            val tracks = MPVLib.getPropertyString("track-list")
-                ?.split(",")
-                ?.filter { it.contains("audio") }
-                ?: emptyList()
+            val audioTracks = playbackEngine.getAudioTracks()
 
-            if (tracks.isEmpty()) {
+            if (audioTracks.isEmpty()) {
                 DialogUtils.showToastShort(activity, "没有可用的音频轨道")
                 return
             }
 
-            val trackNames = tracks.mapIndexed { index, _ -> "音轨 ${index + 1}" }
-            val currentTrack = MPVLib.getPropertyInt("aid") ?: 1
-            val currentSelection = (currentTrack - 1).coerceIn(0, trackNames.size - 1)
+            // 获取轨道名称列表
+            val items = audioTracks.map { it.second }
+            // 获取当前选中的轨道索引
+            val currentTrackIndex = audioTracks.indexOfFirst { it.third }
 
             val btnAudioTrack = activity.findViewById<ImageView>(R.id.btnAudioTrack)
             showPopupDialog(
                 btnAudioTrack,
-                trackNames,
-                currentSelection,
-                showAbove = true,
-                useFixedHeight = true,
+                items,
+                currentTrackIndex,
+                showAbove = false,
+                useFixedHeight = false,  // 改为自适应高度
                 showScrollHint = false
             ) { position ->
-                MPVLib.setPropertyInt("aid", position + 1)
-                DialogUtils.showToastShort(activity, "已切换到音轨 ${position + 1}")
-                Log.d(TAG, "Audio track changed to: ${position + 1}")
+                val trackId = audioTracks[position].first
+                playbackEngine.selectAudioTrack(trackId)
+                DialogUtils.showToastShort(activity, "已切换到: ${items[position]}")
+                Log.d(TAG, "Audio track changed to: $trackId")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to show audio track dialog", e)
             DialogUtils.showToastShort(activity, "获取音频轨道失败")
+        }
+    }
+
+    /**
+     * 显示解码器选择对话框
+     */
+    fun showDecoderDialog() {
+        val activity = activityRef.get() ?: return
+
+        val items = listOf("硬件解码", "软件解码")
+        val currentDecoder = preferencesManager.getHardwareDecoder()
+        val currentSelection = if (currentDecoder) 0 else 1
+
+        val btnDecoder = activity.findViewById<ImageView>(R.id.btnDecoder)
+        showPopupDialog(
+            btnDecoder,
+            items,
+            currentSelection,
+            showAbove = false,
+            useFixedHeight = false,
+            showScrollHint = false
+        ) { position ->
+            val newDecoder = (position == 0)
+            preferencesManager.setHardwareDecoder(newDecoder)
+            playbackEngine.setHardwareDecoding(newDecoder)
+            DialogUtils.showToastShort(activity, "已切换到${items[position]}")
+            Log.d(TAG, "Decoder changed to: ${if (newDecoder) "hardware" else "software"}")
         }
     }
 
@@ -109,56 +135,68 @@ class PlayerDialogManager(
     ) {
         val activity = activityRef.get() ?: return
 
-        val dialog = Dialog(activity, android.R.style.Theme_DeviceDefault_Light_Dialog_NoActionBar)
-        dialog.setContentView(R.layout.dialog_popup_menu)
-
-        val recyclerView = dialog.findViewById<RecyclerView>(R.id.recyclerViewPopup)
+        val dialog = Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar)
+        
+        // 根据是否需要固定高度选择不同的布局文件
+        val layoutRes = if (useFixedHeight) R.layout.dialog_popup_menu_fixed else R.layout.dialog_popup_menu
+        val dialogView = activity.layoutInflater.inflate(layoutRes, null)
+        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.recyclerViewPopup)
 
         recyclerView.layoutManager = LinearLayoutManager(activity)
-        recyclerView.adapter = PopupMenuAdapter(items, selectedPosition) { position ->
+        recyclerView.isVerticalScrollBarEnabled = false
+        
+        // 如果使用固定高度且需要显示滑动提示
+        if (useFixedHeight && showScrollHint && items.size > 3) {
+            val scrollHint = dialogView.findViewById<TextView>(R.id.scrollHint)
+            scrollHint?.visibility = View.VISIBLE
+        }
+
+        val adapter = PopupMenuAdapter(items, selectedPosition) { position ->
             onItemClick(position)
             dialog.dismiss()
         }
+        recyclerView.adapter = adapter
 
-        val window = dialog.window
-        window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.setContentView(dialogView)
+        dialog.setCanceledOnTouchOutside(true)
 
+        // 获取锚点视图在屏幕上的位置
         val location = IntArray(2)
         anchorView.getLocationOnScreen(location)
+        val anchorX = location[0]
+        val anchorY = location[1]
 
+        // 测量对话框尺寸
+        dialogView.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val dialogWidth = dialogView.measuredWidth.coerceAtLeast(anchorView.width)
+        val dialogHeight = dialogView.measuredHeight
+
+        // 计算对话框位置
+        val window = dialog.window
         val layoutParams = window?.attributes
-        layoutParams?.gravity = android.view.Gravity.START or
-                (if (showAbove) android.view.Gravity.TOP else android.view.Gravity.BOTTOM)
+        layoutParams?.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+        layoutParams?.x = anchorX + (anchorView.width - dialogWidth) / 2
 
-        val displayMetrics = activity.resources.displayMetrics
-        val dialogWidth = (displayMetrics.widthPixels * 0.3).toInt()
-                .coerceIn((150 * displayMetrics.density).toInt(), (300 * displayMetrics.density).toInt())
-
-        val dialogHeight = if (useFixedHeight) {
-            (250 * displayMetrics.density).toInt()
+        // 根据参数决定显示在上方还是下方
+        layoutParams?.y = if (showAbove) {
+            // 显示在按钮上方，不遮挡按钮
+            anchorY - dialogHeight - 10
         } else {
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            // 显示在按钮下方，不遮挡按钮
+            anchorY + anchorView.height + 10
         }
 
         layoutParams?.width = dialogWidth
-        layoutParams?.height = dialogHeight
-
-        val marginLeftDp = 10
-        val marginLeftPx = (marginLeftDp * displayMetrics.density).toInt()
-        layoutParams?.x = location[0] - marginLeftPx
-
-        if (showAbove) {
-            val marginBottomDp = 60
-            val marginBottomPx = (marginBottomDp * displayMetrics.density).toInt()
-            layoutParams?.y = location[1] - dialogHeight - marginBottomPx
-        } else {
-            val marginTopDp = 60
-            val marginTopPx = (marginTopDp * displayMetrics.density).toInt()
-            layoutParams?.y = location[1] + anchorView.height + marginTopPx
-        }
-
+        layoutParams?.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
         window?.attributes = layoutParams
-        dialog.setCanceledOnTouchOutside(true)
+
+        // 设置进场和出场动画
+        window?.setWindowAnimations(R.style.PopupAnimation)
+        
+        dialog.show()
         
         // 追踪Dialog
         activeDialogs.add(dialog)
@@ -166,7 +204,24 @@ class PlayerDialogManager(
             activeDialogs.remove(dialog)
         }
         
-        dialog.show()
+        // 如果有选中项且使用固定高度，自动滚动到选中位置
+        if (selectedPosition >= 0 && useFixedHeight) {
+            val nestedScrollView = dialogView.findViewById<androidx.core.widget.NestedScrollView>(R.id.nestedScrollViewPopup)
+            nestedScrollView?.post {
+                // 计算选中项的位置
+                val itemHeight = 48.dpToPx() // 每个选项的高度
+                val scrollViewHeight = nestedScrollView.height
+                val targetY = selectedPosition * itemHeight - (scrollViewHeight / 2) + (itemHeight / 2)
+
+                // 滚动到目标位置，让选中项居中
+                nestedScrollView.smoothScrollTo(0, targetY.coerceAtLeast(0))
+            }
+        }
+    }
+    
+    private fun Int.dpToPx(): Int {
+        val activity = activityRef.get() ?: return this
+        return (this * activity.resources.displayMetrics.density).toInt()
     }
 
     /**
@@ -182,7 +237,7 @@ class PlayerDialogManager(
             btnSubtitle,
             menuItems,
             selectedPosition = -1,
-            showAbove = true,
+            showAbove = false,
             useFixedHeight = true,
             showScrollHint = true
         ) { position ->
@@ -496,22 +551,55 @@ class PlayerDialogManager(
     fun showMoreOptionsDialog() {
         val activity = activityRef.get() ?: return
 
-        val items = listOf("章节", "截图", "播放列表")
+        // 获取当前视频URI以查询样式覆盖状态
+        val videoUri = (activity as? VideoUriProvider)?.getVideoUri()
+        val assOverrideEnabled = videoUri?.let { 
+            preferencesManager.isAssOverrideEnabled(it.toString())
+        } ?: false
+
+        // 动态显示样式覆盖状态
+        val assOverrideText = if (assOverrideEnabled) "样式覆盖：开" else "样式覆盖：关"
+        val items = listOf("章节", "截图", assOverrideText)
         val btnMore = activity.findViewById<ImageView>(R.id.btnMore)
 
         showPopupDialog(
             btnMore,
             items,
             selectedPosition = -1,
-            showAbove = true,
+            showAbove = false,
             useFixedHeight = false,
             showScrollHint = false
         ) { position ->
             when (position) {
                 0 -> showChapterDialog()
                 1 -> (activity as? MoreOptionsCallback)?.onScreenshot()
-                2 -> (activity as? MoreOptionsCallback)?.onShowPlaylist()
+                2 -> toggleAssOverride()  // 点击切换样式覆盖
             }
+        }
+    }
+
+    /**
+     * 切换ASS/SSA字幕样式覆盖
+     */
+    private fun toggleAssOverride() {
+        val activity = activityRef.get() ?: return
+        val videoUri = (activity as? VideoUriProvider)?.getVideoUri() ?: return
+
+        try {
+            // 获取当前状态
+            val currentState = preferencesManager.isAssOverrideEnabled(videoUri.toString())
+            // 切换状态
+            val newState = !currentState
+            
+            // 保存设置
+            preferencesManager.setAssOverrideEnabled(videoUri.toString(), newState)
+            
+            // 立即应用到播放引擎
+            playbackEngine.setAssOverride(newState)
+            
+            Log.d(TAG, "ASS override toggled: $newState")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to toggle ASS override", e)
         }
     }
 
@@ -541,7 +629,7 @@ class PlayerDialogManager(
                 btnMore,
                 chapters,
                 currentChapter,
-                showAbove = true,
+                showAbove = false,
                 useFixedHeight = true,
                 showScrollHint = true
             ) { position ->
@@ -570,7 +658,7 @@ class PlayerDialogManager(
             btnDanmaku,
             menuItems,
             selectedPosition = -1,
-            showAbove = true,
+            showAbove = false,
             useFixedHeight = false,
             showScrollHint = false
         ) { position ->

@@ -1,6 +1,7 @@
 package com.fam4k007.videoplayer.danmaku
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import com.fam4k007.videoplayer.utils.DialogUtils
 import java.io.File
@@ -113,6 +114,54 @@ class DanmakuManager(
         }
         
         return loaded
+    }
+
+    /**
+     * 导入弹幕文件（从 URI 复制到内部存储）
+     * @param context Android Context
+     * @param uri 弹幕文件的 URI
+     * @return 复制后的弹幕文件路径，失败返回 null
+     */
+    fun importDanmakuFile(context: Context, uri: Uri): String? {
+        return try {
+            val danmakuDir = File(context.filesDir, "danmaku")
+            if (!danmakuDir.exists()) {
+                danmakuDir.mkdirs()
+            }
+            
+            // 获取文件名
+            val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                } else null
+            } ?: "danmaku_${System.currentTimeMillis()}.xml"
+            
+            val danmakuFile = File(danmakuDir, fileName)
+            
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                danmakuFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            if (danmakuFile.exists()) {
+                Log.d(TAG, "Danmaku file imported: ${danmakuFile.absolutePath}")
+                // 自动加载导入的弹幕
+                val loaded = loadDanmakuFile(danmakuFile.absolutePath, autoShow = true)
+                if (loaded) {
+                    danmakuFile.absolutePath
+                } else {
+                    null
+                }
+            } else {
+                Log.e(TAG, "Failed to import danmaku file")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to import danmaku file", e)
+            null
+        }
     }
 
     /**

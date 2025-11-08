@@ -4,11 +4,11 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="@drawable/bg_popup_menu"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp"
-    android:minWidth="150dp">
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:minWidth="100dp">
 
     <!-- 自适应高度，用于选项少的按钮（音轨、解码、更多） -->
     <androidx.recyclerview.widget.RecyclerView

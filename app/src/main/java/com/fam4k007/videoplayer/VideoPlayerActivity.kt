@@ -41,6 +41,7 @@ import com.fam4k007.videoplayer.player.PlayerControlsManager
 import com.fam4k007.videoplayer.player.SeriesManager
 import com.fam4k007.videoplayer.utils.FormatUtils
 import com.fam4k007.videoplayer.utils.UriUtils.resolveUri
+import com.fam4k007.videoplayer.utils.UriUtils.getFolderName
 import com.fam4k007.videoplayer.utils.DialogUtils
 import com.fam4k007.videoplayer.utils.ThemeManager
 import com.fam4k007.videoplayer.utils.getThemeAttrColor
@@ -73,6 +74,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     private lateinit var anime4KManager: Anime4KManager
     private lateinit var danmakuManager: com.fam4k007.videoplayer.danmaku.DanmakuManager
     private lateinit var dialogManager: com.fam4k007.videoplayer.player.PlayerDialogManager
+    private lateinit var filePickerManager: com.fam4k007.videoplayer.player.FilePickerManager
 
     private lateinit var mpvView: CustomMPVView
     private lateinit var danmakuView: com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
@@ -133,7 +135,6 @@ class VideoPlayerActivity : AppCompatActivity(),
         preferencesManager = PreferencesManager.getInstance(this)
         
         historyManager = PlaybackHistoryManager(this)
-        
         
         loadUserSettings()
 
@@ -387,7 +388,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
                 
                 override fun onDecoderClick() {
-                    toggleDecoder()
+                    dialogManager.showDecoderDialog()
                 }
                 
                 override fun onAnime4KClick() {
@@ -466,6 +467,16 @@ class VideoPlayerActivity : AppCompatActivity(),
             }
         })
         
+        // 初始化文件选择器管理器
+        filePickerManager = com.fam4k007.videoplayer.player.FilePickerManager(
+            WeakReference(this),
+            subtitleManager,
+            danmakuManager,
+            historyManager,
+            WeakReference(playbackEngine)
+        )
+        filePickerManager.initialize()
+        
         bindViewsToManagers()
     }
     
@@ -522,6 +533,11 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         clickArea.setOnTouchListener { _, event ->
             gestureHandler.onTouchEvent(event)
+        }
+        
+        // 设置当前视频 URI 给文件选择器管理器
+        videoUri?.let { uri ->
+            filePickerManager.setCurrentVideoUri(uri)
         }
         
         updateEpisodeButtons()
@@ -822,9 +838,21 @@ class VideoPlayerActivity : AppCompatActivity(),
         updateEpisodeButtons()
     }
     
+    override fun onPause() {
+        super.onPause()
+        savePlaybackState()
+    }
+    
+    override fun onStop() {
+        super.onStop()
+        savePlaybackState()
+    }
+    
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "Activity destroyed")
+        
+        savePlaybackState()
         
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
@@ -846,15 +874,38 @@ class VideoPlayerActivity : AppCompatActivity(),
         playbackEngine?.destroy()
         controlsManager?.cleanup()
         gestureHandler?.cleanup()
+        filePickerManager?.cleanup()
     }
     
-    private fun toggleDecoder() {
-        val currentDecoder = preferencesManager.getHardwareDecoder()
-        val newDecoder = !currentDecoder
-        preferencesManager.setHardwareDecoder(newDecoder)
-        val decoderName = if (newDecoder) "硬件解码" else "软件解码"
-        DialogUtils.showToastShort(this, "已切换到$decoderName，将在下次播放时生效")
+    private fun savePlaybackState() {
+        val uri = videoUri ?: return
+        
+        try {
+            // 1. 保存播放进度到 PreferencesManager
+            if (duration > 0 && currentPosition > 0) {
+                preferencesManager.setPlaybackPosition(uri.toString(), currentPosition)
+                Log.d(TAG, "Playback position saved: $currentPosition / $duration")
+            }
+            
+            // 2. 添加到历史记录
+            if (duration > 0) {
+                val fileName = getFileNameFromUri(uri)
+                val folderName = uri.getFolderName()
+                
+                historyManager.addHistory(
+                    uri = uri,
+                    fileName = fileName,
+                    position = (currentPosition * 1000).toLong(),
+                    duration = (duration * 1000).toLong(),
+                    folderName = folderName
+                )
+                Log.d(TAG, "History saved: $fileName")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save playback state", e)
+        }
     }
+    
     
     private fun getFileNameFromUri(uri: Uri): String {
         val cursor = contentResolver.query(uri, null, null, null, null)
@@ -885,11 +936,11 @@ class VideoPlayerActivity : AppCompatActivity(),
     }
     
     override fun onImportSubtitle() {
-        // 字幕导入在FilePickerManager中处理
+        filePickerManager.importSubtitle(isPlaying)
     }
     
     override fun onImportDanmaku() {
-        // 弹幕导入在FilePickerManager中处理
+        filePickerManager.importDanmaku(isPlaying)
     }
     
     override fun onScreenshot() {
