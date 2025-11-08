@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.fam4k007.videoplayer.PlaybackHistoryManager
 import com.fam4k007.videoplayer.danmaku.DanmakuManager
+import com.fam4k007.videoplayer.manager.PreferencesManager
 import com.fam4k007.videoplayer.manager.SubtitleManager
 import com.fam4k007.videoplayer.utils.DialogUtils
 import java.lang.ref.WeakReference
@@ -20,7 +21,8 @@ class FilePickerManager(
     private val subtitleManager: SubtitleManager,
     private val danmakuManager: DanmakuManager,
     private val historyManager: PlaybackHistoryManager,
-    private val playbackEngineRef: WeakReference<PlaybackEngine>
+    private val playbackEngineRef: WeakReference<PlaybackEngine>,
+    private val preferencesManager: PreferencesManager
 ) {
     companion object {
         private const val TAG = "FilePickerManager"
@@ -99,6 +101,15 @@ class FilePickerManager(
             val success = subtitleManager.addExternalSubtitle(activity, uri)
             if (success) {
                 DialogUtils.showToastShort(activity, "字幕导入成功")
+                
+                // 保存外挂字幕路径
+                currentVideoUri?.let { videoUri ->
+                    val subtitlePath = subtitleManager.getLastAddedSubtitlePath()
+                    if (subtitlePath != null) {
+                        preferencesManager.setExternalSubtitle(videoUri.toString(), subtitlePath)
+                        Log.d(TAG, "Saved external subtitle path: $subtitlePath")
+                    }
+                }
             } else {
                 DialogUtils.showToastLong(activity, "字幕导入失败")
             }

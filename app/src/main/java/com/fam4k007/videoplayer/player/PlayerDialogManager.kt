@@ -29,7 +29,8 @@ class PlayerDialogManager(
     private val playbackEngine: PlaybackEngine,
     private val danmakuManager: DanmakuManager,
     private val anime4KManager: Anime4KManager,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val composeOverlayManager: com.fanchen.fam4k007.manager.compose.ComposeOverlayManager
 ) {
     companion object {
         private const val TAG = "PlayerDialogManager"
@@ -225,13 +226,13 @@ class PlayerDialogManager(
     }
 
     /**
-     * 显示字幕选择对话框
+     * 显示字幕菜单对话框
      */
     fun showSubtitleDialog() {
         val activity = activityRef.get() ?: return
 
         val btnSubtitle = activity.findViewById<ImageView>(R.id.btnSubtitle)
-        val menuItems = listOf("关闭字幕", "导入外部字幕", "切换字幕轨道", "字幕延迟", "字幕样式", "字幕杂项")
+        val menuItems = listOf("字幕轨道", "外挂字幕", "更多设置")
 
         showPopupDialog(
             btnSubtitle,
@@ -242,18 +243,12 @@ class PlayerDialogManager(
             showScrollHint = true
         ) { position ->
             when (position) {
-                0 -> {
-                    playbackEngine.setSubtitleTrack(0)
-                    DialogUtils.showToastShort(activity, "字幕已关闭")
-                }
+                0 -> showSubtitleTrackDialog()
                 1 -> {
                     // 导入外部字幕的逻辑由Activity处理
                     (activity as? SubtitleDialogCallback)?.onImportSubtitle()
                 }
-                2 -> showSubtitleTrackDialog()
-                3 -> showSubtitleDelayDialog()
-                4 -> showSubtitleStyleDialog()
-                5 -> showSubtitleMiscDialog()
+                2 -> showSubtitleSettingsDrawer()
             }
         }
     }
@@ -266,26 +261,31 @@ class PlayerDialogManager(
 
         try {
             val tracks = playbackEngine.getSubtitleTracks()
-            if (tracks.isEmpty()) {
-                DialogUtils.showToastShort(activity, "没有可用的字幕轨道")
-                return
-            }
-
-            val currentTrack = playbackEngine.getCurrentSubtitleTrack()
             val btnSubtitle = activity.findViewById<ImageView>(R.id.btnSubtitle)
             
+            // tracks已包含"关闭字幕"选项
             val trackNames = tracks.map { it.second }
+            
+            // 获取当前选中的轨道索引
+            val currentSelection = tracks.indexOfFirst { it.third }
 
             showPopupDialog(
                 btnSubtitle,
                 trackNames,
-                currentTrack,
-                showAbove = true,
-                useFixedHeight = true,
+                currentSelection,
+                showAbove = false,
+                useFixedHeight = false,
                 showScrollHint = false
             ) { position ->
-                playbackEngine.setSubtitleTrack(tracks[position].first)
-                DialogUtils.showToastShort(activity, "已切换到: ${tracks[position].second}")
+                val trackId = tracks[position].first
+                playbackEngine.setSubtitleTrack(trackId)
+                
+                // 保存字幕轨道选择
+                val videoUri = (activity as? VideoUriProvider)?.getVideoUri()
+                videoUri?.let { uri ->
+                    preferencesManager.setSubtitleTrackId(uri.toString(), trackId)
+                    Log.d(TAG, "Saved subtitle track: $trackId")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to show subtitle track dialog", e)
@@ -293,174 +293,106 @@ class PlayerDialogManager(
     }
 
     /**
-     * 显示字幕延迟调整对话框
+     * 显示字幕设置抽屉（合并延迟、样式、杂项）
      */
+    fun showSubtitleSettingsDrawer() {
+        val activity = activityRef.get() ?: return
+        val videoUri = (activity as? VideoUriProvider)?.getVideoUri() ?: return
+        val uriString = videoUri.toString()
+
+        val currentDelay = preferencesManager.getSubtitleDelay(uriString)
+        val currentScale = preferencesManager.getSubtitleScale(uriString).toFloat()
+        val currentPosition = preferencesManager.getSubtitlePosition(uriString)
+        val currentBorderSize = preferencesManager.getSubtitleBorderSize(uriString)
+
+        composeOverlayManager.showSubtitleSettingsDrawer(
+            currentDelay = currentDelay,
+            currentScale = currentScale,
+            currentPosition = currentPosition,
+            currentBorderSize = currentBorderSize,
+            onDelayChange = { newDelay ->
+                playbackEngine.setSubtitleDelay(newDelay)
+                preferencesManager.setSubtitleDelay(uriString, newDelay)
+            },
+            onScaleChange = { newScale ->
+                playbackEngine.setSubtitleScale(newScale.toDouble())
+                preferencesManager.setSubtitleScale(uriString, newScale.toDouble())
+            },
+            onPositionChange = { newPos ->
+                playbackEngine.setSubtitlePosition(newPos)
+                preferencesManager.setSubtitlePosition(uriString, newPos)
+            },
+            onBorderSizeChange = { newSize ->
+                playbackEngine.setSubtitleBorderSize(newSize)
+                preferencesManager.setSubtitleBorderSize(uriString, newSize)
+            }
+        )
+    }
+
+    /**
+     * 显示字幕延迟调整对话框（已废弃）
+     */
+    @Deprecated("使用 showSubtitleSettingsDrawer 替代")
     fun showSubtitleDelayDialog() {
         val activity = activityRef.get() ?: return
         val videoUri = (activity as? VideoUriProvider)?.getVideoUri() ?: return
+        val uriString = videoUri.toString()
 
-        val dialog = Dialog(activity)
-        dialog.setContentView(R.layout.dialog_subtitle_delay)
+        val currentDelay = preferencesManager.getSubtitleDelay(uriString)
 
-        val etDelayValue = dialog.findViewById<EditText>(R.id.etDelayValue)
-        val btnDelayPlus = dialog.findViewById<Button>(R.id.btnIncreaseDelay)
-        val btnDelayMinus = dialog.findViewById<Button>(R.id.btnDecreaseDelay)
-        val btnDelayReset = dialog.findViewById<Button>(R.id.btnResetDelay)
-
-        val currentDelay = preferencesManager.getSubtitleDelay(videoUri.toString())
-        etDelayValue.setText(String.format("%.2f", currentDelay))
-
-        btnDelayPlus.setOnClickListener {
-            val currentValue = etDelayValue.text.toString().toDoubleOrNull() ?: 0.0
-            val newValue = currentValue + 0.1
-            etDelayValue.setText(String.format("%.2f", newValue))
-            playbackEngine.setSubtitleDelay(newValue)
-            preferencesManager.setSubtitleDelay(videoUri.toString(), newValue)
-        }
-
-        btnDelayMinus.setOnClickListener {
-            val currentValue = etDelayValue.text.toString().toDoubleOrNull() ?: 0.0
-            val newValue = currentValue - 0.1
-            etDelayValue.setText(String.format("%.2f", newValue))
-            playbackEngine.setSubtitleDelay(newValue)
-            preferencesManager.setSubtitleDelay(videoUri.toString(), newValue)
-        }
-
-        btnDelayReset.setOnClickListener {
-            etDelayValue.setText("0.00")
-            playbackEngine.setSubtitleDelay(0.0)
-            preferencesManager.setSubtitleDelay(videoUri.toString(), 0.0)
-        }
-
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.setCanceledOnTouchOutside(true)
-        
-        // 追踪Dialog
-        activeDialogs.add(dialog)
-        dialog.setOnDismissListener {
-            activeDialogs.remove(dialog)
-        }
-        
-        dialog.show()
+        composeOverlayManager.showSubtitleDelayDialog(
+            currentDelay = currentDelay,
+            onDelayChange = { newDelay ->
+                playbackEngine.setSubtitleDelay(newDelay)
+                preferencesManager.setSubtitleDelay(uriString, newDelay)
+            }
+        )
     }
 
     /**
-     * 显示字幕杂项设置对话框
+     * 显示字幕杂项设置对话框（已废弃）
      */
+    @Deprecated("使用 showSubtitleSettingsDrawer 替代")
     fun showSubtitleMiscDialog() {
         val activity = activityRef.get() ?: return
         val videoUri = (activity as? VideoUriProvider)?.getVideoUri() ?: return
-
-        val dialog = Dialog(activity)
-        dialog.setContentView(R.layout.dialog_subtitle_misc)
-
-        val seekBarScale = dialog.findViewById<SeekBar>(R.id.seekBarSize)
-        val seekBarPos = dialog.findViewById<SeekBar>(R.id.seekBarPosition)
-        val tvScaleValue = dialog.findViewById<TextView>(R.id.tvSizeValue)
-        val tvPosValue = dialog.findViewById<TextView>(R.id.tvPositionValue)
-        val btnReset = dialog.findViewById<Button>(R.id.btnReset)
-
         val uriString = videoUri.toString()
-        val currentScale = (preferencesManager.getSubtitleScale(uriString) * 100).toInt()
+
+        val currentScale = preferencesManager.getSubtitleScale(uriString).toFloat()
         val currentPos = preferencesManager.getSubtitlePosition(uriString)
 
-        seekBarScale.progress = currentScale
-        seekBarPos.progress = currentPos
-        tvScaleValue.text = "$currentScale%"
-        tvPosValue.text = "$currentPos"
-
-        seekBarScale.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                tvScaleValue.text = "$progress%"
-                val scale = progress / 100.0
-                playbackEngine.setSubtitleScale(scale)
-                preferencesManager.setSubtitleScale(uriString, scale)
+        composeOverlayManager.showSubtitleMiscDialog(
+            currentScale = currentScale,
+            currentPosition = currentPos,
+            onScaleChange = { newScale ->
+                playbackEngine.setSubtitleScale(newScale.toDouble())
+                preferencesManager.setSubtitleScale(uriString, newScale.toDouble())
+            },
+            onPositionChange = { newPos ->
+                playbackEngine.setSubtitlePosition(newPos)
+                preferencesManager.setSubtitlePosition(uriString, newPos)
             }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        seekBarPos.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                tvPosValue.text = "$progress"
-                playbackEngine.setSubtitlePosition(progress)
-                preferencesManager.setSubtitlePosition(uriString, progress)
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        btnReset.setOnClickListener {
-            seekBarScale.progress = 100
-            seekBarPos.progress = 0
-            playbackEngine.setSubtitleScale(1.0)
-            playbackEngine.setSubtitlePosition(0)
-            preferencesManager.setSubtitleScale(uriString, 1.0)
-            preferencesManager.setSubtitlePosition(uriString, 0)
-        }
-
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.setCanceledOnTouchOutside(true)
-        
-        // 追踪Dialog
-        activeDialogs.add(dialog)
-        dialog.setOnDismissListener {
-            activeDialogs.remove(dialog)
-        }
-        
-        dialog.show()
+        )
     }
 
     /**
-     * 显示字幕样式设置对话框
+     * 显示字幕样式设置对话框（已废弃）
      */
+    @Deprecated("使用 showSubtitleSettingsDrawer 替代")
     fun showSubtitleStyleDialog() {
         val activity = activityRef.get() ?: return
         val videoUri = (activity as? VideoUriProvider)?.getVideoUri() ?: return
-
-        val dialog = Dialog(activity)
-        dialog.setContentView(R.layout.dialog_subtitle_style)
-
-        val seekBarBorderSize = dialog.findViewById<SeekBar>(R.id.seekBarBorderSize)
-        val tvBorderSizeValue = dialog.findViewById<TextView>(R.id.tvBorderSizeValue)
-        val btnReset = dialog.findViewById<Button>(R.id.btnReset)
-
         val uriString = videoUri.toString()
-        var currentBorderSize = preferencesManager.getSubtitleBorderSize(uriString).toDouble()
 
-        seekBarBorderSize.progress = currentBorderSize.toInt()
-        tvBorderSizeValue.text = "${currentBorderSize.toInt()}"
+        val currentBorderSize = preferencesManager.getSubtitleBorderSize(uriString)
 
-        seekBarBorderSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                tvBorderSizeValue.text = "$progress"
-                currentBorderSize = progress.toDouble()
-                playbackEngine.setSubtitleBorderSize(progress)
-                preferencesManager.setSubtitleBorderSize(uriString, progress)
+        composeOverlayManager.showSubtitleStyleDialog(
+            currentBorderSize = currentBorderSize,
+            onBorderSizeChange = { newSize ->
+                playbackEngine.setSubtitleBorderSize(newSize)
+                preferencesManager.setSubtitleBorderSize(uriString, newSize)
             }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        btnReset.setOnClickListener {
-            seekBarBorderSize.progress = 3
-            playbackEngine.setSubtitleBorderSize(3)
-            preferencesManager.setSubtitleBorderSize(uriString, 3)
-        }
-
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.setCanceledOnTouchOutside(true)
-        
-        // 追踪Dialog
-        activeDialogs.add(dialog)
-        dialog.setOnDismissListener {
-            activeDialogs.remove(dialog)
-        }
-        
-        dialog.show()
+        )
     }
 
     /**
@@ -884,7 +816,6 @@ interface DanmakuDialogCallback {
 
 interface MoreOptionsCallback {
     fun onScreenshot()
-    fun onShowPlaylist()
 }
 
 interface VideoUriProvider {

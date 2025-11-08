@@ -298,8 +298,14 @@ class PlaybackEngine(
      * 设置字幕轨道
      */
     fun setSubtitleTrack(trackId: Int) {
-        MPVLib.setPropertyInt("sid", trackId)
-        Log.d(TAG, "Subtitle track set to: $trackId")
+        if (trackId == -1) {
+            // 关闭字幕需要使用"no"
+            MPVLib.setPropertyString("sid", "no")
+            Log.d(TAG, "Subtitle track disabled")
+        } else {
+            MPVLib.setPropertyInt("sid", trackId)
+            Log.d(TAG, "Subtitle track set to: $trackId")
+        }
     }
     
     /**

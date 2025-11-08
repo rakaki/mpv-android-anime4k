@@ -75,6 +75,8 @@ class VideoPlayerActivity : AppCompatActivity(),
     private lateinit var danmakuManager: com.fam4k007.videoplayer.danmaku.DanmakuManager
     private lateinit var dialogManager: com.fam4k007.videoplayer.player.PlayerDialogManager
     private lateinit var filePickerManager: com.fam4k007.videoplayer.player.FilePickerManager
+    private lateinit var composeOverlayManager: com.fanchen.fam4k007.manager.compose.ComposeOverlayManager
+    private lateinit var screenshotManager: com.fam4k007.videoplayer.manager.ScreenshotManager
 
     private lateinit var mpvView: CustomMPVView
     private lateinit var danmakuView: com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
@@ -445,12 +447,20 @@ class VideoPlayerActivity : AppCompatActivity(),
             Log.w(TAG, "Anime4K initialization failed")
         }
         
+        // 初始化Compose管理器（必须在dialogManager之前）
+        composeOverlayManager = com.fanchen.fam4k007.manager.compose.ComposeOverlayManager(
+            context = this,
+            lifecycleOwner = this,
+            rootView = findViewById(android.R.id.content)
+        )
+        
         dialogManager = com.fam4k007.videoplayer.player.PlayerDialogManager(
             WeakReference(this),
             playbackEngine,
             danmakuManager,
             anime4KManager,
-            preferencesManager
+            preferencesManager,
+            composeOverlayManager
         )
         dialogManager.setCallback(object : com.fam4k007.videoplayer.player.PlayerDialogManager.DialogCallback {
             override fun onSpeedChanged(speed: Double) {
@@ -473,9 +483,13 @@ class VideoPlayerActivity : AppCompatActivity(),
             subtitleManager,
             danmakuManager,
             historyManager,
-            WeakReference(playbackEngine)
+            WeakReference(playbackEngine),
+            preferencesManager
         )
         filePickerManager.initialize()
+        
+        // 初始化截图管理器
+        screenshotManager = com.fam4k007.videoplayer.manager.ScreenshotManager(this)
         
         bindViewsToManagers()
     }
@@ -944,13 +958,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     }
     
     override fun onScreenshot() {
-        // 截图功能暂未实现
-        DialogUtils.showToastShort(this, "截图功能开发中")
-    }
-    
-    override fun onShowPlaylist() {
-        // 播放列表功能暂未实现
-        DialogUtils.showToastShort(this, "播放列表功能开发中")
+        screenshotManager.takeScreenshot()
     }
     
     override fun getVideoUri(): Uri? = videoUri
