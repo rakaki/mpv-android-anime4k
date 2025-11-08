@@ -128,6 +128,7 @@ class FilePickerManager(
      */
     private fun handleDanmakuSelected(uri: Uri?) {
         val activity = activityRef.get() ?: return
+        val playbackEngine = playbackEngineRef.get() ?: return
         
         if (uri != null) {
             Log.d(TAG, "Danmaku file selected: $uri")
@@ -136,6 +137,21 @@ class FilePickerManager(
                 val danmakuPath = danmakuManager.importDanmakuFile(activity, uri)
                 if (danmakuPath != null) {
                     DialogUtils.showToastShort(activity, "弹幕导入成功")
+                    
+                    // 加载弹幕文件
+                    val loaded = danmakuManager.loadDanmakuFile(danmakuPath, autoShow = true)
+                    if (loaded) {
+                        // 同步弹幕到当前播放位置
+                        val currentPosition = (playbackEngine.currentPosition * 1000).toLong()
+                        danmakuManager.seekTo(currentPosition)
+                        
+                        // 如果正在播放，启动弹幕
+                        if (wasPlayingBeforeDanmakuPicker) {
+                            danmakuManager.start()
+                        }
+                        
+                        Log.d(TAG, "Danmaku loaded and synced to position: $currentPosition")
+                    }
                     
                     // 更新历史记录中的弹幕信息
                     currentVideoUri?.let { videoUri ->

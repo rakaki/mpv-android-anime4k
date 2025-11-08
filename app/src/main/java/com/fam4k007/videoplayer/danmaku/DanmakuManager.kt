@@ -102,13 +102,16 @@ class DanmakuManager(
 
         val loaded = danmakuView.loadDanmaku(danmakuPath)
         
-        // 如果加载成功，记录路径并根据参数决定是否显示
+        // 如果加载成功，记录路径并根据配置决定是否显示
         if (loaded) {
             currentDanmakuPath = danmakuPath
-            if (autoShow) {
+            // 使用保存的开关状态，而不是autoShow参数
+            val shouldShow = if (autoShow) DanmakuConfig.isEnabled else false
+            if (shouldShow) {
                 danmakuView.show()
                 Log.d(TAG, "Danmaku loaded and shown: $danmakuPath")
             } else {
+                danmakuView.hide()
                 Log.d(TAG, "Danmaku loaded (hidden): $danmakuPath")
             }
         }

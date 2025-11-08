@@ -104,6 +104,66 @@ class ComposeOverlayManager(
         }
     }
     
+    // ===== 弹幕对话框相关 =====
+
+    /**
+     * 显示弹幕设置抽屉
+     */
+    fun showDanmakuSettingsDrawer(
+        danmakuPath: String?,
+        currentSize: Int,
+        currentSpeed: Int,
+        currentAlpha: Int,
+        currentStroke: Int,
+        currentShowScroll: Boolean,
+        currentShowTop: Boolean,
+        currentShowBottom: Boolean,
+        currentMaxScrollLine: Int,
+        currentMaxTopLine: Int,
+        currentMaxBottomLine: Int,
+        currentMaxScreenNum: Int,
+        onSizeChange: (Int) -> Unit,
+        onSpeedChange: (Int) -> Unit,
+        onAlphaChange: (Int) -> Unit,
+        onStrokeChange: (Int) -> Unit,
+        onShowScrollChange: (Boolean) -> Unit,
+        onShowTopChange: (Boolean) -> Unit,
+        onShowBottomChange: (Boolean) -> Unit,
+        onMaxScrollLineChange: (Int) -> Unit,
+        onMaxTopLineChange: (Int) -> Unit,
+        onMaxBottomLineChange: (Int) -> Unit,
+        onMaxScreenNumChange: (Int) -> Unit
+    ) {
+        setContent {
+            DanmakuSettingsDrawer(
+                danmakuPath = danmakuPath,
+                currentSize = currentSize,
+                currentSpeed = currentSpeed,
+                currentAlpha = currentAlpha,
+                currentStroke = currentStroke,
+                currentShowScroll = currentShowScroll,
+                currentShowTop = currentShowTop,
+                currentShowBottom = currentShowBottom,
+                currentMaxScrollLine = currentMaxScrollLine,
+                currentMaxTopLine = currentMaxTopLine,
+                currentMaxBottomLine = currentMaxBottomLine,
+                currentMaxScreenNum = currentMaxScreenNum,
+                onSizeChange = onSizeChange,
+                onSpeedChange = onSpeedChange,
+                onAlphaChange = onAlphaChange,
+                onStrokeChange = onStrokeChange,
+                onShowScrollChange = onShowScrollChange,
+                onShowTopChange = onShowTopChange,
+                onShowBottomChange = onShowBottomChange,
+                onMaxScrollLineChange = onMaxScrollLineChange,
+                onMaxTopLineChange = onMaxTopLineChange,
+                onMaxBottomLineChange = onMaxBottomLineChange,
+                onMaxScreenNumChange = onMaxScreenNumChange,
+                onDismiss = { clearContent() }
+            )
+        }
+    }
+    
     /**
      * 显示字幕延迟对话框（已废弃，保留兼容）
      */

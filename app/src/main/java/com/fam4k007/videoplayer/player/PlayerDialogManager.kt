@@ -604,9 +604,17 @@ class PlayerDialogManager(
         val activity = activityRef.get() ?: return
 
         val btnDanmaku = activity.findViewById<ImageView>(R.id.btnDanmaku)
+        
+        // 动态确定第一个选项的文本
+        val firstOption = when {
+            danmakuManager.getCurrentDanmakuPath() == null -> "未加载文件"
+            danmakuManager.isVisible() -> "隐藏弹幕"
+            else -> "显示弹幕"
+        }
+        
         val menuItems = listOf(
-            if (danmakuManager.isVisible()) "隐藏弹幕" else "显示弹幕",
-            "导入弹幕",
+            firstOption,
+            "本地弹幕",
             "弹幕设置"
         )
 
@@ -620,11 +628,16 @@ class PlayerDialogManager(
         ) { position ->
             when (position) {
                 0 -> {
-                    if (danmakuManager.isVisible()) {
+                    // 检查是否已加载弹幕文件
+                    if (danmakuManager.getCurrentDanmakuPath() == null) {
+                        DialogUtils.showToastShort(activity, "请先加载弹幕文件")
+                    } else if (danmakuManager.isVisible()) {
                         danmakuManager.setVisibility(false)
+                        com.fam4k007.videoplayer.danmaku.DanmakuConfig.setEnabled(false)
                         DialogUtils.showToastShort(activity, "弹幕已隐藏")
                     } else {
                         danmakuManager.setVisibility(true)
+                        com.fam4k007.videoplayer.danmaku.DanmakuConfig.setEnabled(true)
                         DialogUtils.showToastShort(activity, "弹幕已显示")
                     }
                 }
@@ -635,116 +648,85 @@ class PlayerDialogManager(
     }
 
     /**
-     * 显示弹幕设置对话框
+     * 显示弹幕设置对话框（Compose版本）
      */
     fun showDanmakuSettingsDialog() {
         val activity = activityRef.get() ?: return
-
-        val dialog = Dialog(activity)
-        dialog.setContentView(R.layout.dialog_danmaku_settings)
-
-        val seekBarSize = dialog.findViewById<SeekBar>(R.id.seekBarDanmakuSize)
-        val seekBarSpeed = dialog.findViewById<SeekBar>(R.id.seekBarDanmakuSpeed)
-        val seekBarAlpha = dialog.findViewById<SeekBar>(R.id.seekBarDanmakuAlpha)
-        val seekBarStroke = dialog.findViewById<SeekBar>(R.id.seekBarDanmakuStroke)
-        val tvSizeValue = dialog.findViewById<TextView>(R.id.tvDanmakuSizeValue)
-        val tvSpeedValue = dialog.findViewById<TextView>(R.id.tvDanmakuSpeedValue)
-        val tvAlphaValue = dialog.findViewById<TextView>(R.id.tvDanmakuAlphaValue)
-        val tvStrokeValue = dialog.findViewById<TextView>(R.id.tvDanmakuStrokeValue)
-        val btnReset = dialog.findViewById<Button>(R.id.btnReset)
-
-        val defaultSize = 100
-        val defaultSpeed = 100
-        val defaultAlpha = 100
-        val defaultStroke = 100
-
-        seekBarSize.progress = defaultSize
-        seekBarSpeed.progress = defaultSpeed
-        seekBarAlpha.progress = defaultAlpha
-        seekBarStroke.progress = defaultStroke
-
-        tvSizeValue.text = "${defaultSize}%"
-        tvSpeedValue.text = "${defaultSpeed}%"
-        tvAlphaValue.text = "${defaultAlpha}%"
-        tvStrokeValue.text = "${defaultStroke}%"
-
-        fun updateResetButton() {
-            val isAllDefault = seekBarSize.progress == defaultSize &&
-                    seekBarSpeed.progress == defaultSpeed &&
-                    seekBarAlpha.progress == defaultAlpha &&
-                    seekBarStroke.progress == defaultStroke
-            btnReset.isEnabled = !isAllDefault
-        }
-        updateResetButton()
-
-        seekBarSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                tvSizeValue.text = "$progress%"
+        
+        // 获取当前弹幕文件路径
+        val danmakuPath = danmakuManager.getCurrentDanmakuPath()
+        
+        // 从 DanmakuConfig 读取当前值
+        val currentSize = com.fam4k007.videoplayer.danmaku.DanmakuConfig.size
+        val currentSpeed = com.fam4k007.videoplayer.danmaku.DanmakuConfig.speed
+        val currentAlpha = com.fam4k007.videoplayer.danmaku.DanmakuConfig.alpha
+        val currentStroke = com.fam4k007.videoplayer.danmaku.DanmakuConfig.stroke
+        val currentShowScroll = com.fam4k007.videoplayer.danmaku.DanmakuConfig.showScrollDanmaku
+        val currentShowTop = com.fam4k007.videoplayer.danmaku.DanmakuConfig.showTopDanmaku
+        val currentShowBottom = com.fam4k007.videoplayer.danmaku.DanmakuConfig.showBottomDanmaku
+        val currentMaxScrollLine = com.fam4k007.videoplayer.danmaku.DanmakuConfig.maxScrollLine
+        val currentMaxTopLine = com.fam4k007.videoplayer.danmaku.DanmakuConfig.maxTopLine
+        val currentMaxBottomLine = com.fam4k007.videoplayer.danmaku.DanmakuConfig.maxBottomLine
+        val currentMaxScreenNum = com.fam4k007.videoplayer.danmaku.DanmakuConfig.maxScreenNum
+        
+        composeOverlayManager.showDanmakuSettingsDrawer(
+            danmakuPath = danmakuPath,
+            currentSize = currentSize,
+            currentSpeed = currentSpeed,
+            currentAlpha = currentAlpha,
+            currentStroke = currentStroke,
+            currentShowScroll = currentShowScroll,
+            currentShowTop = currentShowTop,
+            currentShowBottom = currentShowBottom,
+            currentMaxScrollLine = currentMaxScrollLine,
+            currentMaxTopLine = currentMaxTopLine,
+            currentMaxBottomLine = currentMaxBottomLine,
+            currentMaxScreenNum = currentMaxScreenNum,
+            onSizeChange = { size ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setSize(size)
                 danmakuManager.updateSize()
-                updateResetButton()
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        seekBarSpeed.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                tvSpeedValue.text = "$progress%"
+            },
+            onSpeedChange = { speed ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setSpeed(speed)
                 danmakuManager.updateSpeed()
-                updateResetButton()
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        seekBarAlpha.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                tvAlphaValue.text = "$progress%"
+            },
+            onAlphaChange = { alpha ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setAlpha(alpha)
                 danmakuManager.updateAlpha()
-                updateResetButton()
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        seekBarStroke.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                tvStrokeValue.text = "$progress%"
+            },
+            onStrokeChange = { stroke ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setStroke(stroke)
                 danmakuManager.updateStroke()
-                updateResetButton()
+            },
+            onShowScrollChange = { show ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setShowScrollDanmaku(show)
+                danmakuManager.updateScrollDanmaku()
+            },
+            onShowTopChange = { show ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setShowTopDanmaku(show)
+                danmakuManager.updateTopDanmaku()
+            },
+            onShowBottomChange = { show ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setShowBottomDanmaku(show)
+                danmakuManager.updateBottomDanmaku()
+            },
+            onMaxScrollLineChange = { line ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setMaxScrollLine(line)
+                danmakuManager.updateMaxLine()
+            },
+            onMaxTopLineChange = { line ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setMaxTopLine(line)
+                danmakuManager.updateMaxLine()
+            },
+            onMaxBottomLineChange = { line ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setMaxBottomLine(line)
+                danmakuManager.updateMaxLine()
+            },
+            onMaxScreenNumChange = { num ->
+                com.fam4k007.videoplayer.danmaku.DanmakuConfig.setMaxScreenNum(num)
+                danmakuManager.updateMaxScreenNum()
             }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        btnReset.setOnClickListener {
-            seekBarSize.progress = defaultSize
-            seekBarSpeed.progress = defaultSpeed
-            seekBarAlpha.progress = defaultAlpha
-            seekBarStroke.progress = defaultStroke
-
-            danmakuManager.updateSize()
-            danmakuManager.updateSpeed()
-            danmakuManager.updateAlpha()
-            danmakuManager.updateStroke()
-
-            updateResetButton()
-        }
-
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.setCanceledOnTouchOutside(true)
-        
-        // 追踪Dialog
-        activeDialogs.add(dialog)
-        dialog.setOnDismissListener {
-            activeDialogs.remove(dialog)
-        }
-        
-        dialog.show()
+        )
     }
 
     /**
