@@ -108,6 +108,10 @@ dependencies {
     // Lifecycle and Coroutines
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    // OkHttp - for network requests
+    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    // Jsoup - for HTML parsing
+    implementation 'org.jsoup:jsoup:1.16.1'
     // Room Database
     implementation 'androidx.room:room-runtime:2.5.2'
     implementation 'androidx.room:room-ktx:2.5.2'

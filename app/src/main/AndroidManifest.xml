@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
         android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:name=".AppApplication"
@@ -15,6 +17,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.VideoPlayer">
         <activity android:name=".MainActivity"
             android:exported="true">
@@ -26,6 +29,7 @@
         <activity android:name=".SettingsActivity" />
         <activity android:name=".PlaybackSettingsActivity" />
         <activity android:name=".PlaybackHistoryActivity" />
+        <activity android:name=".BiliBiliDanmakuActivity" />
         <activity android:name=".HelpActivity" />
         <activity android:name=".AboutActivity" />
         <activity android:name=".LicenseActivity" />

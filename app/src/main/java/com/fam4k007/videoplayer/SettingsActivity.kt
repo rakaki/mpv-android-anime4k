@@ -1,7 +1,6 @@
 package com.fam4k007.videoplayer
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -18,6 +17,7 @@ class SettingsActivity : BaseActivity() {
     private lateinit var layoutThemeSettings: View
     private lateinit var layoutPlaybackHistory: View
     private lateinit var layoutPlaybackSettings: View
+    private lateinit var layoutBiliBiliDanmaku: View
     private lateinit var layoutHelp: View
     private lateinit var layoutAboutInfo: View
     
@@ -32,6 +32,7 @@ class SettingsActivity : BaseActivity() {
         layoutThemeSettings = findViewById(R.id.layoutThemeSettings)
         layoutPlaybackHistory = findViewById(R.id.layoutPlaybackHistory)
         layoutPlaybackSettings = findViewById(R.id.layoutPlaybackSettings)
+        layoutBiliBiliDanmaku = findViewById(R.id.layoutBiliBiliDanmaku)
         layoutHelp = findViewById(R.id.layoutHelp)
         layoutAboutInfo = findViewById(R.id.layoutAboutInfo)
         
@@ -57,6 +58,12 @@ class SettingsActivity : BaseActivity() {
         // 播放设置入口点击
         layoutPlaybackSettings.setOnClickListener {
             startActivity(Intent(this, PlaybackSettingsActivity::class.java))
+            startActivityWithDefaultTransition()
+        }
+        
+        // 哔哩哔哩弹幕下载点击
+        layoutBiliBiliDanmaku.setOnClickListener {
+            startActivity(Intent(this, BiliBiliDanmakuActivity::class.java))
             startActivityWithDefaultTransition()
         }
         
