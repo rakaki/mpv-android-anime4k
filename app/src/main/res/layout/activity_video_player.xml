@@ -526,12 +526,14 @@
         android:elevation="10dp"
         android:alpha="0" />
 
-    <!-- 倍速播放提示（屏幕中央） -->
+    <!-- 倍速播放提示（屏幕顶部偏下） -->
     <LinearLayout
         android:id="@+id/speedHint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="60dp"
         android:background="@drawable/speed_hint_background"
         android:orientation="horizontal"
         android:paddingHorizontal="16dp"

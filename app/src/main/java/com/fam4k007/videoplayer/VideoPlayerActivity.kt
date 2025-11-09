@@ -77,6 +77,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     private lateinit var filePickerManager: com.fam4k007.videoplayer.player.FilePickerManager
     private lateinit var composeOverlayManager: com.fanchen.fam4k007.manager.compose.ComposeOverlayManager
     private lateinit var screenshotManager: com.fam4k007.videoplayer.manager.ScreenshotManager
+    private lateinit var skipIntroOutroManager: com.fanchen.fam4k007.manager.SkipIntroOutroManager
 
     private lateinit var mpvView: CustomMPVView
     private lateinit var danmakuView: com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
@@ -111,6 +112,9 @@ class VideoPlayerActivity : AppCompatActivity(),
     private var anime4KEnabled = false
     private var anime4KMode = Anime4KManager.Mode.OFF
     private var anime4KQuality = Anime4KManager.Quality.BALANCED
+    
+    // 当前视频所在文件夹路径
+    private var currentFolderPath: String? = null
     
     private lateinit var seekHint: TextView
     private lateinit var speedHint: LinearLayout
@@ -159,6 +163,12 @@ class VideoPlayerActivity : AppCompatActivity(),
         }
 
         Log.d(TAG, "Video URI: $videoUri")
+        
+        // 获取当前视频所在文件夹路径
+        videoUri?.let { uri ->
+            currentFolderPath = uri.getFolderName()
+            Log.d(TAG, "Folder path: $currentFolderPath")
+        }
 
         savedPosition = preferencesManager.getPlaybackPosition(videoUri.toString())
         Log.d(TAG, "Saved position: $savedPosition seconds")
@@ -234,11 +244,36 @@ class VideoPlayerActivity : AppCompatActivity(),
                     this@VideoPlayerActivity.duration = duration
                     controlsManager?.updateProgress(position, duration)
                     
+                    // 处理片头片尾跳过
+                    skipIntroOutroManager.handleSkipIntroOutro(
+                        folderPath = currentFolderPath,
+                        position = position,
+                        duration = duration,
+                        getChapters = { playbackEngine.getChapters() },
+                        seekTo = { playbackEngine.seekTo(it) },
+                        onOutroReached = {
+                            // 使用seriesManager判断是否有下一集
+                            val hadNext = seriesManager.hasNext
+                            if (hadNext) {
+                                playNextVideo()
+                            }
+                            hadNext
+                        }
+                    )
                 }
                 
                 override fun onFileLoaded() {
                     isPlaying = true
                     controlsManager?.updatePlayPauseButton(true)
+                    
+                    // 重置片头片尾跳过标记
+                    skipIntroOutroManager.resetFlags()
+                    
+                    // 延迟标记视频准备好，确保视频真正开始播放
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        skipIntroOutroManager.markVideoReady()
+                        Log.d(TAG, "Video marked as ready for skip detection")
+                    }, 500)  // 延迟500ms
                     
                     // 不在这里启动弹幕，弹幕的启动由 onPlaybackStateChanged 统一管理
                     Log.d(TAG, "Video file loaded")
@@ -462,7 +497,8 @@ class VideoPlayerActivity : AppCompatActivity(),
             danmakuManager,
             anime4KManager,
             preferencesManager,
-            composeOverlayManager
+            composeOverlayManager,
+            WeakReference(controlsManager)
         )
         dialogManager.setCallback(object : com.fam4k007.videoplayer.player.PlayerDialogManager.DialogCallback {
             override fun onSpeedChanged(speed: Double) {
@@ -492,6 +528,13 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         // 初始化截图管理器
         screenshotManager = com.fam4k007.videoplayer.manager.ScreenshotManager(this)
+        
+        // 初始化片头片尾管理器
+        skipIntroOutroManager = com.fanchen.fam4k007.manager.SkipIntroOutroManager(
+            this,
+            preferencesManager,
+            composeOverlayManager
+        )
         
         bindViewsToManagers()
     }
@@ -998,6 +1041,10 @@ class VideoPlayerActivity : AppCompatActivity(),
     
     override fun onScreenshot() {
         screenshotManager.takeScreenshot()
+    }
+    
+    override fun onShowSkipSettings() {
+        skipIntroOutroManager.showSkipSettingsDrawer(currentFolderPath)
     }
     
     override fun getVideoUri(): Uri? = videoUri

@@ -31,7 +31,8 @@ class PlayerDialogManager(
     private val danmakuManager: DanmakuManager,
     private val anime4KManager: Anime4KManager,
     private val preferencesManager: PreferencesManager,
-    private val composeOverlayManager: com.fanchen.fam4k007.manager.compose.ComposeOverlayManager
+    private val composeOverlayManager: com.fanchen.fam4k007.manager.compose.ComposeOverlayManager,
+    private val controlsManagerRef: WeakReference<PlayerControlsManager>
 ) {
     companion object {
         private const val TAG = "PlayerDialogManager"
@@ -198,12 +199,17 @@ class PlayerDialogManager(
         // 设置进场和出场动画
         window?.setWindowAnimations(R.style.PopupAnimation)
         
+        // 通知控制组件有弹窗显示
+        controlsManagerRef.get()?.setPopupVisible(true)
+        
         dialog.show()
         
         // 追踪Dialog
         activeDialogs.add(dialog)
         dialog.setOnDismissListener {
             activeDialogs.remove(dialog)
+            // 通知控制组件弹窗关闭
+            controlsManagerRef.get()?.setPopupVisible(false)
         }
         
         // 如果有选中项且使用固定高度，自动滚动到选中位置
@@ -514,9 +520,20 @@ class PlayerDialogManager(
             preferencesManager.isAssOverrideEnabled(it.toString())
         } ?: false
 
+        // 检查是否有章节信息
+        val chapterCount = MPVLib.getPropertyInt("chapter-list/count") ?: 0
+        val hasChapters = chapterCount > 0
+        
         // 动态显示样式覆盖状态
         val assOverrideText = if (assOverrideEnabled) "样式覆盖：开" else "样式覆盖：关"
-        val items = listOf("章节", "截图", assOverrideText)
+        
+        // 根据是否有章节动态构建菜单项
+        val items = mutableListOf<String>()
+        if (hasChapters) {
+            items.add("章节")
+        }
+        items.addAll(listOf("截图", "片头片尾", assOverrideText))
+        
         val btnMore = activity.findViewById<ImageView>(R.id.btnMore)
 
         showPopupDialog(
@@ -527,10 +544,18 @@ class PlayerDialogManager(
             useFixedHeight = false,
             showScrollHint = false
         ) { position ->
-            when (position) {
+            // 根据是否有章节项调整索引映射
+            val actualAction = if (hasChapters) {
+                position  // 有章节时索引不变：0=章节, 1=截图, 2=片头片尾, 3=样式覆盖
+            } else {
+                position + 1  // 无章节时索引+1：0=截图->1, 1=片头片尾->2, 2=样式覆盖->3
+            }
+            
+            when (actualAction) {
                 0 -> showChapterDialog()
                 1 -> (activity as? MoreOptionsCallback)?.onScreenshot()
-                2 -> toggleAssOverride()  // 点击切换样式覆盖
+                2 -> (activity as? MoreOptionsCallback)?.onShowSkipSettings()  // 片头片尾设置
+                3 -> toggleAssOverride()  // 点击切换样式覆盖
             }
         }
     }
@@ -890,6 +915,7 @@ interface DanmakuDialogCallback {
 
 interface MoreOptionsCallback {
     fun onScreenshot()
+    fun onShowSkipSettings()
 }
 
 interface VideoUriProvider {

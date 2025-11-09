@@ -1,6 +1,7 @@
 package com.fanchen.fam4k007.manager.compose
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -27,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 /**
  * 右侧抽屉式弹幕设置面板（完全参考字幕设置的样式）
  */
@@ -60,14 +60,23 @@ fun DanmakuSettingsDrawer(
 ) {
     var expandedSection by remember { mutableStateOf<String?>(null) }
     var isVisible by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     // 启动时触发动画
     LaunchedEffect(Unit) {
         isVisible = true
     }
 
+    // 处理返回键
+    BackHandler(enabled = isVisible) {
+        isVisible = false
+        coroutineScope.launch {
+            delay(300)
+            onDismiss()
+        }
+    }
+
     // 点击背景关闭
-    val coroutineScope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -99,42 +108,35 @@ fun DanmakuSettingsDrawer(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(320.dp)
-                    .drawBehind {
-                        // 综合左右和上下的渐变效果
-                        val horizontalBrush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0x59121212), // 左边缘 35% 不透明
-                                Color(0x99121212)  // 右边缘 60% 不透明
-                            )
-                        )
-                        val verticalBrush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0x59121212), // 上边缘 35% 不透明
-                                Color(0x99121212)  // 下边缘 60% 不透明
-                            )
-                        )
-                        // 绘制水平渐变
-                        drawRect(brush = horizontalBrush)
-                        // 叠加垂直渐变（使用较低的透明度避免过黑）
-                        drawRect(
-                            brush = Brush.verticalGradient(
+            ) {
+                // 半透明背景层（高对比度，亮画面也能看清）
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.horizontalGradient(
                                 colors = listOf(
-                                    Color(0x00000000), // 上边缘透明
-                                    Color(0x40121212)  // 下边缘轻微加深
+                                    Color(0xCC121212), // 左边缘 80% 不透明（更不透明）
+                                    Color(0xE6121212)  // 右边缘 90% 不透明
                                 )
                             )
                         )
-                    }
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null
-                    ) { /* 阻止点击穿透 */ }
-            ) {
-                Column(
+                )
+                
+                // 内容层
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) { /* 阻止点击穿透 */ }
                 ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
                     // 标题
                     Text(
                         text = "弹幕设置",
@@ -251,6 +253,7 @@ fun DanmakuSettingsDrawer(
                             }
                         }
                     }
+                }
                 }
             }
         }

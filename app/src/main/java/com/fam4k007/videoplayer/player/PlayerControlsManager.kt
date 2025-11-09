@@ -82,6 +82,8 @@ class PlayerControlsManager(
     // 状态
     var isVisible = true
         private set
+    private var isPlaying = true  // 记录播放状态
+    private var hasActivePopup = false  // 记录是否有弹窗显示
     
     // Handler（使用 WeakReference）
     private val handler = Handler(Looper.getMainLooper())
@@ -304,6 +306,7 @@ class PlayerControlsManager(
      * 更新播放按钮图标
      */
     fun updatePlayPauseButton(isPlaying: Boolean) {
+        this.isPlaying = isPlaying
         btnPlayPause?.setImageResource(
             if (isPlaying) com.fam4k007.videoplayer.R.drawable.pause
             else com.fam4k007.videoplayer.R.drawable.play
@@ -425,7 +428,10 @@ class PlayerControlsManager(
      */
     fun resetAutoHideTimer() {
         handler.removeCallbacks(hideControlsRunnable)
-        handler.postDelayed(hideControlsRunnable, AUTO_HIDE_DELAY)
+        // 只有在播放中且没有弹窗时才启动自动隐藏
+        if (isPlaying && !hasActivePopup) {
+            handler.postDelayed(hideControlsRunnable, AUTO_HIDE_DELAY)
+        }
     }
 
     /**
@@ -433,6 +439,22 @@ class PlayerControlsManager(
      */
     fun stopAutoHide() {
         handler.removeCallbacks(hideControlsRunnable)
+    }
+
+    /**
+     * 设置弹窗显示状态
+     */
+    fun setPopupVisible(visible: Boolean) {
+        hasActivePopup = visible
+        if (visible) {
+            // 弹窗显示时，停止自动隐藏
+            handler.removeCallbacks(hideControlsRunnable)
+        } else {
+            // 弹窗关闭时，如果在播放中则重新启动自动隐藏
+            if (isPlaying) {
+                resetAutoHideTimer()
+            }
+        }
     }
 
     /**

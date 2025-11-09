@@ -38,6 +38,15 @@ class VideoBrowserActivity : AppCompatActivity() {
 
     private val videoFolders = mutableListOf<VideoFolder>()
     private lateinit var adapter: VideoFolderAdapter
+    
+    // 排序设置
+    private enum class SortType { NAME, VIDEO_COUNT }
+    private enum class SortOrder { ASCENDING, DESCENDING }
+    private var currentSortType = SortType.VIDEO_COUNT
+    private var currentSortOrder = SortOrder.DESCENDING
+    
+    // PreferencesManager
+    private lateinit var preferencesManager: com.fam4k007.videoplayer.manager.PreferencesManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager.applyTheme(this)
@@ -45,13 +54,54 @@ class VideoBrowserActivity : AppCompatActivity() {
         binding = ActivityVideoBrowserBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // 初始化 PreferencesManager
+        preferencesManager = com.fam4k007.videoplayer.manager.PreferencesManager.getInstance(this)
+        
+        // 读取保存的排序设置
+        loadSortSettings()
+        
         initViews()
         setupRecyclerView()
         checkPermissions()
     }
+    
+    private fun loadSortSettings() {
+        val sortType = preferencesManager.getFolderSortType()
+        val sortOrder = preferencesManager.getFolderSortOrder()
+        
+        currentSortType = when (sortType) {
+            "VIDEO_COUNT" -> SortType.VIDEO_COUNT
+            else -> SortType.NAME
+        }
+        
+        currentSortOrder = when (sortOrder) {
+            "DESCENDING" -> SortOrder.DESCENDING
+            else -> SortOrder.ASCENDING
+        }
+        
+        Log.d(TAG, "加载文件夹排序设置: $currentSortType $currentSortOrder")
+    }
+    
+    private fun saveSortSettings() {
+        val sortTypeStr = when (currentSortType) {
+            SortType.NAME -> "NAME"
+            SortType.VIDEO_COUNT -> "VIDEO_COUNT"
+        }
+        
+        val sortOrderStr = when (currentSortOrder) {
+            SortOrder.ASCENDING -> "ASCENDING"
+            SortOrder.DESCENDING -> "DESCENDING"
+        }
+        
+        preferencesManager.setFolderSortType(sortTypeStr)
+        preferencesManager.setFolderSortOrder(sortOrderStr)
+        
+        Log.d(TAG, "保存文件夹排序设置: $sortTypeStr $sortOrderStr")
+    }
 
     private fun initViews() {
         binding.btnBack.setOnClickListener { finish() }
+        binding.btnSort.setOnClickListener { showSortDialog() }
 
         binding.btnRequestPermission.setOnClickListener {
             requestStoragePermission()
@@ -239,6 +289,10 @@ class VideoBrowserActivity : AppCompatActivity() {
                 // 在主线程更新UI
                 videoFolders.clear()
                 videoFolders.addAll(scannedFolders)
+                
+                // 应用保存的排序设置
+                applySavedSort()
+                
                 adapter.notifyDataSetChanged()
                 binding.swipeRefreshLayout.isRefreshing = false
                 
@@ -248,6 +302,145 @@ class VideoBrowserActivity : AppCompatActivity() {
                 DialogUtils.showToastShort(this@VideoBrowserActivity, "扫描视频失败: ${e.message}")
             }
         }
+    }
+    
+    private fun applySavedSort() {
+        val sortedList = when (currentSortType) {
+            SortType.NAME -> {
+                if (currentSortOrder == SortOrder.ASCENDING) {
+                    videoFolders.sortedBy { it.folderName.lowercase() }
+                } else {
+                    videoFolders.sortedByDescending { it.folderName.lowercase() }
+                }
+            }
+            SortType.VIDEO_COUNT -> {
+                if (currentSortOrder == SortOrder.ASCENDING) {
+                    videoFolders.sortedBy { it.videoCount }
+                } else {
+                    videoFolders.sortedByDescending { it.videoCount }
+                }
+            }
+        }
+        
+        videoFolders.clear()
+        videoFolders.addAll(sortedList)
+    }
+    
+    private fun showSortDialog() {
+        Log.d(TAG, "显示文件夹排序对话框")
+        
+        val dialog = android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+        val view = layoutInflater.inflate(R.layout.dialog_folder_sort_popup, null)
+        
+        val tvSortNameAsc = view.findViewById<TextView>(R.id.tvSortNameAsc)
+        val tvSortNameDesc = view.findViewById<TextView>(R.id.tvSortNameDesc)
+        val tvSortCountAsc = view.findViewById<TextView>(R.id.tvSortCountAsc)
+        val tvSortCountDesc = view.findViewById<TextView>(R.id.tvSortCountDesc)
+        
+        // 设置主题颜色 - 高亮当前选中的排序方式
+        val primaryColor = ThemeManager.getThemeColor(this, com.google.android.material.R.attr.colorPrimary)
+        val normalColor = getColor(android.R.color.black)
+        
+        tvSortNameAsc.setTextColor(if (currentSortType == SortType.NAME && currentSortOrder == SortOrder.ASCENDING) primaryColor else normalColor)
+        tvSortNameDesc.setTextColor(if (currentSortType == SortType.NAME && currentSortOrder == SortOrder.DESCENDING) primaryColor else normalColor)
+        tvSortCountAsc.setTextColor(if (currentSortType == SortType.VIDEO_COUNT && currentSortOrder == SortOrder.ASCENDING) primaryColor else normalColor)
+        tvSortCountDesc.setTextColor(if (currentSortType == SortType.VIDEO_COUNT && currentSortOrder == SortOrder.DESCENDING) primaryColor else normalColor)
+        
+        // 名称升序
+        tvSortNameAsc.setOnClickListener {
+            currentSortType = SortType.NAME
+            currentSortOrder = SortOrder.ASCENDING
+            saveSortSettings()
+            sortFolderListWithAnimation()
+            dialog.dismiss()
+        }
+        
+        // 名称降序
+        tvSortNameDesc.setOnClickListener {
+            currentSortType = SortType.NAME
+            currentSortOrder = SortOrder.DESCENDING
+            saveSortSettings()
+            sortFolderListWithAnimation()
+            dialog.dismiss()
+        }
+        
+        // 视频数量升序
+        tvSortCountAsc.setOnClickListener {
+            currentSortType = SortType.VIDEO_COUNT
+            currentSortOrder = SortOrder.ASCENDING
+            saveSortSettings()
+            sortFolderListWithAnimation()
+            dialog.dismiss()
+        }
+        
+        // 视频数量降序
+        tvSortCountDesc.setOnClickListener {
+            currentSortType = SortType.VIDEO_COUNT
+            currentSortOrder = SortOrder.DESCENDING
+            saveSortSettings()
+            sortFolderListWithAnimation()
+            dialog.dismiss()
+        }
+        
+        dialog.setContentView(view)
+        dialog.setCanceledOnTouchOutside(true)
+        
+        // 获取排序按钮在屏幕上的位置
+        val location = IntArray(2)
+        binding.btnSort.getLocationOnScreen(location)
+        val anchorX = location[0]
+        val anchorY = location[1]
+        
+        // 测量对话框大小
+        view.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val dialogWidth = view.measuredWidth.coerceAtLeast(binding.btnSort.width)
+        val dialogHeight = view.measuredHeight
+        
+        // 设置对话框位置在排序按钮下方
+        val window = dialog.window
+        val layoutParams = window?.attributes
+        layoutParams?.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+        layoutParams?.x = anchorX + (binding.btnSort.width - dialogWidth) / 2
+        layoutParams?.y = anchorY + binding.btnSort.height + 10
+        layoutParams?.width = dialogWidth
+        layoutParams?.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        window?.attributes = layoutParams
+        
+        // 设置进场和出场动画
+        window?.setWindowAnimations(R.style.PopupAnimation)
+        
+        dialog.show()
+    }
+    
+    private fun sortFolderListWithAnimation() {
+        Log.d(TAG, "开始排序文件夹，当前列表大小: ${videoFolders.size}")
+        
+        val sortedList = when (currentSortType) {
+            SortType.NAME -> {
+                if (currentSortOrder == SortOrder.ASCENDING) {
+                    videoFolders.sortedBy { it.folderName.lowercase() }
+                } else {
+                    videoFolders.sortedByDescending { it.folderName.lowercase() }
+                }
+            }
+            SortType.VIDEO_COUNT -> {
+                if (currentSortOrder == SortOrder.ASCENDING) {
+                    videoFolders.sortedBy { it.videoCount }
+                } else {
+                    videoFolders.sortedByDescending { it.videoCount }
+                }
+            }
+        }
+        
+        videoFolders.clear()
+        videoFolders.addAll(sortedList)
+        
+        adapter.notifyDataSetChanged()
+        
+        Log.d(TAG, "排序完成")
     }
 
     private fun refreshVideoList() {

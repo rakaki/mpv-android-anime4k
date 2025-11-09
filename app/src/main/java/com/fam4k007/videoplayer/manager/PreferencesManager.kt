@@ -456,6 +456,34 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().putString("video_sort_order", order).apply()
     }
     
+    /**
+     * 获取文件夹列表排序类型 (NAME, VIDEO_COUNT)
+     */
+    fun getFolderSortType(): String {
+        return sharedPreferences.getString("folder_sort_type", "VIDEO_COUNT") ?: "VIDEO_COUNT"
+    }
+    
+    /**
+     * 保存文件夹列表排序类型
+     */
+    fun setFolderSortType(type: String) {
+        sharedPreferences.edit().putString("folder_sort_type", type).apply()
+    }
+    
+    /**
+     * 获取文件夹列表排序顺序 (ASCENDING, DESCENDING)
+     */
+    fun getFolderSortOrder(): String {
+        return sharedPreferences.getString("folder_sort_order", "DESCENDING") ?: "DESCENDING"
+    }
+    
+    /**
+     * 保存文件夹列表排序顺序
+     */
+    fun setFolderSortOrder(order: String) {
+        sharedPreferences.edit().putString("folder_sort_order", order).apply()
+    }
+    
     // ==================== 硬件解码 ====================
     
     /**
@@ -470,6 +498,73 @@ class PreferencesManager private constructor(context: Context) {
      */
     fun setHardwareDecoder(enabled: Boolean) {
         sharedPreferences.edit().putBoolean("hardware_decoder", enabled).apply()
+    }
+    
+    // ==================== 片头片尾跳过 ====================
+    
+    /**
+     * 获取片头跳过秒数（按文件夹存储）
+     */
+    fun getSkipIntroSeconds(folderPath: String): Int {
+        val key = "skip_intro_folder_${folderPath.hashCode()}"
+        return sharedPreferences.getInt(key, 0)
+    }
+    
+    /**
+     * 保存片头跳过秒数（按文件夹存储）
+     */
+    fun setSkipIntroSeconds(folderPath: String, seconds: Int) {
+        val key = "skip_intro_folder_${folderPath.hashCode()}"
+        sharedPreferences.edit().putInt(key, seconds).apply()
+    }
+    
+    /**
+     * 获取片尾跳过秒数（按文件夹存储）
+     */
+    fun getSkipOutroSeconds(folderPath: String): Int {
+        val key = "skip_outro_folder_${folderPath.hashCode()}"
+        return sharedPreferences.getInt(key, 0)
+    }
+    
+    /**
+     * 保存片尾跳过秒数（按文件夹存储）
+     */
+    fun setSkipOutroSeconds(folderPath: String, seconds: Int) {
+        val key = "skip_outro_folder_${folderPath.hashCode()}"
+        sharedPreferences.edit().putInt(key, seconds).apply()
+    }
+    
+    /**
+     * 获取是否自动跳过章节（按文件夹存储）
+     */
+    fun getAutoSkipChapter(folderPath: String): Boolean {
+        val key = "auto_skip_chapter_folder_${folderPath.hashCode()}"
+        return sharedPreferences.getBoolean(key, false)
+    }
+    
+    /**
+     * 保存是否自动跳过章节（按文件夹存储）
+     */
+    fun setAutoSkipChapter(folderPath: String, enabled: Boolean) {
+        val key = "auto_skip_chapter_folder_${folderPath.hashCode()}"
+        sharedPreferences.edit().putBoolean(key, enabled).apply()
+    }
+    
+    /**
+     * 获取章节跳过的目标章节索引（按文件夹存储）
+     * 默认为1（第二个章节，通常OP结束后的正片）
+     */
+    fun getSkipToChapterIndex(folderPath: String): Int {
+        val key = "skip_to_chapter_index_folder_${folderPath.hashCode()}"
+        return sharedPreferences.getInt(key, 1)
+    }
+    
+    /**
+     * 保存章节跳过的目标章节索引（按文件夹存储）
+     */
+    fun setSkipToChapterIndex(folderPath: String, chapterIndex: Int) {
+        val key = "skip_to_chapter_index_folder_${folderPath.hashCode()}"
+        sharedPreferences.edit().putInt(key, chapterIndex).apply()
     }
     
     // ==================== 批量操作 ====================

@@ -1,6 +1,7 @@
 package com.fanchen.fam4k007.manager.compose
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -9,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -59,14 +61,42 @@ fun SubtitleSettingsDrawer(
 ) {
     var expandedSection by remember { mutableStateOf<String?>(null) }
     var isVisible by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
     // 启动时触发动画
     LaunchedEffect(Unit) {
         isVisible = true
     }
 
+    // 处理返回键
+    BackHandler(enabled = isVisible) {
+        isVisible = false
+        coroutineScope.launch {
+            delay(300)
+            onDismiss()
+        }
+    }
+
+    // 当展开状态改变时，自动滚动到对应的item（延迟等待展开动画）
+    LaunchedEffect(expandedSection) {
+        expandedSection?.let { section ->
+            val index = when (section) {
+                "delay" -> 0
+                "style" -> 1
+                "misc" -> 2
+                "font" -> 3
+                else -> null
+            }
+            index?.let {
+                // 延迟100ms等待展开动画开始
+                delay(100)
+                listState.animateScrollToItem(it)
+            }
+        }
+    }
+
     // 点击背景关闭
-    val coroutineScope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -98,42 +128,35 @@ fun SubtitleSettingsDrawer(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(320.dp)
-                    .drawBehind {
-                        // 综合左右和上下的渐变效果
-                        val horizontalBrush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0x59121212), // 左边缘 35% 不透明 (0x59 = 89/255 ≈ 35%)
-                                Color(0x99121212)  // 右边缘 60% 不透明 (0x99 = 153/255 ≈ 60%)
-                            )
-                        )
-                        val verticalBrush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0x59121212), // 上边缘 35% 不透明
-                                Color(0x99121212)  // 下边缘 60% 不透明
-                            )
-                        )
-                        // 绘制水平渐变
-                        drawRect(brush = horizontalBrush)
-                        // 叠加垂直渐变（使用较低的透明度避免过黑）
-                        drawRect(
-                            brush = Brush.verticalGradient(
+            ) {
+                // 半透明背景层（高对比度，亮画面也能看清）
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.horizontalGradient(
                                 colors = listOf(
-                                    Color(0x00000000), // 上边缘透明
-                                    Color(0x40121212)  // 下边缘轻微加深
+                                    Color(0xCC121212), // 左边缘 80% 不透明（更不透明）
+                                    Color(0xE6121212)  // 右边缘 90% 不透明
                                 )
                             )
                         )
-                    }
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null
-                    ) { /* 阻止点击穿透 */ }
-            ) {
-                Column(
+                )
+                
+                // 内容层
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) { /* 阻止点击穿透 */ }
                 ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
                     // 标题
                     Text(
                         text = "更多设置",
@@ -151,6 +174,7 @@ fun SubtitleSettingsDrawer(
 
                     // 使用LazyColumn实现可滚动列表，最多显示3个，支持未来扩展
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(20.dp) // 增大间距
                     ) {
@@ -217,6 +241,7 @@ fun SubtitleSettingsDrawer(
                             }
                         }
                     }
+                }
                 }
             }
         }
@@ -1038,7 +1063,7 @@ fun SubtitleMiscContent(
             )
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // 字幕垂直位置
         Text(

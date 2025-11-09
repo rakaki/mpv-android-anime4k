@@ -180,6 +180,36 @@ class ComposeOverlayManager(
             )
         }
     }
+    
+    // ===== 片头片尾跳过设置 =====
+    
+    /**
+     * 显示片头片尾跳过设置抽屉
+     */
+    fun showSkipSettingsDrawer(
+        currentSkipIntro: Int,
+        currentSkipOutro: Int,
+        currentAutoSkipChapter: Boolean,
+        currentSkipToChapterIndex: Int,
+        onSkipIntroChange: (Int) -> Unit,
+        onSkipOutroChange: (Int) -> Unit,
+        onAutoSkipChapterChange: (Boolean) -> Unit,
+        onSkipToChapterIndexChange: (Int) -> Unit
+    ) {
+        setContent {
+            SkipSettingsDrawer(
+                currentSkipIntro = currentSkipIntro,
+                currentSkipOutro = currentSkipOutro,
+                currentAutoSkipChapter = currentAutoSkipChapter,
+                currentSkipToChapterIndex = currentSkipToChapterIndex,
+                onSkipIntroChange = onSkipIntroChange,
+                onSkipOutroChange = onSkipOutroChange,
+                onAutoSkipChapterChange = onAutoSkipChapterChange,
+                onSkipToChapterIndexChange = onSkipToChapterIndexChange,
+                onDismiss = { clearContent() }
+            )
+        }
+    }
 
     /**
      * 显示字幕杂项对话框（已废弃，保留兼容）
