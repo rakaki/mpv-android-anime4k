@@ -44,7 +44,7 @@
             android:name=".VideoPlayerActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape"
-            android:launchMode="singleTask"
+            android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
             android:exported="true">
             <!-- 支持从文件管理器等外部应用打开视频文件 -->

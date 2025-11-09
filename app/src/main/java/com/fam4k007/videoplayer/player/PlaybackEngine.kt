@@ -404,9 +404,13 @@ class PlaybackEngine(
             MPVLib.removeObserver(this)
             Log.d(TAG, "✓ 移除事件观察者")
             
-            // 3. 销毁MPV (注意：BaseMPVView会管理MPVLib的生命周期)
-            // 这里只是移除observer，不调用MPVLib.destroy()
-            // MPVLib.destroy() 会由CustomMPVView在detach时调用
+            // 3. 销毁MPV
+            try {
+                MPVLib.destroy()
+                Log.d(TAG, "✓ MPVLib已销毁")
+            } catch (e: Exception) {
+                Log.w(TAG, "销毁MPVLib失败: ${e.message}")
+            }
             
         } catch (e: Exception) {
             Log.e(TAG, "Error destroying MPV", e)

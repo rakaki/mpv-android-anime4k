@@ -179,8 +179,9 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         Log.d(TAG, "Initializing MPV in Activity...")
         try {
+            // 总是调用 initialize，CustomMPVView 内部会处理重复初始化的保护
             mpvView.initialize(filesDir.path, cacheDir.path)
-            Log.d(TAG, "MPV initialized successfully")
+            Log.d(TAG, "MPV View initialized")
             
             mpvView.postDelayed({
                 Log.d(TAG, "Loading video after MPV init")
@@ -451,6 +452,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                 override fun onBackClick() {
                     gestureHandler?.restoreOriginalSettings()
                     finish()
+                    // 添加返回动画：播放器向右滑出，列表从左滑入
+                    overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
                 }
             },
             WeakReference(gestureHandler)  // 传入GestureHandler引用
@@ -907,6 +910,13 @@ class VideoPlayerActivity : AppCompatActivity(),
         playbackEngine?.loadVideo(uri, position)
         
         updateEpisodeButtons()
+    }
+    
+    override fun onBackPressed() {
+        gestureHandler?.restoreOriginalSettings()
+        super.onBackPressed()
+        // 添加返回动画
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
     }
     
     override fun onPause() {
