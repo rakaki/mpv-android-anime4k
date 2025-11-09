@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.EditText
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -135,6 +137,8 @@ class BiliBiliDanmakuActivity : BaseActivity() {
     private fun showDownloadDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_input_url, null)
         val editTextUrl = dialogView.findViewById<EditText>(R.id.editTextUrl)
+        val radioGroupDownloadMode = dialogView.findViewById<RadioGroup>(R.id.radioGroupDownloadMode)
+        val radioWholeSeason = dialogView.findViewById<RadioButton>(R.id.radioWholeSeason)
 
         val dialog = AlertDialog.Builder(this)
             .setTitle("下载B站弹幕")
@@ -154,15 +158,18 @@ class BiliBiliDanmakuActivity : BaseActivity() {
                 }
 
                 if (!downloadManager.isValidBilibiliUrl(url)) {
-                    Toast.makeText(this, "请输入有效的B站视频链接", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "请输入有效的B站视频/番剧链接", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
+
+                // 获取下载模式
+                val downloadWholeSeason = radioWholeSeason.isChecked
 
                 // 关闭输入对话框
                 dialog.dismiss()
                 
                 // 开始下载
-                startDownload(url)
+                startDownload(url, downloadWholeSeason)
             }
         }
 
@@ -172,11 +179,11 @@ class BiliBiliDanmakuActivity : BaseActivity() {
     /**
      * 开始下载弹幕
      */
-    private fun startDownload(url: String) {
+    private fun startDownload(url: String, downloadWholeSeason: Boolean = true) {
         // 显示加载对话框
         val progressDialog = AlertDialog.Builder(this)
             .setTitle("下载中")
-            .setMessage("正在获取弹幕，请稍候...")
+            .setMessage("正在准备...")
             .setCancelable(false)
             .create()
         
@@ -186,7 +193,16 @@ class BiliBiliDanmakuActivity : BaseActivity() {
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    downloadManager.downloadDanmaku(url, savedFolderUri!!)
+                    downloadManager.downloadDanmaku(url, savedFolderUri!!, downloadWholeSeason) { current, total, epTitle, success, fail ->
+                        // 更新进度
+                        launch(Dispatchers.Main) {
+                            if (total > 0) {
+                                progressDialog.setMessage("第 $current/$total 集\n$epTitle\n✅成功: $success  ❌失败: $fail")
+                            } else {
+                                progressDialog.setMessage(epTitle)
+                            }
+                        }
+                    }
                 }
 
                 progressDialog.dismiss()
@@ -195,7 +211,7 @@ class BiliBiliDanmakuActivity : BaseActivity() {
                     is BiliBiliDanmakuDownloadManager.DownloadResult.Success -> {
                         Toast.makeText(
                             this@BiliBiliDanmakuActivity,
-                            "下载成功: ${result.fileName}",
+                            "下载成功\n${result.fileName}",
                             Toast.LENGTH_LONG
                         ).show()
                     }

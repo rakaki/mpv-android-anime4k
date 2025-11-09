@@ -90,10 +90,11 @@
 
 本应用使用了以下第三方服务的公开API：
 
-- **哔哩哔哩 (Bilibili)** - 用于下载视频弹幕
+- **哔哩哔哩 (Bilibili)** - 用于下载视频和番剧弹幕
   - 视频信息API: `https://www.bilibili.com/video/*`
+  - 番剧信息API: `https://api.bilibili.com/pgc/view/web/season`
   - 弹幕下载API: `https://api.bilibili.com/x/v1/dm/list.so`
-  - 使用场景：用户主动输入B站视频链接时，应用会访问上述API获取弹幕数据
+  - 使用场景：用户主动输入B站视频或番剧链接时，应用会访问上述API获取弹幕数据
   - 数据处理：下载的弹幕数据仅保存在用户本地设备，不会上传或分享
   - 声明：本应用与哔哩哔哩无任何官方关联，仅使用其公开API
 

@@ -26,8 +26,44 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="支持 BV号 或 av号 链接"
+        android:text="支持 BV号/av号/番剧链接"
         android:textSize="12sp"
         android:textColor="@android:color/holo_blue_dark" />
+
+    <!-- 番剧下载模式选择 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="番剧下载模式"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black" />
+
+    <RadioGroup
+        android:id="@+id/radioGroupDownloadMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/radioWholeSeason"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="整季模式 - 自动下载整季所有集数(跳过已存在)"
+            android:textSize="13sp"
+            android:checked="true"
+            android:paddingVertical="4dp" />
+
+        <RadioButton
+            android:id="@+id/radioSingleEpisode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="单集模式 - 只下载当前输入链接对应的集数"
+            android:textSize="13sp"
+            android:paddingVertical="4dp" />
+
+    </RadioGroup>
 
 </LinearLayout>

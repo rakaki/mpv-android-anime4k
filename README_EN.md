@@ -91,10 +91,11 @@ This project would not be possible without the support of the following open-sou
 
 This application uses public APIs from the following third-party services:
 
-- **Bilibili** - For downloading video danmaku
+- **Bilibili** - For downloading video and bangumi danmaku
   - Video Info API: `https://www.bilibili.com/video/*`
+  - Bangumi Info API: `https://api.bilibili.com/pgc/view/web/season`
   - Danmaku Download API: `https://api.bilibili.com/x/v1/dm/list.so`
-  - Usage: When users actively input a Bilibili video link, the app accesses these APIs to retrieve danmaku data
+  - Usage: When users actively input a Bilibili video or bangumi link, the app accesses these APIs to retrieve danmaku data
   - Data Processing: Downloaded danmaku data is only stored on the user's local device and is not uploaded or shared
   - Disclaimer: This application has no official affiliation with Bilibili and only uses its public APIs
 
