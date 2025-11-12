@@ -3,11 +3,27 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- 右上角设置按钮 -->
+    <ImageView
+        android:id="@+id/ivSettings"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_settings"
+        android:scaleType="centerInside"
+        android:padding="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="设置"/>
+
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="Anime-4k"
+        android:text="小喵Player"
         android:textSize="24sp"
         android:textStyle="bold"
         android:textColor="#222222"
@@ -22,33 +38,36 @@
         android:layout_centerHorizontal="true"
         android:layout_below="@id/tvTitle"
         android:layout_marginTop="40dp"
-        android:src="@drawable/app_icon"
-        android:scaleType="centerCrop"/>
+        android:src="@drawable/ic_continue_play"
+        android:scaleType="centerCrop"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="继续上次播放"/>
 
     <TextView
-        android:id="@+id/tvWelcome"
+        android:id="@+id/tvContinueHint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="选择视频，体验 Anime4K 超分辨率\n支持格式：MP4, MKV, AVI, MOV, FLV, WEBM, M4V, 3GP, TS, MPG, WMV, OGV 等"
-        android:textSize="14sp"
-        android:textColor="#666666"
+        android:text="点击继续上次播放"
+        android:textSize="12sp"
+        android:textColor="#888888"
         android:gravity="center"
         android:layout_centerHorizontal="true"
         android:layout_below="@id/ivLogo"
-        android:layout_marginTop="20dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"/>
+        android:layout_marginTop="8dp"
+        android:visibility="gone"/>
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnSelectVideo"
         android:layout_width="280dp"
         android:layout_height="60dp"
-        android:text="选择视频"
+        android:text="播放本地视频"
         android:textSize="20sp"
         android:textColor="@color/text_white"
         android:background="@drawable/btn_gradient_bg"
         android:layout_centerHorizontal="true"
-        android:layout_below="@id/tvWelcome"
+        android:layout_below="@id/tvContinueHint"
         android:layout_marginTop="40dp"
         android:elevation="4dp"/>
     
@@ -56,7 +75,7 @@
         android:id="@+id/btnBiliBili"
         android:layout_width="280dp"
         android:layout_height="60dp"
-        android:text="📺 B站番剧"
+        android:text="哔哩哔哩番剧"
         android:textSize="20sp"
         android:textColor="@color/text_white"
         android:background="@drawable/btn_gradient_bg"

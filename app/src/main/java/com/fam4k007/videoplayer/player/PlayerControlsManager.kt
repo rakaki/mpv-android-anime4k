@@ -406,6 +406,8 @@ class PlayerControlsManager(
             ?.withEndAction {
                 controlPanel?.visibility = View.GONE
                 controlPanel?.alpha = 1f
+                // 控制面板隐藏后同时隐藏系统UI
+                hideSystemUI()
             }
             ?.start()
         
@@ -450,7 +452,9 @@ class PlayerControlsManager(
             // 弹窗显示时，停止自动隐藏
             handler.removeCallbacks(hideControlsRunnable)
         } else {
-            // 弹窗关闭时，如果在播放中则重新启动自动隐藏
+            // 弹窗关闭时，立即重新隐藏系统UI(修复Android 12及以下版本系统栏显示问题)
+            hideSystemUI()
+            // 如果在播放中则重新启动自动隐藏
             if (isPlaying) {
                 resetAutoHideTimer()
             }
@@ -460,10 +464,11 @@ class PlayerControlsManager(
     /**
      * 隐藏系统UI
      */
-    private fun hideSystemUI() {
+    fun hideSystemUI() {
         val activity = activityRef.get() ?: return
         val windowInsetsController = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
         windowInsetsController.apply {
+            // 允许通过手势临时呼出系统栏
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())
         }
@@ -471,9 +476,17 @@ class PlayerControlsManager(
 
     private fun formatTime(seconds: Double): String {
         val totalSeconds = seconds.toInt()
-        val minutes = totalSeconds / 60
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
         val secs = totalSeconds % 60
-        return String.format("%02d:%02d", minutes, secs)
+        
+        return if (hours > 0) {
+            // 超过1小时，显示 时:分:秒
+            String.format("%d:%02d:%02d", hours, minutes, secs)
+        } else {
+            // 小于1小时，显示 分:秒
+            String.format("%02d:%02d", minutes, secs)
+        }
     }
 
     private fun initBatteryMonitor(context: Context) {

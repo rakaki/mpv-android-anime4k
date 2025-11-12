@@ -3,6 +3,7 @@ package com.fam4k007.videoplayer
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.cardview.widget.CardView
 
@@ -15,8 +16,11 @@ class FeedbackActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_feedback)
         
-        // 设置Toolbar
-        setupToolbar(R.id.toolbar, getString(R.string.feedback), showBackButton = true)
+        // 设置返回按钮
+        findViewById<View>(R.id.btnBack).setOnClickListener {
+            finish()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
         
         // GitHub Issue按钮点击
         findViewById<CardView>(R.id.btnGithubIssue).setOnClickListener {

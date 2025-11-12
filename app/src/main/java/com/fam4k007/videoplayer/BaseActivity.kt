@@ -39,8 +39,8 @@ abstract class BaseActivity : AppCompatActivity() {
                 this.title = title
                 if (showBackButton) {
                     setDisplayHomeAsUpEnabled(true)
-                    // 设置白色的矢量返回图标（自适应大小）
-                    setHomeAsUpIndicator(R.drawable.ic_back_arrow)
+                    // 设置白色的返回图标
+                    setHomeAsUpIndicator(R.drawable.ic_toolbar_back_tinted)
                 }
             }
             // 设置标题文字为白色

@@ -27,6 +27,7 @@ This project aims to optimize and upscale anime-style videos, though it can also
 ## Key Features
 
 - **Video Playback**: Support for mainstream video formats (MP4, MKV, AVI, etc.)
+- **Bilibili Bangumi Support**: Login to Bilibili account, stream bangumi online (see [Login Implementation](docs/bilibili_login.md) and [Bangumi Parsing Principle](docs/bilibili_bangumi.md))
 - **Playlist Management**: Automatic folder scanning, video sorting and categorization
 - **Subtitle Handling**: Built-in subtitle parsing, external subtitle import, subtitle position and size adjustment
 - **Audio Tracks**: Multi-track audio switching
@@ -69,40 +70,90 @@ The following features are planned but not yet implemented:
 - Player lock mode
 - Video zoom functionality
 - Online caching
-- Online video playback
-- UI themes and dark mode
 
 ## Acknowledgments
 
 This project would not be possible without the support of the following open-source projects:
 
-| Project | Description |
-|---------|-------------|
-| [mpv-player/mpv](https://github.com/mpv-player/mpv) | The core foundation of this project, a powerful multimedia player library |
-| [mpv-android/mpv-android](https://github.com/mpv-android/mpv-android) | Reference implementation for Android mobile |
-| [abdallahmehiz/mpv-android](https://github.com/abdallahmehiz/mpv-android/releases) | Provides ready-to-use libmpv library files |
-| [abdallahmehiz/mpvKt](https://github.com/abdallahmehiz/mpvKt) | Reference for gesture controls, swipe handling, and external subtitle import |
-| [bloc97/Anime4K](https://github.com/bloc97/Anime4K) | Source of super-resolution GLSL shader files |
-| [Predidit/Kazumi](https://github.com/Predidit/Kazumi) | Project development inspiration and original requirements |
-| [xyoye/DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid) | This project extensively references the danmaku implementation from this project. Many thanks! |
-| [bilibili/DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster) | The danmaku core engine for this project is Bilibili's open-source danmaku library. Many thanks! |
+- **[mpv-player/mpv](https://github.com/mpv-player/mpv)**  
+  The core foundation of this project, a powerful multimedia player library
+
+- **[mpv-android/mpv-android](https://github.com/mpv-android/mpv-android)**  
+  Reference implementation for Android mobile
+
+- **[abdallahmehiz/mpv-android](https://github.com/abdallahmehiz/mpv-android/releases)**  
+  Provides ready-to-use libmpv library files
+
+- **[abdallahmehiz/mpvKt](https://github.com/abdallahmehiz/mpvKt)**  
+  Reference for gesture controls, swipe handling, and external subtitle import
+
+- **[bloc97/Anime4K](https://github.com/bloc97/Anime4K)**  
+  Source of super-resolution GLSL shader files
+
+- **[Predidit/Kazumi](https://github.com/Predidit/Kazumi)**  
+  Project development inspiration and original requirements
+
+- **[xyoye/DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid)**  
+  This project extensively references the danmaku implementation from this project. Many thanks!
+
+- **[bilibili/DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster)**  
+  The danmaku core engine for this project is Bilibili's open-source danmaku library. Many thanks!
+
+- **[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**  
+  Thanks for collecting public APIs and centralizing scattered APIs. This project referenced the usage methods. Many thanks!
 
 ## Third-Party Service Disclosure
 
 This application uses public APIs from the following third-party services:
 
-- **Bilibili** - For downloading video and bangumi danmaku
-  - Video Info API: `https://www.bilibili.com/video/*`
+- **Bilibili** - For login, parsing bangumi links for online streaming, and downloading danmaku
+  - Login API: `https://passport.bilibili.com/x/passport-login/web/qrcode/*`
   - Bangumi Info API: `https://api.bilibili.com/pgc/view/web/season`
+  - Bangumi Playback API: `https://api.bilibili.com/pgc/player/web/playurl`
   - Danmaku Download API: `https://api.bilibili.com/x/v1/dm/list.so`
-  - Usage: When users actively input a Bilibili video or bangumi link, the app accesses these APIs to retrieve danmaku data
-  - Data Processing: Downloaded danmaku data is only stored on the user's local device and is not uploaded or shared
+  - Usage Scenarios:
+    - User actively scans QR code to login to Bilibili account
+    - User inputs bangumi link to watch online bangumi
+    - User actively inputs Bilibili video link to download danmaku
+  - Data Processing:
+    - Login credentials are encrypted with AES-256 and stored locally, see [Security Documentation](docs/bilibili_security_analysis.md)
+    - Downloaded danmaku data is only saved on the user's local device
+    - All data will not be uploaded or shared with third parties
   - Disclaimer: This application has no official affiliation with Bilibili and only uses its public APIs
 
 **Privacy Statement**:
-- The app does not collect or upload any user personal information
-- Danmaku download feature is entirely user-initiated
-- All downloaded data is saved to user-specified local folders
+
+This application highly values user privacy protection. Here is our statement:
+
+### Data Collection
+- ❌ **Does NOT collect** any user personal information
+- ❌ **Does NOT upload** any data to our servers (we don't have servers)
+- ❌ **Does NOT share** user data with any third parties
+- ✅ All features run **locally on device**
+
+### Bilibili Login Feature
+- Login credentials are encrypted with **AES-256 military-grade encryption** and stored locally (see [Security Analysis](docs/bilibili_security_analysis.md))
+- Login keys are protected by Android KeyStore hardware, **cannot be exported by the app**
+- Login information is only used for Bilibili API calls, **not uploaded anywhere else**
+- Users can **logout with one click** in settings to completely clear all login data
+- After app uninstallation, all login data will be **automatically and permanently destroyed**
+
+### Danmaku and Bangumi Data
+- Danmaku files and bangumi data are saved in **user-specified local folders**
+- Download features are entirely **user-initiated**
+- Data is only stored locally, **not synced or backed up to cloud**
+
+### Permission Statement
+The app only requests the following necessary permissions:
+- **Storage Permission**: Read and save local videos, subtitles, and danmaku files
+- **Network Permission**: For Bilibili bangumi online streaming and danmaku downloads (user-initiated)
+
+### Open Source Transparency
+- ✅ Project is **completely open source**, all code is publicly auditable
+- ✅ Welcome security experts to conduct code audits
+- ✅ If security issues are found, please report them promptly
+
+**Commitment**: This application will never sell or share user data, because we don't collect any in the first place!
 
 ## Development Notes
 

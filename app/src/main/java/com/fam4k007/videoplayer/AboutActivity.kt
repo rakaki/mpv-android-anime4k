@@ -23,8 +23,11 @@ class AboutActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_about)
         
-        // 设置Toolbar
-        setupToolbar(R.id.toolbar, getString(R.string.about), showBackButton = true)
+        // 设置返回按钮
+        findViewById<View>(R.id.btnBack).setOnClickListener {
+            finish()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
         
         // 初始化视图
         layoutAbout = findViewById(R.id.layoutAbout)

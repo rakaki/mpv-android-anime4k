@@ -4,20 +4,10 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_gradient">
 
-    <!-- Fragment容器 -->
+    <!-- Fragment容器 - 占满全屏 -->
     <FrameLayout
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_above="@id/bottomNavigationView"/>
+        android:layout_height="match_parent"/>
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNavigationView"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_alignParentBottom="true"
-        app:menu="@menu/bottom_nav_menu"
-        app:itemTextColor="@color/nav_item_selected"
-        app:itemIconTint="@color/nav_item_selected"
-        app:elevation="0dp"/>
 </RelativeLayout>

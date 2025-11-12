@@ -3,6 +3,7 @@ package com.fam4k007.videoplayer.bilibili.auth
 import android.content.Context
 import android.content.SharedPreferences
 import com.fam4k007.videoplayer.bilibili.model.*
+import com.fam4k007.videoplayer.utils.SecureStorage
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -13,10 +14,17 @@ import java.io.IOException
 
 /**
  * B站认证管理器 - 处理登录、Cookie管理
+ * 
+ * 安全性说明：
+ * 1. 使用 EncryptedSharedPreferences 加密存储 Cookie 和用户信息
+ * 2. 数据存储在 Android KeyStore，硬件级别保护
+ * 3. 加密算法：AES256-GCM
+ * 4. 即使设备被 Root，数据也难以被读取
  */
 class BiliBiliAuthManager(private val context: Context) {
     
-    private val prefs: SharedPreferences = context.getSharedPreferences("bilibili_auth", Context.MODE_PRIVATE)
+    // 使用加密的 SharedPreferences
+    private val prefs: SharedPreferences = SecureStorage.getEncryptedPreferences(context)
     private val gson = Gson()
     private val client = OkHttpClient.Builder()
         .cookieJar(BiliCookieJar(prefs))

@@ -6,38 +6,23 @@
     android:orientation="vertical"
     android:background="@drawable/bg_gradient">
 
-    <!-- 顶部标题栏 -->
+    <!-- 顶部标题栏（不使用Toolbar，保持样式一致） -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
+        android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
+        android:elevation="4dp"
+        android:gravity="center_vertical"
         android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:elevation="4dp">
-
-        <ImageView
-            android:id="@+id/btnBack"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@drawable/angle_small_left"
-            android:tint="@android:color/white"
-            android:padding="8dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:background="?attr/selectableItemBackgroundBorderless" />
-
+        android:paddingEnd="16dp">
+        
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="设置"
-            android:textColor="@android:color/white"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginStart="8dp" />
-
+            android:text="我的"
+            android:textColor="@color/text_white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <ScrollView
@@ -64,13 +49,13 @@
                 android:background="@android:color/transparent" />
 
             <!-- 播放历史记录 -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/layoutPlaybackHistory"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="#FFFFFF"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="0dp"
+                app:cardElevation="2dp"
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
@@ -121,7 +106,7 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- 播放器设置分组 -->
             <TextView
@@ -137,13 +122,13 @@
                 android:background="@android:color/transparent" />
 
             <!-- 主题设置 -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/layoutThemeSettings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="#FFFFFF"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="0dp"
+                app:cardElevation="2dp"
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
@@ -194,16 +179,16 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- 播放设置（导航到二级界面） -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/layoutPlaybackSettings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="#FFFFFF"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="0dp"
+                app:cardElevation="2dp"
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
@@ -254,7 +239,7 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- 弹幕下载分组 -->
             <TextView
@@ -270,13 +255,13 @@
                 android:background="@android:color/transparent" />
 
             <!-- 哔哩哔哩弹幕下载 -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/layoutBiliBiliDanmaku"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="#FFFFFF"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="0dp"
+                app:cardElevation="2dp"
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
@@ -327,7 +312,7 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- 帮助与说明分组 -->
             <TextView
@@ -343,13 +328,13 @@
                 android:background="@android:color/transparent" />
 
             <!-- 使用说明入口 -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/layoutHelp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="#FFFFFF"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="0dp"
+                app:cardElevation="2dp"
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
@@ -400,7 +385,7 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- 更多信息分组 -->
             <TextView
@@ -416,13 +401,13 @@
                 android:background="@android:color/transparent" />
 
             <!-- 关于（导航到二级界面） -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/layoutAboutInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="#FFFFFF"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="0dp"
+                app:cardElevation="2dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground">
@@ -472,7 +457,7 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 

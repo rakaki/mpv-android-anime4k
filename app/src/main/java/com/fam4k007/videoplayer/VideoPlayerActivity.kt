@@ -119,6 +119,9 @@ class VideoPlayerActivity : AppCompatActivity(),
     // 是否为在线视频
     private var isOnlineVideo = false
     
+    // 是否从主页继续播放进入（需要返回到视频列表而不是直接finish）
+    private var isFromHomeContinue = false
+    
     private lateinit var seekHint: TextView
     private lateinit var speedHint: LinearLayout
     private lateinit var speedHintText: TextView
@@ -200,7 +203,13 @@ class VideoPlayerActivity : AppCompatActivity(),
             videoUri?.scheme?.let { it == "http" || it == "https" } == true
         
         Log.d(TAG, "Is online video: $isOnlineVideo")
-                if (isOnlineVideo) {
+        
+        // 检查是否从主页继续播放进入（有 folder_path 参数）
+        isFromHomeContinue = intent.hasExtra("folder_path")
+        if (isFromHomeContinue) {
+            currentFolderPath = intent.getStringExtra("folder_path")
+            Log.d(TAG, "From home continue play, folder: $currentFolderPath")
+        } else if (isOnlineVideo) {
             Log.d(TAG, "Playing online video")
             // 在线视频不需要获取文件夹路径
             currentFolderPath = null
@@ -492,10 +501,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
                 
                 override fun onBackClick() {
-                    gestureHandler?.restoreOriginalSettings()
-                    finish()
-                    // 添加返回动画：播放器向右滑出，列表从左滑入
-                    overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+                    handleBackNavigation()
                 }
             },
             WeakReference(gestureHandler)  // 传入GestureHandler引用
@@ -540,6 +546,13 @@ class VideoPlayerActivity : AppCompatActivity(),
             lifecycleOwner = this,
             rootView = findViewById(android.R.id.content)
         )
+        
+        // 设置Compose弹窗状态回调
+        composeOverlayManager.onPopupVisibilityChanged = { visible ->
+            if (::controlsManager.isInitialized) {
+                controlsManager.setPopupVisible(visible)
+            }
+        }
         
         dialogManager = com.fam4k007.videoplayer.player.PlayerDialogManager(
             WeakReference(this),
@@ -981,10 +994,34 @@ class VideoPlayerActivity : AppCompatActivity(),
     }
     
     override fun onBackPressed() {
+        handleBackNavigation()
+    }
+    
+    /**
+     * 处理返回导航
+     * 如果是从主页继续播放进入，则跳转到对应的视频列表
+     * 否则正常返回
+     */
+    private fun handleBackNavigation() {
         gestureHandler?.restoreOriginalSettings()
-        super.onBackPressed()
-        // 添加返回动画
-        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        
+        if (isFromHomeContinue) {
+            // 从主页继续播放进入，直接返回到主页（MainActivity）
+            Log.d(TAG, "Returning to MainActivity from continue play")
+            
+            val intent = Intent(this, MainActivity::class.java).apply {
+                // 清除任务栈，确保回到主页
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            
+            startActivity(intent)
+            finish()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        } else {
+            // 正常返回
+            finish()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
     }
     
     override fun onPause() {
@@ -995,6 +1032,15 @@ class VideoPlayerActivity : AppCompatActivity(),
     override fun onStop() {
         super.onStop()
         savePlaybackState()
+    }
+    
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // 当窗口重新获得焦点时(例如对话框关闭后),重新隐藏系统UI
+        // 这样可以确保在Android 12及以下版本中,系统栏不会一直显示
+        if (hasFocus && ::controlsManager.isInitialized) {
+            controlsManager.hideSystemUI()
+        }
     }
     
     override fun onDestroy() {
@@ -1043,8 +1089,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                 Log.d(TAG, "Playback position saved: $currentPosition / $duration")
             }
             
-            // 2. 添加到历史记录
-            if (duration > 0) {
+            // 2. 添加到历史记录 - 只记录本地视频，不记录在线视频
+            if (duration > 0 && !isOnlineVideo) {  // 添加 !isOnlineVideo 判断
                 val fileName = getFileNameFromUri(uri)
                 val folderName = uri.getFolderName()
                 
@@ -1068,6 +1114,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                     )
                     Log.d(TAG, "Danmu info saved: path=$danmakuPath, visible=${danmakuManager.isVisible()}")
                 }
+            } else if (isOnlineVideo) {
+                Log.d(TAG, "Skipping history for online video: $uri")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save playback state", e)

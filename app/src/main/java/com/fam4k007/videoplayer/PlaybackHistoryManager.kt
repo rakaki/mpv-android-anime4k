@@ -345,4 +345,23 @@ class PlaybackHistoryManager(context: Context) {
             null
         }
     }
+
+    /**
+     * 获取最后播放的本地视频记录
+     * 只返回本地视频(非http/https URL)
+     */
+    fun getLastPlayedLocalVideo(): HistoryItem? {
+        return try {
+            getHistory()
+                .filter { item ->
+                    // 过滤掉在线视频（http/https 开头的 URI）
+                    val uri = item.uri
+                    !uri.startsWith("http://") && !uri.startsWith("https://")
+                }
+                .firstOrNull() // 第一条就是最后播放的
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get last played local video", e)
+            null
+        }
+    }
 }

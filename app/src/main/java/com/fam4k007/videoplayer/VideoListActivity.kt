@@ -173,17 +173,27 @@ class VideoListActivity : AppCompatActivity() {
 
     private fun loadVideoList() {
         val folderName = intent.getStringExtra("folder_name") ?: "视频列表"
-        val videos = intent.getParcelableArrayListExtra<VideoFileParcelable>("video_list") ?: arrayListOf()
+        val needScan = intent.getBooleanExtra("need_scan", false)
+        
+        if (needScan) {
+            // 需要重新扫描文件夹
+            Log.d(TAG, "需要重新扫描文件夹: $folderName")
+            binding.tvFolderTitle.text = folderName
+            scanFolderVideos(folderName)
+        } else {
+            // 从 intent 中获取视频列表
+            val videos = intent.getParcelableArrayListExtra<VideoFileParcelable>("video_list") ?: arrayListOf()
 
-        binding.tvFolderTitle.text = folderName
-        videoList.addAll(videos)
-        
-        Log.d(TAG, "加载文件夹: $folderName, 包含 ${videos.size} 个视频")
-        
-        // 应用保存的排序设置（在添加到videoList之后，在初始化filteredList之前）
-        applySavedSort()
-        
-        filteredList.addAll(videoList) // 使用排序后的videoList初始化过滤列表
+            binding.tvFolderTitle.text = folderName
+            videoList.addAll(videos)
+            
+            Log.d(TAG, "加载文件夹: $folderName, 包含 ${videos.size} 个视频")
+            
+            // 应用保存的排序设置（在添加到videoList之后，在初始化filteredList之前）
+            applySavedSort()
+            
+            filteredList.addAll(videoList) // 使用排序后的videoList初始化过滤列表
+        }
     }
     
     private fun applySavedSort() {
@@ -580,6 +590,106 @@ class VideoListActivity : AppCompatActivity() {
                 Log.e(TAG, "刷新视频列表失败", e)
                 withContext(Dispatchers.Main) {
                     binding.swipeRefreshLayout.isRefreshing = false
+                }
+            }
+        }
+    }
+    
+    /**
+     * 扫描指定文件夹的视频文件
+     */
+    private fun scanFolderVideos(folderPath: String) {
+        Log.d(TAG, "开始扫描文件夹: $folderPath")
+        
+        lifecycleScope.launch {
+            try {
+                binding.swipeRefreshLayout.isRefreshing = true
+                
+                // 在IO线程执行扫描
+                val videos = withContext(Dispatchers.IO) {
+                    val projection = arrayOf(
+                        android.provider.MediaStore.Video.Media._ID,
+                        android.provider.MediaStore.Video.Media.DISPLAY_NAME,
+                        android.provider.MediaStore.Video.Media.DATA,
+                        android.provider.MediaStore.Video.Media.SIZE,
+                        android.provider.MediaStore.Video.Media.DURATION,
+                        android.provider.MediaStore.Video.Media.DATE_ADDED
+                    )
+
+                    val sortOrder = "${android.provider.MediaStore.Video.Media.DATE_ADDED} DESC"
+
+                    val cursor = contentResolver.query(
+                        android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                        projection,
+                        null,
+                        null,
+                        sortOrder
+                    )
+
+                    val videoList = mutableListOf<VideoFileParcelable>()
+
+                    cursor?.use {
+                        val idColumn = it.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media._ID)
+                        val nameColumn = it.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DISPLAY_NAME)
+                        val pathColumn = it.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DATA)
+                        val sizeColumn = it.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.SIZE)
+                        val durationColumn = it.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DURATION)
+                        val dateColumn = it.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DATE_ADDED)
+
+                        while (it.moveToNext()) {
+                            val path = it.getString(pathColumn)
+                            
+                            // 检查是否在目标文件夹中
+                            if (path.contains(folderPath)) {
+                                val id = it.getLong(idColumn)
+                                val name = it.getString(nameColumn)
+                                val size = it.getLong(sizeColumn)
+                                val duration = it.getLong(durationColumn)
+                                val dateAdded = it.getLong(dateColumn)
+
+                                val uri = Uri.withAppendedPath(
+                                    android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                                    id.toString()
+                                )
+
+                                videoList.add(
+                                    VideoFileParcelable(
+                                        uri = uri.toString(),
+                                        name = name,
+                                        path = path,
+                                        size = size,
+                                        duration = duration,
+                                        dateAdded = dateAdded
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    Log.d(TAG, "扫描完成，找到 ${videoList.size} 个视频")
+                    videoList
+                }
+                
+                // 在主线程更新UI
+                withContext(Dispatchers.Main) {
+                    videoList.clear()
+                    videoList.addAll(videos)
+                    
+                    // 应用排序
+                    applySavedSort()
+                    
+                    filteredList.clear()
+                    filteredList.addAll(this@VideoListActivity.videoList)
+                    adapter.notifyDataSetChanged()
+                    
+                    binding.swipeRefreshLayout.isRefreshing = false
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "扫描文件夹失败", e)
+                withContext(Dispatchers.Main) {
+                    binding.swipeRefreshLayout.isRefreshing = false
+                    DialogUtils.showToastShort(this@VideoListActivity, "扫描视频失败: ${e.message}")
                 }
             }
         }

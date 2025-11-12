@@ -223,7 +223,7 @@ private fun QRCodeContent(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "使用哔哩哔哩客户端扫码登录\n获取更高画质和会员内容",
+            text = "1.扫描以后不要马上点确认！\n2.等二维码下方等待扫码变为已扫码以后，再点确定！\n3.点确定以后不要急！本页面会自动返回到上一级，在此期间请不要进行任何操作！",
             fontSize = 14.sp,
             color = Color.Gray,
             textAlign = TextAlign.Center,

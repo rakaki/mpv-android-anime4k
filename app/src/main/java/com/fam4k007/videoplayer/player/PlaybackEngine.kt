@@ -191,6 +191,14 @@ class PlaybackEngine(
             // 保存文件路径
             currentFilePath = urlString
             
+            // 为在线视频设置必要的缓存和流选项，确保可以跳转
+            // 注意：这些都是内存缓存，不占用存储空间，应用关闭后自动释放
+            MPVLib.setOptionString("cache", "yes")  // 启用缓存
+            MPVLib.setOptionString("cache-secs", "120")  // 缓存2分钟（合理范围）
+            MPVLib.setOptionString("demuxer-max-bytes", "150M")  // 最大缓存150MB
+            MPVLib.setOptionString("demuxer-seekable-cache", "yes")  // 启用可跳转缓存
+            MPVLib.setOptionString("stream-buffer-size", "5M")  // 流缓冲区5MB
+            
             Log.d(TAG, "MPV loading URL: $urlString")
             MPVLib.command("loadfile", urlString)
             

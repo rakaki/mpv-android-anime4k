@@ -26,8 +26,11 @@ class PlaybackHistoryActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_playback_history)
 
-        // 设置Toolbar
-        setupToolbar(R.id.toolbar, getString(R.string.playback_history), showBackButton = true)
+        // 设置返回按钮
+        findViewById<View>(R.id.btnBack).setOnClickListener {
+            finish()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
 
         recyclerView = findViewById(R.id.rvHistory)
         emptyView = findViewById(R.id.emptyView)

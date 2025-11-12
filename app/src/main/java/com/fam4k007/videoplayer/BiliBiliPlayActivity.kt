@@ -8,15 +8,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,11 +42,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import androidx.compose.foundation.ExperimentalFoundationApi
 
 /**
  * B站番剧播放页面 - 简单版
  * 用户输入番剧链接，解析后显示集数列表
  */
+@OptIn(ExperimentalFoundationApi::class)
 class BiliBiliPlayActivity : ComponentActivity() {
     
     private lateinit var authManager: BiliBiliAuthManager
@@ -256,6 +263,39 @@ fun BiliBiliPlayScreen(
     var inputUrl by remember { mutableStateOf("") }
     val isLoggedIn = remember { mutableStateOf(authManager.isLoggedIn()) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val focusManager = LocalFocusManager.current  // 获取焦点管理器用于隐藏键盘
+    var showLogoutDialog by remember { mutableStateOf(false) }  // 退出登录对话框状态
+    
+    // 监听生命周期，自动更新登录状态
+    LaunchedEffect(Unit) {
+        isLoggedIn.value = authManager.isLoggedIn()
+    }
+    
+    // 退出登录确认对话框
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("退出登录") },
+            text = { Text("确定要退出当前账号吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        authManager.logout()
+                        isLoggedIn.value = false
+                        showLogoutDialog = false
+                        Toast.makeText(context, "已退出登录", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("确定", color = Color(0xFFFF6699))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("取消", color = Color.Gray)
+                }
+            }
+        )
+    }
     
     Scaffold(
         topBar = {
@@ -263,7 +303,12 @@ fun BiliBiliPlayScreen(
                 title = { Text("B站番剧播放") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 24.sp)
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_back_arrow),
+                            contentDescription = "返回",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 },
                 actions = {
@@ -275,12 +320,22 @@ fun BiliBiliPlayScreen(
                         }
                     } else {
                         val userInfo = authManager.getUserInfo()
-                        Text(
-                            text = userInfo?.uname ?: "已登录",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(end = 16.dp)
-                        )
+                        // 使用TextButton让用户名可点击
+                        TextButton(
+                            onClick = { showLogoutDialog = true }  // 点击显示退出对话框
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = userInfo?.uname ?: "已登录",
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                                Text("⚙", fontSize = 16.sp, color = Color.White)  // 添加设置图标提示
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -311,14 +366,17 @@ fun BiliBiliPlayScreen(
                         value = inputUrl,
                         onValueChange = { inputUrl = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("https://www.bilibili.com/bangumi/play/ss...") },
+                        placeholder = { Text("输入B站番剧链接") },
                         singleLine = true
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Button(
-                        onClick = { viewModel.parseUrl(inputUrl) },
+                        onClick = { 
+                            focusManager.clearFocus()  // 隐藏键盘
+                            viewModel.parseUrl(inputUrl)
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6699))
                     ) {
@@ -371,20 +429,26 @@ fun BiliBiliPlayScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BangumiDetailView(
     bangumi: SimpleBangumiInfo,
     onPlayEpisode: (Long, Long, String) -> Unit  // (epId, cid, title)
 ) {
+    val listState = rememberLazyListState()  // 添加列表状态以提升滑动性能
+    
     LazyColumn(
+        state = listState,
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),  // 增加间距提升视觉体验
+        modifier = Modifier.fillMaxSize()
     ) {
         // 番剧信息
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)  // 增加阴影
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(bangumi.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -394,22 +458,32 @@ fun BangumiDetailView(
             }
         }
         
-        // 集数列表
-        items(bangumi.episodes) { episode ->
+        // 集数列表 - 添加动画效果
+        items(bangumi.episodes, key = { it.epId }) { episode ->  // 使用key提升性能
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onPlayEpisode(episode.epId, episode.cid, episode.title) },
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                    .clip(RoundedCornerShape(12.dp))  // 圆角裁剪
+                    .clickable { onPlayEpisode(episode.epId, episode.cid, episode.title) }
+                    .animateItemPlacement(),  // 添加item位置动画
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp,
+                    pressedElevation = 6.dp  // 点击时增加阴影
+                )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),  // 调整内边距
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(episode.title, fontWeight = FontWeight.Medium)
+                    Text(
+                        episode.title, 
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f)  // 让标题占据剩余空间
+                    )
                     Text("▶", fontSize = 20.sp, color = Color(0xFFFF6699))
                 }
             }

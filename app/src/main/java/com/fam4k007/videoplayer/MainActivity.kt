@@ -11,7 +11,6 @@ import com.fam4k007.videoplayer.utils.ThemeManager
 class MainActivity : AppCompatActivity() {
     
     private lateinit var binding: ActivityMainBinding
-    private var currentFragment: Fragment? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager.applyTheme(this)
@@ -19,47 +18,12 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        // 默认显示首页
+        // 默认显示首页（唯一页面）
         if (savedInstanceState == null) {
-            switchFragment(HomeFragment())
-        }
-        
-        // 底部导航切换
-        binding.bottomNavigationView.setOnNavigationItemSelectedListener {
-            when (it.itemId) {
-                R.id.nav_home -> {
-                    switchFragment(HomeFragment())
-                    true
-                }
-                R.id.nav_settings -> {
-                    startActivity(Intent(this, SettingsActivity::class.java))
-                    overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-    
-    private fun switchFragment(fragment: Fragment) {
-        if (currentFragment?.javaClass == fragment.javaClass) return
-        
-        supportFragmentManager.beginTransaction()
-            .setCustomAnimations(
-                R.anim.fade_in,
-                R.anim.fade_out
-            )
-            .replace(R.id.fragment_container, fragment)
-            .commit()
-        
-        currentFragment = fragment
-    }
-    
-    override fun onResume() {
-        super.onResume()
-        // 从设置页面返回时,重置底部导航栏到当前状态
-        if (currentFragment is HomeFragment) {
-            binding.bottomNavigationView.selectedItemId = R.id.nav_home
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, HomeFragment())
+                .commit()
         }
     }
 }
+

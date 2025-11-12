@@ -3,6 +3,7 @@ package com.fam4k007.videoplayer
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.widget.EditText
 import android.widget.RadioButton
 import android.widget.RadioGroup
@@ -45,8 +46,11 @@ class BiliBiliDanmakuActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bilibili_danmaku)
 
-        // 设置Toolbar
-        setupToolbar(R.id.toolbar, "哔哩哔哩弹幕下载", showBackButton = true)
+        // 设置返回按钮
+        findViewById<View>(R.id.btnBack).setOnClickListener {
+            finish()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
 
         // 初始化
         downloadManager = BiliBiliDanmakuDownloadManager(this)

@@ -403,7 +403,7 @@ class VideoBrowserActivity : AppCompatActivity() {
         val window = dialog.window
         val layoutParams = window?.attributes
         layoutParams?.gravity = android.view.Gravity.TOP or android.view.Gravity.START
-        layoutParams?.x = anchorX + (binding.btnSort.width - dialogWidth) / 2
+        layoutParams?.x = anchorX + (binding.btnSort.width - dialogWidth) / 2 - 40 // 左移40px，离右边框更远
         layoutParams?.y = anchorY + binding.btnSort.height + 10
         layoutParams?.width = dialogWidth
         layoutParams?.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
