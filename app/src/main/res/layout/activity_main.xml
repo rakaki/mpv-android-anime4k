@@ -4,61 +4,12 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_gradient">
 
-
-
-
-    <TextView
-        android:id="@+id/tvTitle"
+    <!-- Fragment容器 -->
+    <FrameLayout
+        android:id="@+id/fragment_container"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="Anime-4k"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="#222222"
-        android:gravity="center"
-        android:background="@android:color/transparent"
-        android:layout_alignParentTop="true"/>
-
-    <ImageView
-        android:id="@+id/ivLogo"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:layout_centerHorizontal="true"
-        android:layout_below="@id/tvTitle"
-        android:layout_marginTop="40dp"
-        android:src="@drawable/app_icon"
-        android:scaleType="centerCrop"/>
-
-    <TextView
-        android:id="@+id/tvWelcome"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="选择视频，体验 Anime4K 超分辨率\n支持格式：MP4, MKV, AVI, MOV, FLV, WEBM, M4V, 3GP, TS, MPG, WMV, OGV 等"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:gravity="center"
-        android:layout_centerHorizontal="true"
-        android:layout_below="@id/ivLogo"
-        android:layout_marginTop="20dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"/>
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btnSelectVideo"
-        android:layout_width="280dp"
-        android:layout_height="60dp"
-        android:text="选择视频"
-        android:textSize="20sp"
-        android:textColor="@color/text_white"
-        android:background="@drawable/btn_gradient_bg"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="120dp"
-        android:layout_above="@id/bottomNavigationView"
-        android:elevation="4dp"
-        android:paddingLeft="0dp"
-        android:paddingRight="0dp"
-        android:paddingTop="0dp"
-        android:paddingBottom="0dp"/>
+        android:layout_height="match_parent"
+        android:layout_above="@id/bottomNavigationView"/>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigationView"

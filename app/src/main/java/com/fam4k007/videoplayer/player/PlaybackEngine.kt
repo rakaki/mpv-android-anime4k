@@ -98,10 +98,23 @@ class PlaybackEngine(
             Log.d(TAG, "Loading video: $videoUri")
             Log.d(TAG, "Start position: $startPosition seconds")
             
-            // 保存文件路径
-            currentFilePath = videoUri.toString()
+            // 对于网络URL，直接使用原始字符串；对于本地文件，使用URI
+            val filePath = when (videoUri.scheme) {
+                "http", "https", "rtmp", "rtmps", "rtp", "rtsp", "mms", "mmst", "mmsh", "tcp", "udp", "ftp", "sftp" -> {
+                    // 网络URL：直接使用toString()
+                    videoUri.toString()
+                }
+                else -> {
+                    // 本地文件：使用toString()（保持原有逻辑）
+                    videoUri.toString()
+                }
+            }
             
-            MPVLib.command("loadfile", videoUri.toString())
+            // 保存文件路径
+            currentFilePath = filePath
+            
+            Log.d(TAG, "MPV loading file path: $filePath")
+            MPVLib.command("loadfile", filePath)
             
             // 确保视频加载后开始播放
             handler.postDelayed({
@@ -154,10 +167,80 @@ class PlaybackEngine(
                 }
             }, 800)
 
-            // 开始进度更新
+            // 开始进度更新 - 本地视频可以立即开始
             handler.post(updateProgressRunnable)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load video", e)
+            eventCallback.onError("加载视频失败: ${e.message}")
+        }
+    }
+
+    /**
+     * 从URL字符串加载视频（用于在线视频）
+     */
+    fun loadVideoFromUrl(urlString: String, startPosition: Double = 0.0) {
+        if (!isInitialized) {
+            Log.e(TAG, "PlaybackEngine not initialized")
+            return
+        }
+
+        try {
+            Log.d(TAG, "Loading video from URL: $urlString")
+            Log.d(TAG, "Start position: $startPosition seconds")
+            
+            // 保存文件路径
+            currentFilePath = urlString
+            
+            Log.d(TAG, "MPV loading URL: $urlString")
+            MPVLib.command("loadfile", urlString)
+            
+            // 确保视频加载后开始播放
+            handler.postDelayed({
+                try {
+                    MPVLib.setPropertyBoolean("pause", false)
+                    isPlaying = true
+                    
+                    Log.d(TAG, "Video auto-play started")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to start auto-play: ${e.message}")
+                }
+            }, 100)
+            
+            // 如果有起始位置,在文件加载后立即跳转
+            if (startPosition > 0.1) {
+                handler.postDelayed({
+                    try {
+                        seekTo(startPosition.toInt())
+                        Log.d(TAG, "Restored position: $startPosition")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to restore position: ${e.message}")
+                    }
+                }, 200)
+            }
+            
+            // 异步记录视频信息(不阻塞播放) - 在线视频需要更长时间
+            handler.postDelayed({
+                try {
+                    val videoCodec = MPVLib.getPropertyString("video-codec")
+                    val audioCodec = MPVLib.getPropertyString("audio-codec")
+                    val videoFormat = MPVLib.getPropertyString("video-format")
+                    val hwdec = MPVLib.getPropertyString("hwdec-current")
+                    
+                    Log.d(TAG, "Video codec: $videoCodec")
+                    Log.d(TAG, "Audio codec: $audioCodec")
+                    Log.d(TAG, "Video format: $videoFormat")
+                    Log.d(TAG, "Hardware decoding: $hwdec")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to get video info: ${e.message}")
+                }
+            }, 3000)  // 在线视频延长到3秒
+
+            // 延迟开始进度更新,避免在视频未就绪时查询属性
+            handler.postDelayed({
+                handler.post(updateProgressRunnable)
+            }, 2000)  // 在线视频延迟2秒开始更新
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load video from URL", e)
             eventCallback.onError("加载视频失败: ${e.message}")
         }
     }
@@ -363,14 +446,28 @@ class PlaybackEngine(
      */
     private fun updateProgress() {
         try {
-            currentPosition = MPVLib.getPropertyDouble("time-pos") ?: 0.0
-            duration = MPVLib.getPropertyDouble("duration") ?: 0.0
+            // 安全获取属性,避免在视频未就绪时查询导致错误
+            val pos = try {
+                MPVLib.getPropertyDouble("time-pos") ?: 0.0
+            } catch (e: Exception) {
+                0.0
+            }
+            
+            val dur = try {
+                MPVLib.getPropertyDouble("duration") ?: 0.0
+            } catch (e: Exception) {
+                0.0
+            }
+            
+            currentPosition = pos
+            duration = dur
 
             if (duration > 0) {
                 eventCallback.onProgressUpdate(currentPosition, duration)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to update progress", e)
+            // 只记录警告,不阻塞播放
+            Log.w(TAG, "Failed to update progress: ${e.message}")
         }
     }
 

@@ -98,6 +98,8 @@ dependencies {
     implementation 'androidx.compose.material3:material3'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.activity:activity-compose:1.8.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.6.1'
     debugImplementation 'androidx.compose.ui:ui-tooling'
     
     implementation(name: 'mpv-android-lib-v0.1.10', ext: 'aar')
@@ -116,6 +118,16 @@ dependencies {
     implementation 'androidx.room:room-runtime:2.5.2'
     implementation 'androidx.room:room-ktx:2.5.2'
     kapt 'androidx.room:room-compiler:2.5.2'
+    
+    // 二维码生成 - B站扫码登录
+    implementation 'com.google.zxing:core:3.5.1'
+    
+    // 图片加载 (Coil) - B站番剧封面
+    implementation 'io.coil-kt:coil-compose:2.5.0'
+    
+    // Gson - JSON解析
+    implementation 'com.google.code.gson:gson:2.10.1'
+    
     // If you use annotation processing for Glide's generated API, enable kapt and add the compiler below:
     // kapt 'com.github.bumptech.glide:compiler:4.15.1'
 }

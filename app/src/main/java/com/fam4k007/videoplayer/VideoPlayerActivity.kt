@@ -116,6 +116,9 @@ class VideoPlayerActivity : AppCompatActivity(),
     // 当前视频所在文件夹路径
     private var currentFolderPath: String? = null
     
+    // 是否为在线视频
+    private var isOnlineVideo = false
+    
     private lateinit var seekHint: TextView
     private lateinit var speedHint: LinearLayout
     private lateinit var speedHintText: TextView
@@ -144,30 +147,69 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         loadUserSettings()
 
-        videoUri = when {
-            intent.action == android.content.Intent.ACTION_VIEW -> intent.data
-            intent.action == android.content.Intent.ACTION_SEND -> {
-                if (intent.type?.startsWith("video/") == true || intent.type?.startsWith("audio/") == true) {
-                    intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM)
-                } else {
+        // 处理视频URI - 支持本地文件和在线URL
+        try {
+            videoUri = when {
+                intent.action == android.content.Intent.ACTION_VIEW -> {
+                    Log.d(TAG, "ACTION_VIEW intent")
+                    intent.data
+                }
+                intent.action == android.content.Intent.ACTION_SEND -> {
+                    Log.d(TAG, "ACTION_SEND intent")
+                    if (intent.type?.startsWith("video/") == true || intent.type?.startsWith("audio/") == true) {
+                        intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM)
+                    } else {
+                        intent.data
+                    }
+                }
+                // 支持从MainActivity传递的URL
+                intent.hasExtra("uri") -> {
+                    Log.d(TAG, "Has 'uri' extra")
+                    val uriString = intent.getStringExtra("uri")
+                    Log.d(TAG, "URI string from extra: $uriString")
+                    if (uriString != null) {
+                        Uri.parse(uriString)
+                    } else {
+                        intent.data
+                    }
+                }
+                else -> {
+                    Log.d(TAG, "Using intent.data")
                     intent.data
                 }
             }
-            else -> intent.data
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing video URI", e)
+            DialogUtils.showToastShort(this, "解析视频地址失败: ${e.message}")
+            finish()
+            return
         }
         
         if (videoUri == null) {
+            Log.e(TAG, "Video URI is null")
             DialogUtils.showToastShort(this, "无效的视频路径")
             finish()
             return
         }
 
         Log.d(TAG, "Video URI: $videoUri")
+        Log.d(TAG, "URI scheme: ${videoUri?.scheme}")
         
-        // 获取当前视频所在文件夹路径
-        videoUri?.let { uri ->
-            currentFolderPath = uri.getFolderName()
-            Log.d(TAG, "Folder path: $currentFolderPath")
+        // 判断是否为在线视频
+        isOnlineVideo = intent.getBooleanExtra("is_online", false) ||
+            videoUri?.scheme?.let { it == "http" || it == "https" } == true
+        
+        Log.d(TAG, "Is online video: $isOnlineVideo")
+                if (isOnlineVideo) {
+            Log.d(TAG, "Playing online video")
+            // 在线视频不需要获取文件夹路径
+            currentFolderPath = null
+        } else {
+            // 获取当前视频所在文件夹路径
+            videoUri?.let { uri ->
+                currentFolderPath = uri.getFolderName()
+                Log.d(TAG, "Folder path: $currentFolderPath")
+            }
         }
 
         savedPosition = preferencesManager.getPlaybackPosition(videoUri.toString())
@@ -461,24 +503,29 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         seriesManager = SeriesManager()
         
-        val videoListParcelable = intent.getParcelableArrayListExtra<VideoFileParcelable>("video_list")
-        
-        if (videoListParcelable != null && videoListParcelable.isNotEmpty()) {
-            val uriList = videoListParcelable.map { Uri.parse(it.uri) }
-            videoUri?.let { uri ->
-                seriesManager.setVideoList(uriList, uri)
-                Log.d(TAG, "Video list from intent: ${uriList.size} videos, currentIndex: ${seriesManager.currentIndex}")
-            }
-        } else {
-            videoUri?.let { uri ->
-                seriesManager.identifySeries(this, uri) { videoUri ->
-                    getFileNameFromUri(videoUri)
+        // 只在本地视频时处理系列
+        if (!isOnlineVideo) {
+            val videoListParcelable = intent.getParcelableArrayListExtra<VideoFileParcelable>("video_list")
+            
+            if (videoListParcelable != null && videoListParcelable.isNotEmpty()) {
+                val uriList = videoListParcelable.map { Uri.parse(it.uri) }
+                videoUri?.let { uri ->
+                    seriesManager.setVideoList(uriList, uri)
+                    Log.d(TAG, "Video list from intent: ${uriList.size} videos, currentIndex: ${seriesManager.currentIndex}")
+                }
+            } else {
+                videoUri?.let { uri ->
+                    seriesManager.identifySeries(this, uri) { videoUri ->
+                        getFileNameFromUri(videoUri)
+                    }
                 }
             }
+            
+            Log.d(TAG, "Series list size: ${seriesManager.getVideoList().size}, currentIndex: ${seriesManager.currentIndex}")
+            Log.d(TAG, "hasPrevious: ${seriesManager.hasPrevious}, hasNext: ${seriesManager.hasNext}")
+        } else {
+            Log.d(TAG, "Online video - skipping series detection")
         }
-        
-        Log.d(TAG, "Series list size: ${seriesManager.getVideoList().size}, currentIndex: ${seriesManager.currentIndex}")
-        Log.d(TAG, "hasPrevious: ${seriesManager.hasPrevious}, hasNext: ${seriesManager.hasNext}")
         
         anime4KManager = Anime4KManager(this)
         if (anime4KManager.initialize()) {
@@ -622,14 +669,35 @@ class VideoPlayerActivity : AppCompatActivity(),
                 showResumeProgressPrompt()
             }
             
-            playbackEngine?.loadVideo(uri, position)
+            // 对于在线视频,直接使用URI字符串;对于本地文件,使用URI对象
+            if (isOnlineVideo) {
+                // 在线视频:直接使用原始URL字符串
+                val urlString = uri.toString()
+                Log.d(TAG, "Loading online video with URL string: $urlString")
+                
+                // B站视频需要设置Referer头(防盗链)
+                if (urlString.contains("bilivideo.com")) {
+                    Log.d(TAG, "Detected Bilibili video, setting Referer header")
+                    `is`.xyz.mpv.MPVLib.setOptionString(
+                        "http-header-fields",
+                        "Referer: https://www.bilibili.com"
+                    )
+                }
+                
+                playbackEngine?.loadVideoFromUrl(urlString, position)
+            } else {
+                // 本地视频:使用URI对象
+                playbackEngine?.loadVideo(uri, position)
+            }
             
             loadDanmakuForVideo(uri)
             
-            // 使用协程延迟同步弹幕位置
-            lifecycleScope.launch {
-                delay(800)
-                if (position > 0) {
+            // 只在position > 0时同步弹幕(延迟更长,等待在线视频加载)
+            if (position > 0) {
+                lifecycleScope.launch {
+                    // 在线视频需要更长延迟
+                    val delayTime = if (isOnlineVideo) 3000L else 800L
+                    delay(delayTime)
                     danmakuManager.seekTo((position * 1000).toLong())
                     Log.d(TAG, "Synced danmaku to position: $position seconds")
                 }
@@ -937,19 +1005,26 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
-        gestureHandler?.restoreOriginalSettings()
+        // 检查gestureHandler是否已初始化
+        if (::gestureHandler.isInitialized) {
+            gestureHandler.restoreOriginalSettings()
+        }
         
         resumePromptHandler.removeCallbacksAndMessages(null)
         
         // 释放弹幕资源
-        danmakuManager.release()
+        if (::danmakuManager.isInitialized) {
+            danmakuManager.release()
+        }
         
         // 清理Dialog（防止内存泄漏）
         anime4KDialog?.dismiss()
         anime4KDialog = null
         
         // 清理对话框管理器
-        dialogManager.cleanup()
+        if (::dialogManager.isInitialized) {
+            dialogManager.cleanup()
+        }
         
         // 销毁播放引擎（会自动移除MPVLib观察者）
         playbackEngine?.destroy()

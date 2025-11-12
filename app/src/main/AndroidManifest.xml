@@ -35,6 +35,14 @@
         <activity android:name=".LicenseActivity" />
         <activity android:name=".FeedbackActivity" />
         <activity 
+            android:name="com.fanchen.fam4k007.manager.compose.BiliBiliLoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.VideoPlayer" />
+        <activity 
+            android:name=".BiliBiliPlayActivity"
+            android:exported="false"
+            android:theme="@style/Theme.VideoPlayer" />
+        <activity 
             android:name=".VideoBrowserActivity"
             android:exported="false" />
         <activity 
