@@ -952,4 +952,39 @@ class PlaybackEngine(
             Log.e(TAG, "Failed to play", e)
         }
     }
+    
+    /**
+     * 改变视频画面比例
+     * 参考mpvKt的实现
+     */
+    fun changeVideoAspect(aspect: VideoAspect) {
+        try {
+            val context = contextRef.get() ?: return
+            
+            when (aspect) {
+                VideoAspect.CROP -> {
+                    // 裁剪模式：使用panscan=1.0
+                    MPVLib.setPropertyDouble("panscan", 1.0)
+                    MPVLib.setPropertyDouble("video-aspect-override", -1.0)
+                }
+                VideoAspect.FIT -> {
+                    // 适应屏幕模式：panscan=0，保持原始比例
+                    MPVLib.setPropertyDouble("panscan", 0.0)
+                    MPVLib.setPropertyDouble("video-aspect-override", -1.0)
+                }
+                VideoAspect.STRETCH -> {
+                    // 拉伸模式：根据屏幕比例拉伸
+                    val displayMetrics = context.resources.displayMetrics
+                    val ratio = displayMetrics.widthPixels / displayMetrics.heightPixels.toDouble()
+                    MPVLib.setPropertyDouble("panscan", 0.0)
+                    MPVLib.setPropertyDouble("video-aspect-override", ratio)
+                }
+            }
+            
+            Log.d(TAG, "Video aspect changed to: ${aspect.displayName}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to change video aspect", e)
+        }
+    }
 }
+

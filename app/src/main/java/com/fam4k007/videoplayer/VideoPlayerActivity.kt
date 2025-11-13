@@ -15,6 +15,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import com.fam4k007.videoplayer.player.CustomMPVView
+import com.fam4k007.videoplayer.player.VideoAspect
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
@@ -60,6 +61,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     com.fam4k007.videoplayer.player.SubtitleDialogCallback,
     com.fam4k007.videoplayer.player.DanmakuDialogCallback,
     com.fam4k007.videoplayer.player.MoreOptionsCallback,
+    com.fam4k007.videoplayer.player.VideoAspectCallback,
     com.fam4k007.videoplayer.player.VideoUriProvider {
 
     companion object {
@@ -102,6 +104,8 @@ class VideoPlayerActivity : AppCompatActivity(),
     private var isPlaying = false
     private var currentSpeed = 1.0
     private var isHardwareDecoding = true
+    
+    private var currentVideoAspect = VideoAspect.FIT  // 当前画面比例模式
     
     private var seekTimeSeconds = 5
     
@@ -474,6 +478,14 @@ class VideoPlayerActivity : AppCompatActivity(),
                     dialogManager.showSubtitleDialog()
                 }
                 
+                override fun onAspectRatioClick() {
+                    dialogManager.showAspectRatioDialog(currentVideoAspect)
+                }
+                
+                override fun onLockClick() {
+                    controlsManager.toggleLock()
+                }
+                
                 override fun onAudioTrackClick() {
                     dialogManager.showAudioTrackDialog()
                 }
@@ -620,8 +632,9 @@ class VideoPlayerActivity : AppCompatActivity(),
             btnForward = findViewById(R.id.btnForward),
             btnBack = findViewById(R.id.btnBack),
             btnSubtitle = findViewById(R.id.btnSubtitle),  // 新增字幕按钮
-            btnAudioTrack = findViewById(R.id.btnAudioTrack),
-            btnDecoder = findViewById(R.id.btnDecoder),
+            btnAspectRatio = findViewById(R.id.btnAspectRatio),  // 新增画面比例按钮
+            btnLock = findViewById(R.id.btnLock),  // 新增锁定按钮
+            btnUnlock = findViewById(R.id.btnUnlock),  // 新增解锁按钮
             btnMore = findViewById(R.id.btnMore),
             btnSpeed = findViewById(R.id.btnSpeed),
             btnAnime4K = findViewById(R.id.btnAnime4K),
@@ -652,6 +665,9 @@ class VideoPlayerActivity : AppCompatActivity(),
             brightnessText = findViewById(R.id.brightnessText),
             volumeText = findViewById(R.id.volumeText)
         )
+        
+        // 设置controlsManager引用到gestureHandler，用于检查锁定状态
+        gestureHandler.setControlsManager(controlsManager)
         
         clickArea.setOnTouchListener { _, event ->
             gestureHandler.onTouchEvent(event)
@@ -1024,6 +1040,14 @@ class VideoPlayerActivity : AppCompatActivity(),
         }
     }
     
+    /**
+     * VideoAspectCallback 实现
+     */
+    override fun onVideoAspectChanged(aspect: VideoAspect) {
+        currentVideoAspect = aspect
+        Log.d(TAG, "Video aspect changed to: ${aspect.displayName}")
+    }
+
     override fun onPause() {
         super.onPause()
         savePlaybackState()

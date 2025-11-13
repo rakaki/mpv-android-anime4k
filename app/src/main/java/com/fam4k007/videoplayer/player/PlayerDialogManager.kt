@@ -77,9 +77,9 @@ class PlayerDialogManager(
             // 获取当前选中的轨道索引
             val currentTrackIndex = audioTracks.indexOfFirst { it.third }
 
-            val btnAudioTrack = activity.findViewById<ImageView>(R.id.btnAudioTrack)
+            val btnMore = activity.findViewById<ImageView>(R.id.btnMore)
             showPopupDialog(
-                btnAudioTrack,
+                btnMore,
                 items,
                 currentTrackIndex,
                 showAbove = false,
@@ -107,9 +107,9 @@ class PlayerDialogManager(
         val currentDecoder = preferencesManager.getHardwareDecoder()
         val currentSelection = if (currentDecoder) 0 else 1
 
-        val btnDecoder = activity.findViewById<ImageView>(R.id.btnDecoder)
+        val btnMore = activity.findViewById<ImageView>(R.id.btnMore)
         showPopupDialog(
-            btnDecoder,
+            btnMore,
             items,
             currentSelection,
             showAbove = false,
@@ -121,6 +121,41 @@ class PlayerDialogManager(
             playbackEngine.setHardwareDecoding(newDecoder)
             DialogUtils.showToastShort(activity, "已切换到${items[position]}")
             Log.d(TAG, "Decoder changed to: ${if (newDecoder) "hardware" else "software"}")
+        }
+    }
+
+    /**
+     * 显示画面比例选择对话框
+     */
+    fun showAspectRatioDialog(currentAspect: VideoAspect) {
+        val activity = activityRef.get() ?: return
+
+        val items = listOf("适应屏幕", "拉伸", "裁剪")
+        val currentSelection = when (currentAspect) {
+            VideoAspect.FIT -> 0
+            VideoAspect.STRETCH -> 1
+            VideoAspect.CROP -> 2
+        }
+
+        val btnAspectRatio = activity.findViewById<ImageView>(R.id.btnAspectRatio)
+        showPopupDialog(
+            btnAspectRatio,
+            items,
+            currentSelection,
+            showAbove = false,
+            useFixedHeight = false,
+            showScrollHint = false
+        ) { position ->
+            val newAspect = when (position) {
+                0 -> VideoAspect.FIT
+                1 -> VideoAspect.STRETCH
+                2 -> VideoAspect.CROP
+                else -> VideoAspect.FIT
+            }
+            playbackEngine.changeVideoAspect(newAspect)
+            (activity as? VideoAspectCallback)?.onVideoAspectChanged(newAspect)
+            DialogUtils.showToastShort(activity, "画面比例：${items[position]}")
+            Log.d(TAG, "Video aspect changed to: ${newAspect.displayName}")
         }
     }
 
@@ -532,7 +567,7 @@ class PlayerDialogManager(
         if (hasChapters) {
             items.add("章节")
         }
-        items.addAll(listOf("截图", "片头片尾", assOverrideText))
+        items.addAll(listOf("截图", "音轨", "解码", "片头片尾", assOverrideText))
         
         val btnMore = activity.findViewById<ImageView>(R.id.btnMore)
 
@@ -541,21 +576,23 @@ class PlayerDialogManager(
             items,
             selectedPosition = -1,
             showAbove = false,
-            useFixedHeight = false,
-            showScrollHint = false
+            useFixedHeight = true,  // 改为固定高度，最多显示3项
+            showScrollHint = true   // 显示滚动提示
         ) { position ->
             // 根据是否有章节项调整索引映射
             val actualAction = if (hasChapters) {
-                position  // 有章节时索引不变：0=章节, 1=截图, 2=片头片尾, 3=样式覆盖
+                position  // 有章节时：0=章节, 1=截图, 2=音轨, 3=解码, 4=片头片尾, 5=样式覆盖
             } else {
-                position + 1  // 无章节时索引+1：0=截图->1, 1=片头片尾->2, 2=样式覆盖->3
+                position + 1  // 无章节时：0=截图->1, 1=音轨->2, 2=解码->3, 3=片头片尾->4, 4=样式覆盖->5
             }
             
             when (actualAction) {
                 0 -> showChapterDialog()
                 1 -> (activity as? MoreOptionsCallback)?.onScreenshot()
-                2 -> (activity as? MoreOptionsCallback)?.onShowSkipSettings()  // 片头片尾设置
-                3 -> toggleAssOverride()  // 点击切换样式覆盖
+                2 -> showAudioTrackDialog()  // 音轨选择
+                3 -> showDecoderDialog()  // 解码方式
+                4 -> (activity as? MoreOptionsCallback)?.onShowSkipSettings()  // 片头片尾设置
+                5 -> toggleAssOverride()  // 点击切换样式覆盖
             }
         }
     }
@@ -916,6 +953,10 @@ interface DanmakuDialogCallback {
 interface MoreOptionsCallback {
     fun onScreenshot()
     fun onShowSkipSettings()
+}
+
+interface VideoAspectCallback {
+    fun onVideoAspectChanged(aspect: VideoAspect)
 }
 
 interface VideoUriProvider {
