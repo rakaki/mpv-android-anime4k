@@ -28,6 +28,7 @@ This project aims to optimize and upscale anime-style videos, though it can also
 
 - **Video Playback**: Support for mainstream video formats (MP4, MKV, AVI, etc.)
 - **Bilibili Bangumi Support**: Login to Bilibili account, stream bangumi online (see [Login Implementation](docs/bilibili_login.md) and [Bangumi Parsing Principle](docs/bilibili_bangumi.md))
+- **WebDAV Network Storage**: Connect to WebDAV servers and stream cloud-hosted videos directly (see [WebDAV Usage Guide](docs/webdav使用说明.md))
 - **Playlist Management**: Automatic folder scanning, video sorting and categorization
 - **Subtitle Handling**: Built-in subtitle parsing, external subtitle import, subtitle position and size adjustment
 - **Audio Tracks**: Multi-track audio switching
@@ -67,9 +68,6 @@ The following features are planned but not yet implemented:
 - Frame interpolation
 - Subtitle font customization
 - Font selection
-- Player lock mode
-- Video zoom functionality
-- Online caching
 
 ## Acknowledgments
 
@@ -94,13 +92,23 @@ This project would not be possible without the support of the following open-sou
   Project development inspiration and original requirements
 
 - **[xyoye/DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid)**  
-  This project extensively references the danmaku implementation from this project. Many thanks!
+  Referenced danmaku implementation and refactoring, WebDAV functionality implementation, and many other features
 
 - **[bilibili/DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster)**  
-  The danmaku core engine for this project is Bilibili's open-source danmaku library. Many thanks!
+  The danmaku core engine for this project is Bilibili's open-source danmaku parsing and rendering engine
 
 - **[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**  
-  Thanks for collecting public APIs and centralizing scattered APIs. This project referenced the usage methods. Many thanks!
+  Thanks for collecting public APIs and centralizing scattered APIs. This project referenced the usage methods
+
+- **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
+  Provides Android WebDAV client implementation, supporting file browsing, uploading, and downloading operations
+
+- **[ngallagher/simplexml](https://github.com/ngallagher/simplexml)**  
+  Provides a lightweight XML serialization framework for parsing XML format response data from WebDAV servers
+
+---
+
+Thanks to all the above open-source projects and developers for their selfless contributions. Without your efforts, this project would not have been possible!
 
 ## Third-Party Service Disclosure
 
@@ -185,6 +193,6 @@ If you encounter any issues or have suggestions, please feel free to report them
 
 ---
 
-**Last Updated:** 2025-11-08
+**Last Updated:** 2025-11-13
 
 **[中文版本](README.md) | [English Version](README_EN.md)**

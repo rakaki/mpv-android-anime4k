@@ -28,6 +28,7 @@
 
 - **视频播放**：支持主流视频格式（MP4、MKV、AVI 等）
 - **哔哩哔哩番剧支持**：支持登录B站账号、在线播放番剧（详见[登录实现说明](docs/bilibili_login.md)和[番剧解析原理](docs/bilibili_bangumi.md)）
+- **WebDAV 网络存储**：支持连接 WebDAV 服务器，直接播放云端视频文件（详见[WebDAV 使用说明](docs/webdav使用说明.md)）
 - **播放列表**：自动扫描文件夹、支持视频排序和分类
 - **字幕管理**：内嵌字幕解析、外部字幕导入、字幕位置和大小调整
 - **音频轨道**：多音轨切换
@@ -67,9 +68,6 @@
 - 帧插值补帧
 - 字幕字体自定义
 - 字体选择
-- 播放器锁定模式
-- 视频缩放功能
-- 在线缓存
 
 ## 致谢
 
@@ -94,13 +92,23 @@
   项目开发灵感和原始需求
 
 - **[xyoye/DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid)**  
-  本项目大量借鉴参考了此项目的弹幕实现，非常感谢！
+  参考了弹幕实现与重构以及webdav功能的实现等其他诸多功能
 
 - **[bilibili/DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster)**  
-  此项目的弹幕底层核心库为哔哩哔哩的Android开源弹幕解析绘制引擎项目，非常感谢！
+  此项目的弹幕底层核心库为哔哩哔哩的Android开源弹幕解析绘制引擎项目
 
 - **[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**  
-  感谢此项目收集的公开API，将散落的API集中起来，本项目参考了其中的使用方法，非常感谢！
+  感谢此项目收集的公开API，将散落的API集中起来，本项目参考了其中的使用方法
+
+- **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
+  提供了 WebDAV 协议的 Android 客户端实现，支持文件浏览、上传、下载等操作
+
+- **[ngallagher/simplexml](https://github.com/ngallagher/simplexml)**  
+  提供了轻量级的 XML 序列化框架，用于解析 WebDAV 服务器返回的 XML 格式响应数据
+
+---
+
+感谢以上所有开源项目和开发者的无私贡献，没有你们的努力就没有这个项目的诞生！
 
 ## 第三方服务声明
 
@@ -185,4 +193,4 @@
 
 ---
 
-**Last Updated:** 2025-11-08
+**Last Updated:** 2025-11-13
