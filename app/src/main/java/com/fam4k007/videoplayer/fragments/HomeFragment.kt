@@ -13,6 +13,10 @@ import com.fam4k007.videoplayer.VideoPlayerActivity
 import com.fam4k007.videoplayer.PlaybackHistoryManager
 import com.fam4k007.videoplayer.databinding.FragmentHomeBinding
 import com.fanchen.fam4k007.manager.compose.BiliBiliLoginActivity
+import com.fam4k007.videoplayer.webdav.WebDavConfig
+import com.fam4k007.videoplayer.webdav.WebDavConfigDialog
+import com.fam4k007.videoplayer.webdav.WebDavBrowserActivity
+import androidx.lifecycle.lifecycleScope
 import android.util.Log
 
 class HomeFragment : Fragment() {
@@ -71,6 +75,35 @@ class HomeFragment : Fragment() {
                 com.fam4k007.videoplayer.R.anim.scale_in,
                 com.fam4k007.videoplayer.R.anim.scale_out
             )
+        }
+        
+        // WebDAV 按钮点击事件
+        binding.ivWebDav.setOnClickListener {
+            handleWebDavClick()
+        }
+    }
+    
+    /**
+     * 处理 WebDAV 按钮点击
+     */
+    private fun handleWebDavClick() {
+        if (WebDavConfig.isConfigured(requireContext())) {
+            // 已配置，直接进入文件浏览
+            startActivity(Intent(requireContext(), WebDavBrowserActivity::class.java))
+            requireActivity().overridePendingTransition(
+                com.fam4k007.videoplayer.R.anim.slide_in_right,
+                com.fam4k007.videoplayer.R.anim.slide_out_left
+            )
+        } else {
+            // 未配置，显示配置对话框
+            WebDavConfigDialog(requireContext(), lifecycleScope) { config ->
+                // 配置保存后，进入文件浏览
+                startActivity(Intent(requireContext(), WebDavBrowserActivity::class.java))
+                requireActivity().overridePendingTransition(
+                    com.fam4k007.videoplayer.R.anim.slide_in_right,
+                    com.fam4k007.videoplayer.R.anim.slide_out_left
+                )
+            }.show()
         }
     }
     

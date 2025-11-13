@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- 服务器地址 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="服务器地址"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/etServerUrl"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="https://your-server.com/dav/"
+            android:inputType="textUri"
+            android:padding="12dp"
+            android:background="@drawable/edit_text_bg"
+            android:textSize="14sp"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- 显示名称 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="显示名称"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/etDisplayName"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="WebDAV媒体库"
+            android:inputType="text"
+            android:padding="12dp"
+            android:background="@drawable/edit_text_bg"
+            android:textSize="14sp"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- 登录模式选择 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="登录模式"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnAccountLogin"
+                android:layout_width="0dp"
+                android:layout_height="45dp"
+                android:layout_weight="1"
+                android:text="账号登录"
+                android:textSize="14sp"
+                android:background="@drawable/login_mode_selector"
+                android:layout_marginEnd="8dp"/>
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnAnonymousLogin"
+                android:layout_width="0dp"
+                android:layout_height="45dp"
+                android:layout_weight="1"
+                android:text="匿名登录"
+                android:textSize="14sp"
+                android:background="@drawable/login_mode_selector"/>
+        </LinearLayout>
+
+        <!-- 账号信息容器 -->
+        <LinearLayout
+            android:id="@+id/layoutAccountInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="visible">
+
+            <!-- 账号 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="账号"
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="8dp"/>
+
+            <EditText
+                android:id="@+id/etAccount"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:hint="输入账号"
+                android:inputType="text"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_bg"
+                android:textSize="14sp"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- 密码 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="密码"
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:layout_marginBottom="8dp"/>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginBottom="16dp">
+
+                <EditText
+                    android:id="@+id/etPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:hint="输入密码"
+                    android:inputType="textPassword"
+                    android:padding="12dp"
+                    android:paddingEnd="45dp"
+                    android:background="@drawable/edit_text_bg"
+                    android:textSize="14sp"/>
+
+                <ImageView
+                    android:id="@+id/ivPasswordToggle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="5dp"
+                    android:src="@drawable/ic_visibility_off"
+                    android:padding="8dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="显示/隐藏密码"/>
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- 测试连接按钮 -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnTestConnection"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="测试连接"
+            android:textSize="16sp"
+            android:textColor="@color/text_white"
+            android:background="@drawable/btn_gradient_bg"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- 连接状态 -->
+        <TextView
+            android:id="@+id/tvConnectionStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="14sp"
+            android:layout_gravity="center_horizontal"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+</ScrollView>

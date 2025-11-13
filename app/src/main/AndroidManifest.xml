@@ -49,6 +49,10 @@
             android:name=".VideoListActivity"
             android:exported="false" />
         <activity 
+            android:name=".webdav.WebDavBrowserActivity"
+            android:exported="false"
+            android:theme="@style/Theme.VideoPlayer" />
+        <activity 
             android:name=".VideoPlayerActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape"

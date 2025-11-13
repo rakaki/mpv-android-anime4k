@@ -18,6 +18,8 @@
     <color name="text_secondary">#666666</color>
     <color name="text_hint">#999999</color>
     <color name="text_white">#FFFFFF</color>
+    <color name="text_blue">#2196F3</color>
+    <color name="text_red">#F44336</color>
     
     <!-- 强调色 -->
     <color name="accent">#667eea</color>

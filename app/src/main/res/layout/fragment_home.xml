@@ -84,4 +84,21 @@
         android:layout_marginTop="20dp"
         android:elevation="4dp"/>
 
+    <!-- WebDAV 按钮 - 右下角悬浮按钮 -->
+    <ImageView
+        android:id="@+id/ivWebDav"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="24dp"
+        android:src="@drawable/clouds"
+        android:scaleType="centerInside"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="6dp"
+        android:background="@drawable/webdav_button_bg"
+        android:padding="12dp"
+        android:contentDescription="WebDAV 媒体库"/>
+
 </RelativeLayout>
