@@ -10,19 +10,27 @@
 
 ### 应用主界面（竖屏）
 
-| 主页 | 视频列表与排序 | 播放历史 | 设置页 |
-|------|--------------|---------|--------|
-| <img src="docs/screenshots/主页.jpg" width="200"/> | <img src="docs/screenshots/排序功能与视频列表.jpg" width="200"/> | <img src="docs/screenshots/播放历史.jpg" width="200"/> | <img src="docs/screenshots/设置页.jpg" width="200"/> |
+| 主页 | 文件夹列表 | 视频列表 | WebDAV功能 |
+|------|---------|---------|-----------|
+| <img src="docs/screenshots/主页.jpg" width="180"/> | <img src="docs/screenshots/文件夹列表.jpg" width="180"/> | <img src="docs/screenshots/视频列表.jpg" width="180"/> | <img src="docs/screenshots/webdav功能.jpg" width="180"/> |
+
+| 番剧解析 |
+|---------|
+| <img src="docs/screenshots/番剧解析.jpg" width="180"/> |
 
 ### 播放器界面（横屏）
 
-| 弹幕功能 | 弹幕样式设置 |
-|---------|------------|
-| <img src="docs/screenshots/弹幕功能.jpg" width="400"/> | <img src="docs/screenshots/弹幕样式设置.jpg" width="400"/> |
+| 播放器主界面 | 弹幕功能 |
+|-----------|---------|
+| <img src="docs/screenshots/播放器主界面.jpg" width="380"/> | <img src="docs/screenshots/弹幕功能.jpg" width="380"/> |
 
-| 字幕样式设置 | 超分功能 |
-|------------|---------|
-| <img src="docs/screenshots/字幕样式设置.jpg" width="400"/> | <img src="docs/screenshots/超分功能.jpg" width="400"/> |
+| 弹幕样式设置 | 字幕样式设置 |
+|------------|------------|
+| <img src="docs/screenshots/弹幕样式设置.jpg" width="380"/> | <img src="docs/screenshots/字幕样式设置.jpg" width="380"/> |
+
+| 超分功能 |
+|---------|
+| <img src="docs/screenshots/超分功能.jpg" width="380"/> |
 
 ## 主要功能
 
