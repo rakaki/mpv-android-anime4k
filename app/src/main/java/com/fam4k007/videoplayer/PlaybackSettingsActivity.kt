@@ -2,6 +2,7 @@ package com.fam4k007.videoplayer
 
 import android.graphics.Typeface
 import android.os.Bundle
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
@@ -41,8 +42,11 @@ class PlaybackSettingsActivity : BaseActivity() {
         // 初始化设置管理器
         preferencesManager = PreferencesManager.getInstance(this)
         
-        // 设置Toolbar
-        setupToolbar(R.id.toolbar, getString(R.string.playback_settings), showBackButton = true)
+        // 设置返回按钮
+        findViewById<View>(R.id.btnBack)?.setOnClickListener {
+            finish()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
         
         // 初始化视图
         switchPreciseSeeking = findViewById(R.id.switchPreciseSeeking)

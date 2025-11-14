@@ -14,8 +14,11 @@ class LicenseActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_license)
         
-        // 设置Toolbar
-        setupToolbar(R.id.toolbar, getString(R.string.license), showBackButton = true)
+        // 设置返回按钮
+        findViewById<View>(R.id.btnBack).setOnClickListener {
+            finish()
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
         
         // 设置点击事件
         setupClickListeners()

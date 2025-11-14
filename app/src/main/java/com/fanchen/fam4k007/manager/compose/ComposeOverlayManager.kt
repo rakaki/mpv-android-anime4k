@@ -16,6 +16,9 @@ class ComposeOverlayManager(
     private val rootView: ViewGroup
 ) {
     private var composeView: ComposeView? = null
+    
+    // 弹窗显示状态回调
+    var onPopupVisibilityChanged: ((Boolean) -> Unit)? = null
 
     /**
      * 设置Compose内容
@@ -31,6 +34,8 @@ class ComposeOverlayManager(
                 setContent(content)
             }
             rootView.addView(composeView)
+            // 通知popup状态变化
+            onPopupVisibilityChanged?.invoke(true)
         } else {
             composeView?.setContent(content)
         }
@@ -44,6 +49,8 @@ class ComposeOverlayManager(
             rootView.removeView(it)
         }
         composeView = null
+        // 通知popup状态变化
+        onPopupVisibilityChanged?.invoke(false)
     }
 
     /**

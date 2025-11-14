@@ -67,10 +67,16 @@ class CustomMPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context
         MPVLib.setOptionString("sub-font-size", "55")
         MPVLib.setOptionString("sub-border-size", "3")
 
-        // TLS配置
-        MPVLib.setOptionString("tls-verify", "yes")
-        MPVLib.setOptionString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
-
+        // TLS配置 - 禁用证书验证以支持在线视频
+        MPVLib.setOptionString("tls-verify", "no")
+        
+        // HTTP配置 - 添加User-Agent避免被服务器拒绝
+        MPVLib.setOptionString("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        MPVLib.setOptionString("http-header-fields", "Accept: */*")
+        
+        // 流媒体配置 - 改进在线视频处理
+        MPVLib.setOptionString("stream-lavf-o", "seekable=0")
+        
         // 缓存限制
         val cacheMegs = 64
         MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")

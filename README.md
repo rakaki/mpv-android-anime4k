@@ -10,23 +10,33 @@
 
 ### 应用主界面（竖屏）
 
-| 主页 | 视频列表与排序 | 播放历史 | 设置页 |
-|------|--------------|---------|--------|
-| <img src="docs/screenshots/主页.jpg" width="200"/> | <img src="docs/screenshots/排序功能与视频列表.jpg" width="200"/> | <img src="docs/screenshots/播放历史.jpg" width="200"/> | <img src="docs/screenshots/设置页.jpg" width="200"/> |
+| 主页 | 文件夹列表 | 视频列表 | WebDAV功能 |
+|------|---------|---------|-----------|
+| <img src="docs/screenshots/主页.jpg" width="180"/> | <img src="docs/screenshots/文件夹列表.jpg" width="180"/> | <img src="docs/screenshots/视频列表.jpg" width="180"/> | <img src="docs/screenshots/webdav功能.jpg" width="180"/> |
+
+| 番剧解析 |
+|---------|
+| <img src="docs/screenshots/番剧解析.jpg" width="180"/> |
 
 ### 播放器界面（横屏）
 
-| 弹幕功能 | 弹幕样式设置 |
-|---------|------------|
-| <img src="docs/screenshots/弹幕功能.jpg" width="400"/> | <img src="docs/screenshots/弹幕样式设置.jpg" width="400"/> |
+| 播放器主界面 | 弹幕功能 |
+|-----------|---------|
+| <img src="docs/screenshots/播放器主界面.jpg" width="380"/> | <img src="docs/screenshots/弹幕功能.jpg" width="380"/> |
 
-| 字幕样式设置 | 超分功能 |
-|------------|---------|
-| <img src="docs/screenshots/字幕样式设置.jpg" width="400"/> | <img src="docs/screenshots/超分功能.jpg" width="400"/> |
+| 弹幕样式设置 | 字幕样式设置 |
+|------------|------------|
+| <img src="docs/screenshots/弹幕样式设置.jpg" width="380"/> | <img src="docs/screenshots/字幕样式设置.jpg" width="380"/> |
+
+| 超分功能 |
+|---------|
+| <img src="docs/screenshots/超分功能.jpg" width="380"/> |
 
 ## 主要功能
 
 - **视频播放**：支持主流视频格式（MP4、MKV、AVI 等）
+- **哔哩哔哩番剧支持**：支持登录B站账号、在线播放番剧（详见[登录实现说明](docs/bilibili_login.md)和[番剧解析原理](docs/bilibili_bangumi.md)）
+- **WebDAV 网络存储**：支持连接 WebDAV 服务器，直接播放云端视频文件（详见[WebDAV 使用说明](docs/webdav使用说明.md)）
 - **播放列表**：自动扫描文件夹、支持视频排序和分类
 - **字幕管理**：内嵌字幕解析、外部字幕导入、字幕位置和大小调整
 - **音频轨道**：多音轨切换
@@ -66,42 +76,100 @@
 - 帧插值补帧
 - 字幕字体自定义
 - 字体选择
-- 播放器锁定模式
-- 视频缩放功能
-- 在线缓存
-- 在线视频播放
 
 ## 致谢
 
 本项目离不开以下开源项目的支持：
 
-| 项目 | 说明 |
-|------|------|
-| [mpv-player/mpv](https://github.com/mpv-player/mpv) | 本项目的核心基础，强大的多媒体播放器库 |
-| [mpv-android/mpv-android](https://github.com/mpv-android/mpv-android) | Android 移动端实现参考 |
-| [abdallahmehiz/mpv-android](https://github.com/abdallahmehiz/mpv-android/releases) | 提供现成可用的 libmpv 库文件 |
-| [abdallahmehiz/mpvKt](https://github.com/abdallahmehiz/mpvKt) | 参考了手势控制、滑动处理、外部字幕导入等多项实现 |
-| [bloc97/Anime4K](https://github.com/bloc97/Anime4K) | 超分辨率滤镜 GLSL 文件来源 |
-| [Predidit/Kazumi](https://github.com/Predidit/Kazumi) | 项目开发灵感和原始需求 |
-| [xyoye/DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid) | 本项目大量借鉴参考了此项目的弹幕实现，非常感谢！ |
-| [bilibili/DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster) | 此项目的弹幕底层核心库为哔哩哔哩的Android开源弹幕解析绘制引擎项目，非常感谢！ |
+- **[mpv-player/mpv](https://github.com/mpv-player/mpv)**  
+  本项目的核心基础，强大的多媒体播放器库
+
+- **[mpv-android/mpv-android](https://github.com/mpv-android/mpv-android)**  
+  Android 移动端实现参考
+
+- **[abdallahmehiz/mpv-android](https://github.com/abdallahmehiz/mpv-android/releases)**  
+  提供现成可用的 libmpv 库文件
+
+- **[abdallahmehiz/mpvKt](https://github.com/abdallahmehiz/mpvKt)**  
+  参考了手势控制、滑动处理、外部字幕导入等多项实现
+
+- **[bloc97/Anime4K](https://github.com/bloc97/Anime4K)**  
+  超分辨率滤镜 GLSL 文件来源
+
+- **[Predidit/Kazumi](https://github.com/Predidit/Kazumi)**  
+  项目开发灵感和原始需求
+
+- **[xyoye/DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid)**  
+  参考了弹幕实现与重构以及webdav功能的实现等其他诸多功能
+
+- **[bilibili/DanmakuFlameMaster](https://github.com/bilibili/DanmakuFlameMaster)**  
+  此项目的弹幕底层核心库为哔哩哔哩的Android开源弹幕解析绘制引擎项目
+
+- **[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**  
+  感谢此项目收集的公开API，将散落的API集中起来，本项目参考了其中的使用方法
+
+- **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
+  提供了 WebDAV 协议的 Android 客户端实现，支持文件浏览、上传、下载等操作
+
+- **[ngallagher/simplexml](https://github.com/ngallagher/simplexml)**  
+  提供了轻量级的 XML 序列化框架，用于解析 WebDAV 服务器返回的 XML 格式响应数据
+
+---
+
+感谢以上所有开源项目和开发者的无私贡献，没有你们的努力就没有这个项目的诞生！
 
 ## 第三方服务声明
 
 本应用使用了以下第三方服务的公开API：
 
-- **哔哩哔哩 (Bilibili)** - 用于下载视频和番剧弹幕
-  - 视频信息API: `https://www.bilibili.com/video/*`
+- **哔哩哔哩 (Bilibili)** - 用于登录、解析番剧链接并在线播放、下载弹幕
+  - 登录API: `https://passport.bilibili.com/x/passport-login/web/qrcode/*`
   - 番剧信息API: `https://api.bilibili.com/pgc/view/web/season`
+  - 番剧播放API: `https://api.bilibili.com/pgc/player/web/playurl`
   - 弹幕下载API: `https://api.bilibili.com/x/v1/dm/list.so`
-  - 使用场景：用户主动输入B站视频或番剧链接时，应用会访问上述API获取弹幕数据
-  - 数据处理：下载的弹幕数据仅保存在用户本地设备，不会上传或分享
+  - 使用场景：
+    - 用户主动扫码登录B站账号
+    - 用户输入番剧链接观看在线番剧
+    - 用户主动输入B站视频链接下载弹幕
+  - 数据处理：
+    - 登录凭证使用AES-256加密存储在本地，详见[安全说明](docs/bilibili_security_analysis.md)
+    - 下载的弹幕数据仅保存在用户本地设备
+    - 所有数据不会上传或分享给第三方
   - 声明：本应用与哔哩哔哩无任何官方关联，仅使用其公开API
 
 **隐私说明**：
-- 应用不会收集或上传用户的任何个人信息
-- 弹幕下载功能完全由用户主动触发
-- 所有下载的数据均保存在用户指定的本地文件夹
+
+本应用高度重视用户隐私保护，特此说明：
+
+### 数据收集
+- ❌ **不收集**用户的任何个人信息
+- ❌ **不上传**任何数据到我们的服务器（我们没有服务器）
+- ❌ **不分享**用户数据给任何第三方
+- ✅ 所有功能均在**本地设备**上运行
+
+### 哔哩哔哩登录功能
+- 登录凭证使用 **AES-256 军事级加密** 存储在本地（详见[安全分析](docs/bilibili_security_analysis.md)）
+- 登录密钥由 Android KeyStore 硬件保护，**应用无法导出**
+- 登录信息仅用于调用B站API，**不会上传到任何其他地方**
+- 用户可随时在设置中**一键退出登录**，彻底清除所有登录数据
+- 应用卸载后，所有登录数据将**自动永久销毁**
+
+### 弹幕与番剧数据
+- 弹幕文件和番剧数据保存在**用户指定的本地文件夹**
+- 下载功能完全由**用户主动触发**
+- 数据仅存储在本地，**不会同步或备份到云端**
+
+### 权限说明
+应用仅请求以下必要权限：
+- **存储权限**：读取和保存本地视频、字幕、弹幕文件
+- **网络权限**：用于哔哩哔哩番剧在线播放和弹幕下载（用户主动触发）
+
+### 开源透明
+- ✅ 项目**完全开源**，所有代码公开可审查
+- ✅ 欢迎安全专家进行代码审计
+- ✅ 如发现安全问题，请及时反馈
+
+**承诺**：本应用永远不会售卖或共享用户数据，因为我们根本不收集！
 
 ## 开发说明
 
@@ -133,4 +201,4 @@
 
 ---
 
-**Last Updated:** 2025-11-08
+**Last Updated:** 2025-11-13

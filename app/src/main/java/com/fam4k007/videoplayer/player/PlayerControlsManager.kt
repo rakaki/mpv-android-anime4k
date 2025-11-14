@@ -49,6 +49,8 @@ class PlayerControlsManager(
         fun onSpeedClick()
         fun onSeekBarChange(position: Double)
         fun onBackClick()
+        fun onAspectRatioClick()  // 新增：画面比例按钮回调
+        fun onLockClick()  // 新增：锁定按钮回调
     }
 
     // UI 组件
@@ -67,8 +69,9 @@ class PlayerControlsManager(
     private var btnForward: ImageView? = null
     private var btnBack: ImageView? = null
     private var btnSubtitle: ImageView? = null  // 新增：字幕按钮
-    private var btnAudioTrack: ImageView? = null
-    private var btnDecoder: ImageView? = null
+    private var btnAspectRatio: ImageView? = null  // 新增：画面比例按钮
+    private var btnLock: ImageView? = null  // 新增：锁定按钮
+    private var btnUnlock: ImageView? = null  // 新增：解锁按钮
     private var btnMore: ImageView? = null
     private var btnSpeed: ImageView? = null
     private var btnAnime4K: Button? = null
@@ -84,6 +87,8 @@ class PlayerControlsManager(
         private set
     private var isPlaying = true  // 记录播放状态
     private var hasActivePopup = false  // 记录是否有弹窗显示
+    var isLocked = false  // 新增：锁定状态
+        private set
     
     // Handler（使用 WeakReference）
     private val handler = Handler(Looper.getMainLooper())
@@ -117,8 +122,9 @@ class PlayerControlsManager(
         btnForward: ImageView,
         btnBack: ImageView,
         btnSubtitle: ImageView,  // 新增参数
-        btnAudioTrack: ImageView,
-        btnDecoder: ImageView,
+        btnAspectRatio: ImageView,  // 新增参数
+        btnLock: ImageView,  // 新增参数
+        btnUnlock: ImageView,  // 新增参数
         btnMore: ImageView,
         btnSpeed: ImageView,
         btnAnime4K: Button,
@@ -141,8 +147,9 @@ class PlayerControlsManager(
         this.btnForward = btnForward
         this.btnBack = btnBack
         this.btnSubtitle = btnSubtitle  // 初始化字幕按钮
-        this.btnAudioTrack = btnAudioTrack
-        this.btnDecoder = btnDecoder
+        this.btnAspectRatio = btnAspectRatio  // 初始化画面比例按钮
+        this.btnLock = btnLock  // 初始化锁定按钮
+        this.btnUnlock = btnUnlock  // 初始化解锁按钮
         this.btnMore = btnMore
         this.btnSpeed = btnSpeed
         this.btnAnime4K = btnAnime4K
@@ -214,14 +221,19 @@ class PlayerControlsManager(
             resetAutoHideTimer()
         }
         
-        btnAudioTrack?.setOnClickListener {
-            callback.onAudioTrackClick()
+        btnAspectRatio?.setOnClickListener {
+            callback.onAspectRatioClick()
             resetAutoHideTimer()
         }
         
-        btnDecoder?.setOnClickListener {
-            callback.onDecoderClick()
-            resetAutoHideTimer()
+        btnLock?.setOnClickListener {
+            callback.onLockClick()
+            // 锁定时不重置自动隐藏定时器
+        }
+        
+        btnUnlock?.setOnClickListener {
+            callback.onLockClick()
+            // 解锁时不重置自动隐藏定时器
         }
         
         btnAnime4K?.setOnClickListener {
@@ -406,6 +418,8 @@ class PlayerControlsManager(
             ?.withEndAction {
                 controlPanel?.visibility = View.GONE
                 controlPanel?.alpha = 1f
+                // 控制面板隐藏后同时隐藏系统UI
+                hideSystemUI()
             }
             ?.start()
         
@@ -450,7 +464,9 @@ class PlayerControlsManager(
             // 弹窗显示时，停止自动隐藏
             handler.removeCallbacks(hideControlsRunnable)
         } else {
-            // 弹窗关闭时，如果在播放中则重新启动自动隐藏
+            // 弹窗关闭时，立即重新隐藏系统UI(修复Android 12及以下版本系统栏显示问题)
+            hideSystemUI()
+            // 如果在播放中则重新启动自动隐藏
             if (isPlaying) {
                 resetAutoHideTimer()
             }
@@ -460,10 +476,11 @@ class PlayerControlsManager(
     /**
      * 隐藏系统UI
      */
-    private fun hideSystemUI() {
+    fun hideSystemUI() {
         val activity = activityRef.get() ?: return
         val windowInsetsController = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
         windowInsetsController.apply {
+            // 允许通过手势临时呼出系统栏
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())
         }
@@ -471,9 +488,17 @@ class PlayerControlsManager(
 
     private fun formatTime(seconds: Double): String {
         val totalSeconds = seconds.toInt()
-        val minutes = totalSeconds / 60
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
         val secs = totalSeconds % 60
-        return String.format("%02d:%02d", minutes, secs)
+        
+        return if (hours > 0) {
+            // 超过1小时，显示 时:分:秒
+            String.format("%d:%02d:%02d", hours, minutes, secs)
+        } else {
+            // 小于1小时，显示 分:秒
+            String.format("%02d:%02d", minutes, secs)
+        }
     }
 
     private fun initBatteryMonitor(context: Context) {
@@ -491,6 +516,41 @@ class PlayerControlsManager(
     private fun updateTime() {
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
         tvTime?.text = sdf.format(Date())
+    }
+    
+    /**
+     * 切换锁定状态
+     */
+    fun toggleLock() {
+        isLocked = !isLocked
+        if (isLocked) {
+            // 锁定：隐藏所有控制组件，只显示解锁按钮
+            topInfoPanel?.visibility = View.GONE
+            controlPanel?.visibility = View.GONE
+            btnUnlock?.visibility = View.VISIBLE
+            
+            // 停止自动隐藏定时器
+            handler.removeCallbacks(hideControlsRunnable)
+            
+            Log.d(TAG, "Controls locked")
+        } else {
+            // 解锁：显示所有控制组件，隐藏解锁按钮
+            topInfoPanel?.visibility = View.VISIBLE
+            controlPanel?.visibility = View.VISIBLE
+            btnUnlock?.visibility = View.GONE
+            
+            // 重新启动自动隐藏定时器
+            resetAutoHideTimer()
+            
+            Log.d(TAG, "Controls unlocked")
+        }
+    }
+    
+    /**
+     * 获取锁定状态
+     */
+    fun isControlsLocked(): Boolean {
+        return isLocked
     }
 
     /**
@@ -527,8 +587,10 @@ class PlayerControlsManager(
         btnRewind = null
         btnForward = null
         btnBack = null
-        btnAudioTrack = null
-        btnDecoder = null
+        btnSubtitle = null
+        btnAspectRatio = null
+        btnLock = null
+        btnUnlock = null
         btnMore = null
         btnSpeed = null
         btnAnime4K = null

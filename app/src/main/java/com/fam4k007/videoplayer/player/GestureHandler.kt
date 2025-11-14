@@ -41,6 +41,9 @@ class GestureHandler(
         private const val KEY_PRECISE_SEEKING = "precise_seeking"
         private const val KEY_VOLUME_BOOST_ENABLED = "volume_boost_enabled"
     }
+    
+    // PlayerControlsManager引用（用于检查锁定状态）
+    private var controlsManagerRef: WeakReference<PlayerControlsManager>? = null
 
     interface GestureCallback {
         fun onGestureStart()
@@ -221,11 +224,23 @@ class GestureHandler(
         this.brightnessText = brightnessText
         this.volumeText = volumeText
     }
+    
+    /**
+     * 设置PlayerControlsManager引用（用于检查锁定状态）
+     */
+    fun setControlsManager(controlsManager: PlayerControlsManager) {
+        this.controlsManagerRef = WeakReference(controlsManager)
+    }
 
     /**
      * 处理触摸事件
      */
     fun onTouchEvent(event: MotionEvent): Boolean {
+        // 如果控制已锁定，不处理任何手势（只允许解锁按钮响应）
+        if (controlsManagerRef?.get()?.isControlsLocked() == true) {
+            return false
+        }
+        
         val result = gestureDetector.onTouchEvent(event)
         
         // 触摸结束时重置并隐藏指示器
