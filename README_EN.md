@@ -12,25 +12,25 @@ This project aims to optimize and upscale anime-style videos, though it can also
 
 | Home | Folder List | Video List | WebDAV Feature |
 |------|------------|------------|----------------|
-| <img src="docs/screenshots/主页.jpg" width="180"/> | <img src="docs/screenshots/文件夹列表.jpg" width="180"/> | <img src="docs/screenshots/视频列表.jpg" width="180"/> | <img src="docs/screenshots/webdav功能.jpg" width="180"/> |
+| <img src="docs/screenshots/主页.jpg" width="280"/> | <img src="docs/screenshots/文件夹列表.jpg" width="280"/> | <img src="docs/screenshots/视频列表.jpg" width="280"/> | <img src="docs/screenshots/webdav功能.jpg" width="280"/> |
 
 | Bangumi Parsing |
 |----------------|
-| <img src="docs/screenshots/番剧解析.jpg" width="180"/> |
+| <img src="docs/screenshots/番剧解析.jpg" width="280"/> |
 
 ### Player Interface (Landscape)
 
 | Player Main Interface | Danmaku Feature |
 |----------------------|----------------|
-| <img src="docs/screenshots/播放器主界面.jpg" width="380"/> | <img src="docs/screenshots/弹幕功能.jpg" width="380"/> |
+| <img src="docs/screenshots/播放器主界面.jpg" width="280"/> | <img src="docs/screenshots/弹幕功能.jpg" width="280"/> |
 
 | Danmaku Styling | Subtitle Styling |
 |----------------|------------------|
-| <img src="docs/screenshots/弹幕样式设置.jpg" width="380"/> | <img src="docs/screenshots/字幕样式设置.jpg" width="380"/> |
+| <img src="docs/screenshots/弹幕样式设置.jpg" width="280"/> | <img src="docs/screenshots/字幕样式设置.jpg" width="280"/> |
 
 | Super-Resolution |
 |------------------|
-| <img src="docs/screenshots/超分功能.jpg" width="380"/> |
+| <img src="docs/screenshots/超分功能.jpg" width="280"/> |
 
 ## Key Features
 
