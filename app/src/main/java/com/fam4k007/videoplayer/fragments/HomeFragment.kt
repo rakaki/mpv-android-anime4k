@@ -49,7 +49,7 @@ class HomeFragment : Fragment() {
         
         // 右上角设置按钮点击事件
         binding.ivSettings.setOnClickListener {
-            startActivity(Intent(requireContext(), com.fam4k007.videoplayer.SettingsActivity::class.java))
+            startActivity(Intent(requireContext(), com.fam4k007.videoplayer.SettingsComposeActivity::class.java))
             requireActivity().overridePendingTransition(
                 com.fam4k007.videoplayer.R.anim.scale_in,
                 com.fam4k007.videoplayer.R.anim.scale_out

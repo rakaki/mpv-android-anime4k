@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import com.fam4k007.videoplayer.bilibili.auth.BiliBiliAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -12,6 +13,9 @@ import org.jsoup.Jsoup
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
@@ -21,6 +25,10 @@ import java.util.zip.InflaterInputStream
  * 负责从B站视频链接下载弹幕XML文件
  */
 class BiliBiliDanmakuDownloadManager(private val context: Context) {
+    
+    private val authManager: BiliBiliAuthManager by lazy {
+        BiliBiliAuthManager.getInstance(context)
+    }
     
     companion object {
         private const val TAG = "BiliDanmuDownload"
@@ -559,11 +567,21 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
     
     /**
      * 下载弹幕XML内容(带重试)
-     * B站API返回的是deflate压缩的XML数据
+     * 优先使用分段API获取完整弹幕，失败则降级到普通API
      */
     private fun downloadDanmakuXml(cid: Long, retryCount: Int = 3): String? {
         var lastException: Exception? = null
         
+        // 优先尝试使用分段弹幕API获取完整弹幕
+        Log.d(TAG, "尝试使用分段弹幕API下载完整弹幕")
+        val segmentXml = downloadSegmentDanmaku(cid)
+        if (segmentXml != null) {
+            Log.d(TAG, "分段弹幕API下载成功")
+            return segmentXml
+        }
+        Log.w(TAG, "分段弹幕API下载失败，降级使用普通API")
+        
+        // 降级使用普通弹幕API
         repeat(retryCount) { attempt ->
             try {
                 // 使用 comment.bilibili.com 镜像接口,避免 WBI 签名
@@ -656,6 +674,432 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
         
         Log.e(TAG, "所有重试均失败 CID=$cid", lastException)
         return null
+    }
+    
+    /**
+     * 使用分段弹幕API下载完整弹幕
+     * API: https://api.bilibili.com/x/v2/dm/web/seg.so
+     * 此API将弹幕按时间分段返回，可以获取完整弹幕
+     */
+    private fun downloadSegmentDanmaku(cid: Long): String? {
+        try {
+            Log.d(TAG, "使用分段弹幕API: cid=$cid")
+            
+            // 1. 获取弹幕元数据，包括总分段数
+            val viewUrl = "https://api.bilibili.com/x/v2/dm/web/view?type=1&oid=$cid"
+            val viewRequest = Request.Builder()
+                .url(viewUrl)
+                .addHeader("User-Agent", USER_AGENT)
+                .addHeader("Referer", "https://www.bilibili.com")
+                .build()
+            
+            val totalSegments: Int
+            client.newCall(viewRequest).execute().use { response ->
+                Log.d(TAG, "弹幕元数据API响应: HTTP ${response.code}")
+                
+                if (!response.isSuccessful) {
+                    Log.e(TAG, "获取弹幕元数据失败: HTTP ${response.code}")
+                    return null
+                }
+                
+                val responseBody = response.body
+                if (responseBody == null) {
+                    Log.e(TAG, "弹幕元数据响应体为空")
+                    return null
+                }
+                
+                // 解析protobuf获取总分段数
+                val protobufData = responseBody.bytes()
+                val segments = parseViewProtobuf(protobufData)
+                if (segments == null || segments <= 0) {
+                    Log.e(TAG, "无法解析分段数")
+                    return null
+                }
+                
+                totalSegments = segments
+                Log.d(TAG, "弹幕总分段数: $totalSegments")
+            }
+            
+            // 2. 并发下载所有分段的弹幕
+            val allDanmakuList = mutableListOf<DanmakuItem>()
+            
+            for (segmentIndex in 1..totalSegments) {
+                val segmentUrl = "https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid=$cid&segment_index=$segmentIndex"
+                val segmentRequest = Request.Builder()
+                    .url(segmentUrl)
+                    .addHeader("User-Agent", USER_AGENT)
+                    .addHeader("Referer", "https://www.bilibili.com")
+                    .build()
+                
+                try {
+                    client.newCall(segmentRequest).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            Log.w(TAG, "下载分段 $segmentIndex 失败: HTTP ${response.code}")
+                            return@use
+                        }
+                        
+                        val segmentBody = response.body
+                        if (segmentBody == null) {
+                            Log.w(TAG, "分段 $segmentIndex 响应体为空")
+                            return@use
+                        }
+                        
+                        val protobufData = segmentBody.bytes()
+                        val danmakuList = parseProtobufDanmaku(protobufData)
+                        allDanmakuList.addAll(danmakuList)
+                        Log.d(TAG, "分段 $segmentIndex/$totalSegments 下载成功，弹幕数: ${danmakuList.size}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "下载分段 $segmentIndex 异常: ${e.message}")
+                }
+                
+                // 添加短暂延迟避免请求过快
+                if (segmentIndex < totalSegments) {
+                    Thread.sleep(100)
+                }
+            }
+            
+            Log.d(TAG, "所有分段下载完成，总弹幕数: ${allDanmakuList.size}")
+            
+            // 3. 转换为XML格式
+            if (allDanmakuList.isEmpty()) {
+                Log.w(TAG, "没有获取到任何弹幕")
+                return null
+            }
+            
+            // 按时间排序并去重
+            val sortedDanmakuList = allDanmakuList
+                .distinctBy { it.id }  // 根据ID去重
+                .sortedBy { it.progress }  // 按出现时间排序
+            
+            val xmlContent = convertDanmakuListToXml(sortedDanmakuList)
+            Log.d(TAG, "分段弹幕转换为XML成功，最终弹幕数: ${sortedDanmakuList.size}")
+            
+            return xmlContent
+        } catch (e: Exception) {
+            Log.e(TAG, "下载分段弹幕失败", e)
+            return null
+        }
+    }
+    
+    /**
+     * 解析view protobuf获取总分段数
+     */
+    private fun parseViewProtobuf(data: ByteArray): Int? {
+        try {
+            var index = 0
+            while (index < data.size) {
+                if (index >= data.size) break
+                
+                val tag = data[index].toInt() and 0xFF
+                index++
+                
+                // 字段4是dmSge（DmSegConfig）
+                if (tag == 0x22) { // field 4, wire type 2 (length-delimited)
+                    val length = readVarint(data, index).toInt()
+                    index += getVarintSize(data, index)
+                    
+                    if (index + length <= data.size) {
+                        val dmSgeData = data.copyOfRange(index, index + length)
+                        // 解析DmSegConfig中的total字段（字段2）
+                        return parseDmSegConfig(dmSgeData)
+                    }
+                } else {
+                    index = skipField(data, index, tag and 0x07)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析view protobuf失败", e)
+        }
+        return null
+    }
+    
+    /**
+     * 解析DmSegConfig获取total
+     */
+    private fun parseDmSegConfig(data: ByteArray): Int? {
+        try {
+            var index = 0
+            while (index < data.size) {
+                if (index >= data.size) break
+                
+                val tag = data[index].toInt() and 0xFF
+                index++
+                
+                when (tag shr 3) {
+                    2 -> { // total字段
+                        val total = readVarint(data, index).toInt()
+                        return total
+                    }
+                    else -> {
+                        index = skipField(data, index, tag and 0x07)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析DmSegConfig失败", e)
+        }
+        return null
+    }
+    
+    /**
+     * 将弹幕列表转换为XML格式
+     */
+    private fun convertDanmakuListToXml(danmakuList: List<DanmakuItem>): String {
+        val xmlBuilder = StringBuilder()
+        xmlBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+        xmlBuilder.append("<i>\n")
+        xmlBuilder.append("<chatserver>chat.bilibili.com</chatserver>\n")
+        xmlBuilder.append("<chatid>0</chatid>\n")
+        xmlBuilder.append("<mission>0</mission>\n")
+        xmlBuilder.append("<maxlimit>${danmakuList.size}</maxlimit>\n")
+        xmlBuilder.append("<state>0</state>\n")
+        xmlBuilder.append("<real_name>0</real_name>\n")
+        xmlBuilder.append("<source>segment-api</source>\n")
+        
+        for (danmaku in danmakuList) {
+            xmlBuilder.append("<d p=\"${danmaku.toAttribute()}\">${escapeXml(danmaku.content)}</d>\n")
+        }
+        
+        xmlBuilder.append("</i>")
+        return xmlBuilder.toString()
+    }
+    
+    /**
+     * 解析protobuf格式的弹幕数据
+     */
+    private fun parseProtobufDanmaku(data: ByteArray): List<DanmakuItem> {
+        val danmakuList = mutableListOf<DanmakuItem>()
+        
+        try {
+            var index = 0
+            while (index < data.size) {
+                // protobuf wire format: field_number << 3 | wire_type
+                if (index >= data.size) break
+                
+                val tag = data[index].toInt() and 0xFF
+                index++
+                
+                // 字段1是弹幕元素（repeated）
+                if (tag == 0x0A) { // field 1, wire type 2 (length-delimited)
+                    // 读取长度
+                    val length = readVarint(data, index)
+                    index += getVarintSize(data, index)
+                    
+                    if (index + length.toInt() <= data.size) {
+                        val danmakuData = data.copyOfRange(index, index + length.toInt())
+                        val danmaku = parseSingleDanmaku(danmakuData)
+                        if (danmaku != null) {
+                            danmakuList.add(danmaku)
+                        }
+                        index += length.toInt()
+                    } else {
+                        break
+                    }
+                } else {
+                    // 跳过不认识的字段
+                    index = skipField(data, index, tag and 0x07)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析protobuf弹幕失败", e)
+        }
+        
+        return danmakuList
+    }
+    
+    /**
+     * 解析单条弹幕的protobuf数据
+     */
+    private fun parseSingleDanmaku(data: ByteArray): DanmakuItem? {
+        try {
+            var id: Long = 0
+            var progress: Int = 0
+            var mode: Int = 1
+            var fontsize: Int = 25
+            var color: Long = 0xFFFFFF
+            var midHash: String = ""
+            var content: String = ""
+            var ctime: Long = 0
+            
+            var index = 0
+            while (index < data.size) {
+                if (index >= data.size) break
+                
+                val tag = data[index].toInt() and 0xFF
+                index++
+                
+                when (tag shr 3) {
+                    1 -> { // id
+                        id = readVarint(data, index)
+                        index += getVarintSize(data, index)
+                    }
+                    2 -> { // progress
+                        progress = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                    }
+                    3 -> { // mode
+                        mode = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                    }
+                    4 -> { // fontsize
+                        fontsize = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                    }
+                    5 -> { // color
+                        color = readVarint(data, index)
+                        index += getVarintSize(data, index)
+                    }
+                    6 -> { // midHash
+                        val length = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                        if (index + length <= data.size) {
+                            midHash = String(data, index, length, Charsets.UTF_8)
+                            index += length
+                        }
+                    }
+                    7 -> { // content
+                        val length = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                        if (index + length <= data.size) {
+                            content = String(data, index, length, Charsets.UTF_8)
+                            index += length
+                        }
+                    }
+                    8 -> { // ctime
+                        ctime = readVarint(data, index)
+                        index += getVarintSize(data, index)
+                    }
+                    else -> {
+                        // 跳过未知字段
+                        index = skipField(data, index, tag and 0x07)
+                    }
+                }
+            }
+            
+            if (content.isNotEmpty()) {
+                return DanmakuItem(
+                    id = id,
+                    progress = progress,
+                    mode = mode,
+                    fontsize = fontsize,
+                    color = color,
+                    midHash = midHash,
+                    content = content,
+                    ctime = ctime
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析单条弹幕失败", e)
+        }
+        
+        return null
+    }
+    
+    /**
+     * 读取protobuf varint
+     */
+    private fun readVarint(data: ByteArray, startIndex: Int): Long {
+        var result = 0L
+        var shift = 0
+        var index = startIndex
+        
+        while (index < data.size) {
+            val b = data[index].toInt() and 0xFF
+            result = result or ((b and 0x7F).toLong() shl shift)
+            
+            if ((b and 0x80) == 0) {
+                break
+            }
+            
+            shift += 7
+            index++
+        }
+        
+        return result
+    }
+    
+    /**
+     * 获取varint的字节大小
+     */
+    private fun getVarintSize(data: ByteArray, startIndex: Int): Int {
+        var size = 0
+        var index = startIndex
+        
+        while (index < data.size) {
+            size++
+            val b = data[index].toInt() and 0xFF
+            if ((b and 0x80) == 0) {
+                break
+            }
+            index++
+        }
+        
+        return size
+    }
+    
+    /**
+     * 跳过protobuf字段
+     */
+    private fun skipField(data: ByteArray, startIndex: Int, wireType: Int): Int {
+        var index = startIndex
+        
+        when (wireType) {
+            0 -> { // varint
+                index += getVarintSize(data, index)
+            }
+            1 -> { // 64-bit
+                index += 8
+            }
+            2 -> { // length-delimited
+                val length = readVarint(data, index).toInt()
+                index += getVarintSize(data, index) + length
+            }
+            5 -> { // 32-bit
+                index += 4
+            }
+        }
+        
+        return index
+    }
+    
+    /**
+     * 弹幕数据项
+     */
+    private data class DanmakuItem(
+        val id: Long,
+        val progress: Int,      // 弹幕出现时间（毫秒）
+        val mode: Int,          // 弹幕类型
+        val fontsize: Int,      // 字体大小
+        val color: Long,        // 颜色
+        val midHash: String,    // 发送者mid的hash
+        val content: String,    // 弹幕内容
+        val ctime: Long         // 发送时间戳
+    ) {
+        /**
+         * 转换为XML的p属性
+         * 格式：出现时间,模式,字号,颜色,发送时间戳,弹幕池,用户ID,弹幕ID
+         */
+        fun toAttribute(): String {
+            val timeSeconds = progress / 1000.0
+            return String.format(
+                Locale.US,
+                "%.3f,%d,%d,%d,%d,0,%s,%d",
+                timeSeconds, mode, fontsize, color, ctime, midHash, id
+            )
+        }
+    }
+    
+    /**
+     * XML转义
+     */
+    private fun escapeXml(text: String): String {
+        return text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
     }
     
     /**

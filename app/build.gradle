@@ -101,6 +101,7 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.8.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1'
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.6.1'
+    implementation 'androidx.compose.material:material-icons-extended'  // Material Icons Extended
     debugImplementation 'androidx.compose.ui:ui-tooling'
     
     implementation(name: 'mpv-android-lib-v0.1.10', ext: 'aar')

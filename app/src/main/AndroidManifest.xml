@@ -26,12 +26,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".SettingsActivity" />
-        <activity android:name=".PlaybackSettingsActivity" />
-        <activity android:name=".PlaybackHistoryActivity" />
-        <activity android:name=".BiliBiliDanmakuActivity" />
-        <activity android:name=".HelpActivity" />
-        <activity android:name=".AboutActivity" />
+        <activity android:name=".SettingsComposeActivity" />
+        <activity android:name=".PlaybackSettingsComposeActivity" />
+        <activity android:name=".PlaybackHistoryComposeActivity" />
+        <activity android:name=".BiliBiliDanmakuComposeActivity" />
+        <activity android:name=".HelpComposeActivity" />
+        <activity android:name=".AboutComposeActivity" />
         <activity android:name=".LicenseActivity" />
         <activity android:name=".FeedbackActivity" />
         <activity 
