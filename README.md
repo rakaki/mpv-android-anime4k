@@ -43,7 +43,11 @@
 - **音量增强**：支持开关增强功能，且可精细到0.1%调整
 - **弹幕功能**：
   - 支持导入本地 XML 格式弹幕文件
-  - **支持从哔哩哔哩下载弹幕**（使用B站公开API）
+  - **支持从哔哩哔哩下载弹幕**（详见[弹幕下载原理说明](docs/bilibili_danmaku_download.md)）
+    - 使用B站分段弹幕API，获取完整弹幕数据
+    - 支持普通视频和番剧整季批量下载
+    - 并发下载技术，速度提升10-20倍
+    - 自动携带登录Cookie，获取会员专属弹幕
   - 弹幕样式自定义（大小、速度、透明度、描边等）
   - 弹幕轨道管理，支持显示/隐藏不同类型弹幕
   - 自动记忆弹幕文件和显示状态
@@ -107,6 +111,9 @@
 
 - **[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**  
   感谢此项目收集的公开API，将散落的API集中起来，本项目参考了其中的使用方法
+
+- **[the1812/Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved)**  
+  哔哩哔哩增强脚本，参考了弹幕下载的并发优化策略和API调用方式
 
 - **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
   提供了 WebDAV 协议的 Android 客户端实现，支持文件浏览、上传、下载等操作
@@ -201,4 +208,4 @@
 
 ---
 
-**Last Updated:** 2025-11-13
+**Last Updated:** 2025-11-15

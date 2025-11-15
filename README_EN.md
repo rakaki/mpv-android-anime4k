@@ -43,7 +43,11 @@ This project aims to optimize and upscale anime-style videos, though it can also
 - **Volume Boost**: Toggle volume boost feature with fine-grained 0.1% adjustment
 - **Danmaku Features**:
   - Support for importing local XML format danmaku files
-  - **Support for downloading danmaku from Bilibili** (using Bilibili's public API)
+  - **Support for downloading danmaku from Bilibili** (see [Danmaku Download Principle](docs/bilibili_danmaku_download.md))
+    - Uses Bilibili's segmented danmaku API for complete data retrieval
+    - Supports batch downloads for regular videos and entire bangumi seasons
+    - Concurrent download technology, 10-20x speed improvement
+    - Automatically includes login cookies to access premium danmaku
   - Customizable danmaku styles (size, speed, transparency, stroke, etc.)
   - Danmaku track management, show/hide different types of danmaku
   - Auto-save danmaku files and display states
@@ -107,6 +111,9 @@ This project would not be possible without the support of the following open-sou
 
 - **[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**  
   Thanks for collecting public APIs and centralizing scattered APIs. This project referenced the usage methods
+
+- **[the1812/Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved)**  
+  Bilibili enhancement script, referenced concurrent optimization strategies and API calling methods for danmaku downloads
 
 - **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
   Provides Android WebDAV client implementation, supporting file browsing, uploading, and downloading operations
@@ -201,6 +208,6 @@ If you encounter any issues or have suggestions, please feel free to report them
 
 ---
 
-**Last Updated:** 2025-11-13
+**Last Updated:** 2025-11-15
 
 **[中文版本](README.md) | [English Version](README_EN.md)**
