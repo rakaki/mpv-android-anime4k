@@ -82,7 +82,7 @@ abstract class BaseActivity : AppCompatActivity() {
      * 使用默认的进入动画启动 Activity
      */
     protected fun startActivityWithDefaultTransition() {
-        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+        overridePendingTransition(R.anim.slide_in_bottom, R.anim.no_anim)
     }
 
     /**

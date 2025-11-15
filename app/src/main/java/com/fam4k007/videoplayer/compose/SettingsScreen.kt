@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.fam4k007.videoplayer.*
 import com.fam4k007.videoplayer.R
 import com.fam4k007.videoplayer.utils.ThemeManager
+import com.fam4k007.videoplayer.compose.SettingsColors as SettingsPalette
 
 /**
  * Compose 版本的设置页面
@@ -46,7 +47,7 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F6FA))
+                .background(SettingsPalette.ScreenBackground)
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
@@ -63,8 +64,8 @@ fun SettingsScreen(
                     onClick = {
                         context.startActivity(Intent(context, PlaybackHistoryComposeActivity::class.java))
                         (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.fade_in,
-                            R.anim.fade_out
+                            R.anim.slide_in_bottom,
+                            R.anim.no_anim
                         )
                     }
                 )
@@ -97,8 +98,8 @@ fun SettingsScreen(
                     onClick = {
                         context.startActivity(Intent(context, PlaybackSettingsComposeActivity::class.java))
                         (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.fade_in,
-                            R.anim.fade_out
+                            R.anim.slide_in_bottom,
+                            R.anim.no_anim
                         )
                     }
                 )
@@ -112,13 +113,13 @@ fun SettingsScreen(
             item {
                 SettingsCard(
                     icon = Icons.Default.Comment,
-                    title = "哔哩哔哩弹幕",
+                    title = "哔哩哔哩弹幕下载",
                     subtitle = "下载B站视频弹幕",
                     onClick = {
                         context.startActivity(Intent(context, BiliBiliDanmakuComposeActivity::class.java))
                         (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.fade_in,
-                            R.anim.fade_out
+                            R.anim.slide_in_bottom,
+                            R.anim.no_anim
                         )
                     }
                 )
@@ -148,12 +149,12 @@ fun SettingsScreen(
                 SettingsCard(
                     icon = Icons.Default.Info,
                     title = "关于",
-                    subtitle = "版本信息和开源协议",
+                    subtitle = "应用信息与许可",
                     onClick = {
                         context.startActivity(Intent(context, AboutComposeActivity::class.java))
                         (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.fade_in,
-                            R.anim.fade_out
+                            R.anim.slide_in_bottom,
+                            R.anim.no_anim
                         )
                     }
                 )
@@ -220,7 +221,7 @@ fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
         fontSize = 13.sp,
-        color = Color(0xFF888888),
+        color = SettingsPalette.SectionHeaderText,
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 4.dp, top = 16.dp, bottom = 8.dp),
@@ -245,7 +246,7 @@ fun SettingsCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = SettingsPalette.CardBackground
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 2.dp
@@ -262,7 +263,7 @@ fun SettingsCard(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))  // 大圆角方形
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    .background(SettingsPalette.IconContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -283,7 +284,7 @@ fun SettingsCard(
                     text = title,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF222222)
+                    color = SettingsPalette.PrimaryText
                 )
                 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -291,7 +292,7 @@ fun SettingsCard(
                 Text(
                     text = subtitle,
                     fontSize = 13.sp,
-                    color = Color(0xFF666666)
+                    color = SettingsPalette.SecondaryText
                 )
             }
             
@@ -320,12 +321,12 @@ fun ThemeSelectionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = "选择主题",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF222222)
-            )
+                Text(
+                    text = "选择主题",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = SettingsPalette.PrimaryText
+                )
         },
         text = {
             Column {
@@ -342,16 +343,16 @@ fun ThemeSelectionDialog(
             TextButton(
                 onClick = { onThemeSelected(selectedTheme) }
             ) {
-                Text("确定", color = MaterialTheme.colorScheme.primary)
+                Text("确定", color = SettingsPalette.AccentText)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消", color = Color(0xFF666666))
+                Text("取消", color = SettingsPalette.SecondaryText)
             }
         },
         shape = RoundedCornerShape(16.dp),
-        containerColor = Color.White
+        containerColor = SettingsPalette.DialogSurface
     )
 }
 
@@ -370,7 +371,7 @@ fun ThemeOption(
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onSelect)
             .background(
-                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) 
+                if (isSelected) SettingsPalette.Highlight 
                 else Color.Transparent
             )
             .padding(vertical = 12.dp, horizontal = 16.dp),
@@ -387,10 +388,10 @@ fun ThemeOption(
         Spacer(modifier = Modifier.width(12.dp))
         
         Text(
-            text = theme.themeName,
-            fontSize = 16.sp,
-            color = if (isSelected) MaterialTheme.colorScheme.primary 
-                   else Color(0xFF222222)
+                 text = theme.themeName,
+                 fontSize = 16.sp,
+                 color = if (isSelected) SettingsPalette.AccentText 
+                     else SettingsPalette.PrimaryText
         )
     }
 }

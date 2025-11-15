@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fam4k007.videoplayer.R
 import com.fam4k007.videoplayer.manager.PreferencesManager
+import com.fam4k007.videoplayer.compose.SettingsColors as SettingsPalette
 
 /**
  * Compose 版本的播放设置页面
@@ -32,12 +33,12 @@ fun PlaybackSettingsScreen(
     val context = LocalContext.current
     val preferencesManager = remember { PreferencesManager.getInstance(context) }
     
-    // 状态
     var preciseSeeking by remember { mutableStateOf(preferencesManager.isPreciseSeekingEnabled()) }
     var volumeBoost by remember { mutableStateOf(preferencesManager.isVolumeBoostEnabled()) }
     var seekTime by remember { mutableIntStateOf(preferencesManager.getSeekTime()) }
     var longPressSpeed by remember { mutableFloatStateOf(preferencesManager.getLongPressSpeed()) }
     var showSeekTimeDialog by remember { mutableStateOf(false) }
+    var showSpeedDialog by remember { mutableStateOf(false) }
     
     Scaffold(
         topBar = {
@@ -59,7 +60,7 @@ fun PlaybackSettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F6FA))
+                .background(SettingsPalette.ScreenBackground)
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
@@ -111,30 +112,10 @@ fun PlaybackSettingsScreen(
             }
             
             item {
-                SliderSettingCard(
+                ClickableSettingCard(
                     title = "长按倍速",
                     value = String.format("%.1fx", longPressSpeed),
-                    sliderValue = when (longPressSpeed) {
-                        1.5f -> 0f
-                        2.0f -> 1f
-                        2.5f -> 2f
-                        3.0f -> 3f
-                        3.5f -> 4f
-                        else -> 1f
-                    },
-                    onValueChange = { progress ->
-                        longPressSpeed = when (progress.toInt()) {
-                            0 -> 1.5f
-                            1 -> 2.0f
-                            2 -> 2.5f
-                            3 -> 3.0f
-                            4 -> 3.5f
-                            else -> 2.0f
-                        }
-                    },
-                    onValueChangeFinished = {
-                        preferencesManager.setLongPressSpeed(longPressSpeed)
-                    }
+                    onClick = { showSpeedDialog = true }
                 )
             }
             
@@ -154,6 +135,19 @@ fun PlaybackSettingsScreen(
             }
         )
     }
+    
+    // 长按倍速选择对话框
+    if (showSpeedDialog) {
+        SpeedDialog(
+            currentValue = longPressSpeed,
+            onDismiss = { showSpeedDialog = false },
+            onConfirm = { newValue ->
+                longPressSpeed = newValue
+                preferencesManager.setLongPressSpeed(newValue)
+                showSpeedDialog = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -161,7 +155,7 @@ fun SectionHeader(title: String) {
     Text(
         text = title,
         fontSize = 13.sp,
-        color = Color(0xFF888888),
+        color = SettingsPalette.SectionHeaderText,
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 4.dp, top = 16.dp, bottom = 8.dp),
@@ -181,7 +175,7 @@ fun SwitchSettingCard(
             .fillMaxWidth()
             .padding(bottom = 12.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SettingsPalette.CardBackground),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
@@ -191,21 +185,21 @@ fun SwitchSettingCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, 
-                     color = Color(0xFF222222))
+                 Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, 
+                     color = SettingsPalette.PrimaryText)
                 Spacer(Modifier.height(4.dp))
-                Text(description, fontSize = 13.sp, 
-                     color = Color(0xFF666666))
+                 Text(description, fontSize = 13.sp, 
+                     color = SettingsPalette.SecondaryText)
             }
             
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedThumbColor = Color.White,
                     checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = SettingsPalette.Divider
                 )
             )
         }
@@ -224,7 +218,7 @@ fun ClickableSettingCard(
             .padding(bottom = 12.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SettingsPalette.CardBackground),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
@@ -233,10 +227,10 @@ fun ClickableSettingCard(
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, 
-                 color = Color(0xFF222222), modifier = Modifier.weight(1f))
+              Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, 
+                  color = SettingsPalette.PrimaryText, modifier = Modifier.weight(1f))
             
-            Text(value, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+              Text(value, fontSize = 15.sp, color = SettingsPalette.AccentText, fontWeight = FontWeight.Medium)
             
             Spacer(Modifier.width(8.dp))
             
@@ -260,7 +254,7 @@ fun SliderSettingCard(
             .fillMaxWidth()
             .padding(bottom = 12.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = SettingsPalette.CardBackground),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -268,11 +262,11 @@ fun SliderSettingCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, 
-                     color = Color(0xFF222222), 
+                 Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, 
+                     color = SettingsPalette.PrimaryText, 
                      modifier = Modifier.weight(1f))
-                Text(value, fontSize = 15.sp, 
-                     color = MaterialTheme.colorScheme.primary, 
+                 Text(value, fontSize = 15.sp, 
+                     color = SettingsPalette.AccentText, 
                      fontWeight = FontWeight.Medium)
             }
             
@@ -285,9 +279,9 @@ fun SliderSettingCard(
                 valueRange = 0f..4f,
                 steps = 3,
                 colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = Color(0xFFE0E0E0)
+                    thumbColor = SettingsPalette.AccentText,
+                    activeTrackColor = SettingsPalette.AccentText,
+                    inactiveTrackColor = SettingsPalette.Divider
                 )
             )
             
@@ -295,16 +289,16 @@ fun SliderSettingCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("1.5x", fontSize = 12.sp, 
-                     color = Color(0xFF999999))
-                Text("2.0x", fontSize = 12.sp, 
-                     color = Color(0xFF999999))
-                Text("2.5x", fontSize = 12.sp, 
-                     color = Color(0xFF999999))
-                Text("3.0x", fontSize = 12.sp, 
-                     color = Color(0xFF999999))
-                Text("3.5x", fontSize = 12.sp, 
-                     color = Color(0xFF999999))
+                 Text("1.5x", fontSize = 12.sp, 
+                     color = SettingsPalette.TertiaryText)
+                 Text("2.0x", fontSize = 12.sp, 
+                     color = SettingsPalette.TertiaryText)
+                 Text("2.5x", fontSize = 12.sp, 
+                     color = SettingsPalette.TertiaryText)
+                 Text("3.0x", fontSize = 12.sp, 
+                     color = SettingsPalette.TertiaryText)
+                 Text("3.5x", fontSize = 12.sp, 
+                     color = SettingsPalette.TertiaryText)
             }
         }
     }
@@ -318,33 +312,50 @@ fun SeekTimeDialog(
 ) {
     var selected by remember { mutableIntStateOf(currentValue) }
     val options = listOf(3, 5, 10, 15, 20, 25, 30)
+    val accentColor = MaterialTheme.colorScheme.primary
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("快进/快退时长", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
+        title = { 
+            Text(
+                "快进/快退时长", 
+                fontSize = 16.sp, 
+                fontWeight = FontWeight.Bold, 
+                color = SettingsPalette.PrimaryText
+            ) 
+        },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.width(240.dp)
+            ) {
                 options.forEach { seconds ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(6.dp))
                             .clickable { selected = seconds }
-                            .background(if (selected == seconds) Color(0xFFE8ECFE) else Color.Transparent)
-                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                            .background(
+                                if (selected == seconds) SettingsPalette.Highlight
+                                else Color.Transparent
+                            )
+                            .padding(vertical = 8.dp, horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
                             selected = selected == seconds,
                             onClick = { selected = seconds },
-                            colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF667eea))
+                            modifier = Modifier.size(20.dp),
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = accentColor,
+                                unselectedColor = SettingsPalette.PrimaryText.copy(alpha = 0.4f)
+                            )
                         )
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             "${seconds}秒",
-                            fontSize = 16.sp,
-                            color = if (selected == seconds) Color(0xFF667eea) else Color(0xFF333333),
-                            fontWeight = if (selected == seconds) FontWeight.Bold else FontWeight.Normal
+                            fontSize = 14.sp,
+                            color = if (selected == seconds) accentColor else SettingsPalette.PrimaryText,
+                            fontWeight = if (selected == seconds) FontWeight.SemiBold else FontWeight.Normal
                         )
                     }
                 }
@@ -352,14 +363,89 @@ fun SeekTimeDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(selected) }) {
-                Text("确定", color = Color(0xFF667eea))
+                Text("确定", color = SettingsPalette.AccentText, fontSize = 14.sp)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消", color = Color(0xFF999999))
+                Text("取消", color = SettingsPalette.SecondaryText, fontSize = 14.sp)
             }
         },
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(12.dp),
+        containerColor = SettingsPalette.DialogSurface,
+        modifier = Modifier.width(280.dp)
+    )
+}
+
+@Composable
+fun SpeedDialog(
+    currentValue: Float,
+    onDismiss: () -> Unit,
+    onConfirm: (Float) -> Unit
+) {
+    var selected by remember { mutableFloatStateOf(currentValue) }
+    val options = listOf(1.5f, 2.0f, 2.5f, 3.0f, 3.5f)
+    val accentColor = MaterialTheme.colorScheme.primary
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(
+                "长按倍速", 
+                fontSize = 16.sp, 
+                fontWeight = FontWeight.Bold, 
+                color = SettingsPalette.PrimaryText
+            ) 
+        },
+        text = {
+            Column(
+                modifier = Modifier.width(240.dp)
+            ) {
+                options.forEach { speed ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { selected = speed }
+                            .background(
+                                if (selected == speed) SettingsPalette.Highlight
+                                else Color.Transparent
+                            )
+                            .padding(vertical = 8.dp, horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected == speed,
+                            onClick = { selected = speed },
+                            modifier = Modifier.size(20.dp),
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = accentColor,
+                                unselectedColor = SettingsPalette.PrimaryText.copy(alpha = 0.4f)
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            String.format("%.1fx", speed),
+                            fontSize = 14.sp,
+                            color = if (selected == speed) accentColor else SettingsPalette.PrimaryText,
+                            fontWeight = if (selected == speed) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) {
+                Text("确定", color = SettingsPalette.AccentText, fontSize = 14.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消", color = SettingsPalette.SecondaryText, fontSize = 14.sp)
+            }
+        },
+        shape = RoundedCornerShape(12.dp),
+        containerColor = SettingsPalette.DialogSurface,
+        modifier = Modifier.width(280.dp)
     )
 }

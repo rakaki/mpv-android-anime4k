@@ -33,7 +33,8 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
     companion object {
         private const val TAG = "BiliDanmuDownload"
         private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        private const val TIMEOUT_SECONDS = 10L // 降低超时时间到10秒,通常2-3秒就能完成
+        private const val TIMEOUT_SECONDS = 30L // 增加超时时间
+        private const val MAX_CONCURRENT_DOWNLOADS = 5 // 最大并发下载数
     }
     
     private val client = OkHttpClient.Builder()
@@ -308,9 +309,9 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
                     }
                     
                     // 添加延迟,避免请求过快被限流
-                    // 现在使用镜像接口,限流较松,可以缩短间隔
+                    // 优化：缩短延迟时间，提升下载速度
                     if (index < episodes.size - 1) {
-                        kotlinx.coroutines.delay(300)
+                        kotlinx.coroutines.delay(100)
                     }
                 } catch (e: Exception) {
                     failCount++
@@ -753,9 +754,9 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
                     Log.w(TAG, "下载分段 $segmentIndex 异常: ${e.message}")
                 }
                 
-                // 添加短暂延迟避免请求过快
+                // 减少延迟，提升下载速度
                 if (segmentIndex < totalSegments) {
-                    Thread.sleep(100)
+                    Thread.sleep(50)
                 }
             }
             

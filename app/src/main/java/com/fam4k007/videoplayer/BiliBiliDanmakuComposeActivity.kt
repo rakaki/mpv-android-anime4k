@@ -7,8 +7,12 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.fam4k007.videoplayer.compose.BiliBiliDanmakuScreen
+import com.fam4k007.videoplayer.compose.DownloadProgress
 import com.fam4k007.videoplayer.danmaku.BiliBiliDanmakuDownloadManager
 import com.fam4k007.videoplayer.ui.theme.getThemeColors
 import com.fam4k007.videoplayer.utils.ThemeManager
@@ -20,6 +24,8 @@ class BiliBiliDanmakuComposeActivity : BaseActivity() {
 
     private var savedFolderUri: Uri? = null
     private lateinit var downloadManager: BiliBiliDanmakuDownloadManager
+    private var downloadProgress by mutableStateOf(DownloadProgress())
+    private var isDownloading by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,13 +55,15 @@ class BiliBiliDanmakuComposeActivity : BaseActivity() {
             ) {
                 BiliBiliDanmakuScreen(
                     savedFolderUri = savedFolderUri,
+                    downloadProgress = downloadProgress,
+                    isDownloading = isDownloading,
                     onBack = {
                         finish()
-                        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+                        overridePendingTransition(R.anim.no_anim, R.anim.slide_out_down)
                     },
                     onFolderSelected = { uri: Uri -> handleFolderSelected(uri) },
-                    onDownloadDanmaku = { url: String, downloadWholeSeason: Boolean, onProgress: (String) -> Unit ->
-                        startDownload(url, downloadWholeSeason, onProgress)
+                    onDownloadDanmaku = { url: String, downloadWholeSeason: Boolean ->
+                        startDownload(url, downloadWholeSeason)
                     }
                 )
             }
@@ -80,32 +88,39 @@ class BiliBiliDanmakuComposeActivity : BaseActivity() {
         }
     }
 
-    private fun startDownload(url: String, downloadWholeSeason: Boolean, onProgress: (String) -> Unit) {
+    private fun startDownload(url: String, downloadWholeSeason: Boolean) {
         if (!downloadManager.isValidBilibiliUrl(url)) {
             Toast.makeText(this, "请输入有效的B站视频/番剧链接", Toast.LENGTH_SHORT).show()
             return
         }
 
+        isDownloading = true
+        downloadProgress = DownloadProgress()
+        
         lifecycleScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
                     downloadManager.downloadDanmaku(url, savedFolderUri!!, downloadWholeSeason) { current, total, epTitle, success, fail ->
                         launch(Dispatchers.Main) {
-                            if (total > 0) {
-                                onProgress("第 $current/$total 集\n$epTitle\n✅成功: $success  ❌失败: $fail")
-                            } else {
-                                onProgress(epTitle)
-                            }
+                            downloadProgress = DownloadProgress(
+                                current = current,
+                                total = total,
+                                currentTitle = epTitle,
+                                successCount = success,
+                                failedCount = fail
+                            )
                         }
                     }
                 }
 
+                isDownloading = false
+                
                 when (result) {
                     is BiliBiliDanmakuDownloadManager.DownloadResult.Success -> {
                         Toast.makeText(
                             this@BiliBiliDanmakuComposeActivity,
-                            "下载成功\n${result.fileName}",
-                            Toast.LENGTH_LONG
+                            "下载成功",
+                            Toast.LENGTH_SHORT
                         ).show()
                     }
                     is BiliBiliDanmakuDownloadManager.DownloadResult.Error -> {
@@ -117,6 +132,7 @@ class BiliBiliDanmakuComposeActivity : BaseActivity() {
                     }
                 }
             } catch (e: Exception) {
+                isDownloading = false
                 Toast.makeText(
                     this@BiliBiliDanmakuComposeActivity,
                     "下载失败: ${e.message}",

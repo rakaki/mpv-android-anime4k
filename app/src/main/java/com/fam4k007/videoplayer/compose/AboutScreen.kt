@@ -17,13 +17,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fam4k007.videoplayer.R
+import com.fam4k007.videoplayer.compose.SettingsColors as SettingsPalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +35,7 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     var showAboutDialog by remember { mutableStateOf(false) }
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Scaffold(
         topBar = {
@@ -46,9 +47,9 @@ fun AboutScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF667eea),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = primaryColor,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -56,7 +57,7 @@ fun AboutScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F6FA))
+                .background(SettingsPalette.ScreenBackground)
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
@@ -67,8 +68,9 @@ fun AboutScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                )
+                    containerColor = SettingsPalette.CardBackground
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -77,28 +79,19 @@ fun AboutScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // App 图标
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0x15667eea)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayCircle,
-                            contentDescription = null,
-                            tint = Color(0xFF667eea),
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_app_icon),
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp)
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "FAM4K007",
+                        text = "小喵Player",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF222222)
+                        color = SettingsPalette.PrimaryText
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -106,7 +99,7 @@ fun AboutScreen(
                     Text(
                         text = "Version $versionName",
                         fontSize = 14.sp,
-                        color = Color(0xFF888888)
+                        color = SettingsPalette.SecondaryText
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -114,7 +107,7 @@ fun AboutScreen(
                     Text(
                         text = "基于 MPV 的 Anime4K 视频播放器",
                         fontSize = 14.sp,
-                        color = Color(0xFF666666)
+                        color = SettingsPalette.SecondaryText
                     )
                 }
             }
@@ -164,8 +157,9 @@ fun AboutScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                )
+                    containerColor = SettingsPalette.CardBackground
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -174,7 +168,7 @@ fun AboutScreen(
                         text = "技术栈",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF667eea)
+                        color = SettingsPalette.PrimaryText
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
@@ -186,7 +180,7 @@ fun AboutScreen(
                             • Material Design 3 - 设计规范
                         """.trimIndent(),
                         fontSize = 14.sp,
-                        color = Color(0xFF666666),
+                        color = SettingsPalette.SecondaryText,
                         lineHeight = 20.sp
                     )
                 }
@@ -200,9 +194,9 @@ fun AboutScreen(
             onDismissRequest = { showAboutDialog = false },
             title = { 
                 Text(
-                    "FAM4K007",
+                    "小喵Player",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF222222)
+                    color = SettingsPalette.PrimaryText
                 ) 
             },
             text = {
@@ -210,7 +204,7 @@ fun AboutScreen(
                     Text(
                         text = "Version $versionName",
                         fontSize = 14.sp,
-                        color = Color(0xFF888888)
+                        color = SettingsPalette.SecondaryText
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -229,16 +223,16 @@ fun AboutScreen(
                         """.trimIndent(),
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
-                        color = Color(0xFF444444)
+                        color = SettingsPalette.SecondaryText
                     )
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showAboutDialog = false }) {
-                    Text("关闭", color = Color(0xFF667eea))
+                    Text("关闭", color = SettingsPalette.AccentText)
                 }
             },
-            containerColor = Color.White
+            containerColor = SettingsPalette.DialogSurface
         )
     }
 }
@@ -256,7 +250,7 @@ private fun AboutItem(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = SettingsPalette.CardBackground
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -270,13 +264,13 @@ private fun AboutItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0x15667eea)),
+                    .background(SettingsPalette.IconContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF667eea),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -288,20 +282,20 @@ private fun AboutItem(
                     text = title,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF222222)
+                    color = SettingsPalette.PrimaryText
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = subtitle,
                     fontSize = 13.sp,
-                    color = Color(0xFF666666)
+                    color = SettingsPalette.SecondaryText
                 )
             }
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = Color(0xFFCCCCCC)
+                tint = SettingsPalette.TertiaryText
             )
         }
     }

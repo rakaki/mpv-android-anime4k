@@ -37,7 +37,7 @@ class PlaybackHistoryComposeActivity : BaseActivity() {
                     historyManager = historyManager,
                     onBack = {
                         finish()
-                        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+                        overridePendingTransition(R.anim.no_anim, R.anim.slide_out_down)
                     },
                     onPlayVideo = { uri, startPosition ->
                         val intent = Intent(this, VideoPlayerActivity::class.java).apply {

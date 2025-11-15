@@ -1,9 +1,13 @@
 package com.fam4k007.videoplayer
 
 import android.os.Bundle
-import android.view.View
-import androidx.appcompat.app.AlertDialog
-import androidx.cardview.widget.CardView
+import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
+import com.fam4k007.videoplayer.compose.LicenseItem
+import com.fam4k007.videoplayer.compose.LicenseScreen
+import com.fam4k007.videoplayer.ui.theme.getThemeColors
+import com.fam4k007.videoplayer.utils.ThemeManager
 
 /**
  * 许可证书页面
@@ -12,64 +16,102 @@ class LicenseActivity : BaseActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_license)
-        
-        // 设置返回按钮
-        findViewById<View>(R.id.btnBack).setOnClickListener {
-            finish()
-            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
-        }
-        
-        // 设置点击事件
-        setupClickListeners()
-    }
-    
-    private fun setupClickListeners() {
-        findViewById<CardView>(R.id.cardMpv).setOnClickListener {
-            showLicenseDialog("MPV Player", getMpvLicense())
-        }
-        
-        findViewById<CardView>(R.id.cardAnime4k).setOnClickListener {
-            showLicenseDialog("Anime4K", getMitLicense())
-        }
-        
-        findViewById<CardView>(R.id.cardDanmaku).setOnClickListener {
-            showLicenseDialog("DanmakuFlameMaster", getApacheLicense())
-        }
-        
-        findViewById<CardView>(R.id.cardGlide).setOnClickListener {
-            showLicenseDialog("Glide", getGlideLicense())
-        }
-        
-        findViewById<CardView>(R.id.cardAndroidX).setOnClickListener {
-            showLicenseDialog("AndroidX & Material Components", getApacheLicense())
-        }
-        
-        findViewById<CardView>(R.id.cardKotlin).setOnClickListener {
-            showLicenseDialog("Kotlin", getApacheLicense())
-        }
-        
-        findViewById<CardView>(R.id.cardMpvAndroid).setOnClickListener {
-            showLicenseDialog("mpv-android", getMpvAndroidLicense())
-        }
-        
-        findViewById<CardView>(R.id.cardMpvKt).setOnClickListener {
-            showLicenseDialog("mpvKt", getApacheLicense())
-        }
-        
-        findViewById<CardView>(R.id.cardDanDanPlay).setOnClickListener {
-            showLicenseDialog("DanDanPlayForAndroid", getApacheLicense())
+        val licenseItems = buildLicenseItems()
+        val activity = this
+
+        setContent {
+            val themeColors = getThemeColors(ThemeManager.getCurrentTheme(activity).themeName)
+
+            MaterialTheme(
+                colorScheme = lightColorScheme(
+                    primary = themeColors.primary,
+                    onPrimary = themeColors.onPrimary,
+                    primaryContainer = themeColors.primaryVariant,
+                    secondary = themeColors.secondary,
+                    background = themeColors.background,
+                    onBackground = themeColors.onBackground,
+                    surface = themeColors.surface,
+                    surfaceVariant = themeColors.surfaceVariant,
+                    onSurface = themeColors.onSurface
+                )
+            ) {
+                LicenseScreen(
+                    licenses = licenseItems,
+                    onBack = {
+                        activity.finish()
+                        activity.overridePendingTransition(R.anim.no_anim, R.anim.slide_out_down)
+                    }
+                )
+            }
         }
     }
     
-    private fun showLicenseDialog(title: String, licenseText: String) {
-        val dialogView = layoutInflater.inflate(android.R.layout.simple_list_item_1, null)
-        
-        AlertDialog.Builder(this)
-            .setTitle(title)
-            .setMessage(licenseText)
-            .setPositiveButton("关闭", null)
-            .show()
+    private fun buildLicenseItems(): List<LicenseItem> {
+        return listOf(
+            LicenseItem(
+                name = "MPV Player",
+                licenseTag = "GPL-2.0",
+                summary = "跨平台高性能媒体播放器内核，负责解码与渲染。",
+                website = "https://mpv.io/",
+                licenseText = getMpvLicense()
+            ),
+            LicenseItem(
+                name = "Anime4K",
+                licenseTag = "MIT",
+                summary = "实时动漫超分辨率算法，用于提升画质。",
+                website = "https://github.com/bloc97/Anime4K",
+                licenseText = getMitLicense()
+            ),
+            LicenseItem(
+                name = "DanmakuFlameMaster",
+                licenseTag = "Apache-2.0",
+                summary = "哔哩哔哩开源弹幕引擎，支撑弹幕显示功能。",
+                website = "https://github.com/bilibili/DanmakuFlameMaster",
+                licenseText = getApacheLicense()
+            ),
+            LicenseItem(
+                name = "Glide",
+                licenseTag = "BSD/Apache-2.0",
+                summary = "图片加载与缓存库，用于封面与缩略图。",
+                website = "https://github.com/bumptech/glide",
+                licenseText = getGlideLicense()
+            ),
+            LicenseItem(
+                name = "AndroidX & Material",
+                licenseTag = "Apache-2.0",
+                summary = "现代化 Android UI 组件与官方支持库。",
+                website = "https://developer.android.com/jetpack/androidx",
+                licenseText = getApacheLicense()
+            ),
+            LicenseItem(
+                name = "Kotlin",
+                licenseTag = "Apache-2.0",
+                summary = "JetBrains 出品的现代语言，是应用主要开发语言。",
+                website = "https://kotlinlang.org/",
+                licenseText = getApacheLicense()
+            ),
+            LicenseItem(
+                name = "mpv-android",
+                licenseTag = "MIT",
+                summary = "mpv 在 Android 平台的移植项目，提供底层接口。",
+                website = "https://github.com/mpv-android/mpv-android",
+                licenseText = getMpvAndroidLicense()
+            ),
+            LicenseItem(
+                name = "mpvKt",
+                licenseTag = "Apache-2.0",
+                summary = "为 mpv 提供 Kotlin 封装的实用库。",
+                website = "https://github.com/L0uckY/mpvKt",
+                licenseText = getApacheLicense()
+            ),
+            LicenseItem(
+                name = "DanDanPlayForAndroid",
+                licenseTag = "Apache-2.0",
+                summary = "哔哩哔哩番剧数据与弹幕下载参考实现。",
+                website = "https://github.com/xyoye/DanDanPlayForAndroid",
+                licenseText = getApacheLicense()
+            )
+        )
     }
     
     private fun getMpvLicense(): String {

@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -16,25 +17,33 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.fam4k007.videoplayer.compose.SettingsColors as SettingsPalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BiliBiliDanmakuScreen(
     savedFolderUri: Uri?,
+    downloadProgress: DownloadProgress,
+    isDownloading: Boolean,
     onBack: () -> Unit,
     onFolderSelected: (Uri) -> Unit,
-    onDownloadDanmaku: (String, Boolean, (String) -> Unit) -> Unit
+    onDownloadDanmaku: (String, Boolean) -> Unit
 ) {
     var currentFolderUri by remember { mutableStateOf(savedFolderUri) }
     var showDownloadDialog by remember { mutableStateOf(false) }
+    var showProgressDialog by remember { mutableStateOf(false) }
+    val primaryColor = MaterialTheme.colorScheme.primary
+    
+    // 当开始下载时显示进度弹窗
+    LaunchedEffect(isDownloading) {
+        if (isDownloading) {
+            showProgressDialog = true
+        }
+    }
 
     val folderPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -55,9 +64,9 @@ fun BiliBiliDanmakuScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF667eea),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = primaryColor,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -65,7 +74,7 @@ fun BiliBiliDanmakuScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F6FA))
+                .background(SettingsPalette.ScreenBackground)
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
@@ -99,8 +108,9 @@ fun BiliBiliDanmakuScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                )
+                    containerColor = SettingsPalette.CardBackground
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -109,7 +119,7 @@ fun BiliBiliDanmakuScreen(
                         text = "使用说明",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF667eea)
+                        color = SettingsPalette.PrimaryText
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
@@ -124,7 +134,7 @@ fun BiliBiliDanmakuScreen(
                             • https://www.bilibili.com/bangumi/play/epxxx
                         """.trimIndent(),
                         fontSize = 14.sp,
-                        color = Color(0xFF666666),
+                        color = SettingsPalette.SecondaryText,
                         lineHeight = 20.sp
                     )
                 }
@@ -138,11 +148,33 @@ fun BiliBiliDanmakuScreen(
             onDismiss = { showDownloadDialog = false },
             onDownload = { url, downloadWholeSeason ->
                 showDownloadDialog = false
-                onDownloadDanmaku(url, downloadWholeSeason) { }
+                onDownloadDanmaku(url, downloadWholeSeason)
+            }
+        )
+    }
+    
+    // 下载进度弹窗
+    if (showProgressDialog) {
+        DownloadProgressDialog(
+            progress = downloadProgress,
+            isDownloading = isDownloading,
+            onDismiss = { 
+                if (!isDownloading) {
+                    showProgressDialog = false
+                }
             }
         )
     }
 }
+
+// 下载进度数据类
+data class DownloadProgress(
+    val current: Int = 0,
+    val total: Int = 0,
+    val currentTitle: String = "",
+    val successCount: Int = 0,
+    val failedCount: Int = 0
+)
 
 @Composable
 private fun SettingCard(
@@ -152,13 +184,15 @@ private fun SettingCard(
     onClick: () -> Unit,
     enabled: Boolean = true
 ) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = SettingsPalette.CardBackground
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -172,13 +206,13 @@ private fun SettingCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0x15667eea)),
+                    .background(SettingsPalette.IconContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF667eea),
+                    tint = primaryColor,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -190,15 +224,15 @@ private fun SettingCard(
                     text = title,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
-                    color = if (enabled) Color(0xFF222222)
-                           else Color(0xFFBBBBBB)
+                    color = if (enabled) SettingsPalette.PrimaryText
+                           else SettingsPalette.DisabledText
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = subtitle,
                     fontSize = 13.sp,
-                    color = if (enabled) Color(0xFF666666) 
-                           else Color(0xFFBBBBBB),
+                    color = if (enabled) SettingsPalette.SecondaryText 
+                           else SettingsPalette.DisabledText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -207,7 +241,7 @@ private fun SettingCard(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = Color(0xFFCCCCCC)
+                tint = SettingsPalette.TertiaryText
             )
         }
     }
@@ -221,10 +255,11 @@ private fun DownloadDialog(
 ) {
     var url by remember { mutableStateOf("") }
     var downloadWholeSeason by remember { mutableStateOf(true) }
+    val accentColor = MaterialTheme.colorScheme.primary
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("下载B站弹幕", color = Color(0xFF222222)) },
+        title = { Text("下载B站弹幕", color = SettingsPalette.PrimaryText, fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 OutlinedTextField(
@@ -234,28 +269,55 @@ private fun DownloadDialog(
                     placeholder = { Text("输入B站视频或番剧链接") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = false,
-                    maxLines = 3
+                    maxLines = 3,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = SettingsPalette.AccentText,
+                        unfocusedBorderColor = SettingsPalette.Divider,
+                        cursorColor = SettingsPalette.AccentText,
+                        focusedLabelColor = SettingsPalette.SecondaryText,
+                        unfocusedLabelColor = SettingsPalette.SecondaryText,
+                        focusedTextColor = SettingsPalette.PrimaryText,
+                        unfocusedTextColor = SettingsPalette.PrimaryText,
+                        focusedPlaceholderColor = SettingsPalette.TertiaryText,
+                        unfocusedPlaceholderColor = SettingsPalette.TertiaryText,
+                        focusedContainerColor = SettingsPalette.DialogSurface,
+                        unfocusedContainerColor = SettingsPalette.DialogSurface
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("下载模式", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF222222))
+                Text("下载模式", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = SettingsPalette.PrimaryText)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { downloadWholeSeason = true }
+                        .padding(vertical = 4.dp)
+                ) {
                     RadioButton(
                         selected = downloadWholeSeason,
-                        onClick = { downloadWholeSeason = true }
+                        onClick = { downloadWholeSeason = true },
+                        colors = RadioButtonDefaults.colors(selectedColor = accentColor)
                     )
-                    Text("整季下载", modifier = Modifier.padding(start = 8.dp), color = Color(0xFF444444))
+                    Text("整季下载", modifier = Modifier.padding(start = 8.dp), color = SettingsPalette.PrimaryText)
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { downloadWholeSeason = false }
+                        .padding(vertical = 4.dp)
+                ) {
                     RadioButton(
                         selected = !downloadWholeSeason,
-                        onClick = { downloadWholeSeason = false }
+                        onClick = { downloadWholeSeason = false },
+                        colors = RadioButtonDefaults.colors(selectedColor = accentColor)
                     )
-                    Text("单集下载", modifier = Modifier.padding(start = 8.dp), color = Color(0xFF444444))
+                    Text("单集下载", modifier = Modifier.padding(start = 8.dp), color = SettingsPalette.PrimaryText)
                 }
             }
         },
@@ -268,14 +330,149 @@ private fun DownloadDialog(
                 },
                 enabled = url.isNotBlank()
             ) {
-                Text("下载", color = Color(0xFF667eea))
+                Text("下载", color = SettingsPalette.AccentText)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消", color = Color(0xFF888888))
+                Text("取消", color = SettingsPalette.SecondaryText)
             }
         },
-        containerColor = Color.White
+        containerColor = SettingsPalette.DialogSurface
     )
 }
+
+@Composable
+private fun DownloadProgressDialog(
+    progress: DownloadProgress,
+    isDownloading: Boolean,
+    onDismiss: () -> Unit
+) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val isCompleted = !isDownloading && progress.total > 0 && progress.current >= progress.total
+    
+    AlertDialog(
+        onDismissRequest = { 
+            if (!isDownloading) {
+                onDismiss()
+            }
+        }, // 下载过程中不允许手动关闭，完成后可以关闭
+        title = { 
+            Text(
+                "正在下载弹幕", 
+                fontSize = 16.sp, 
+                fontWeight = FontWeight.Bold,
+                color = SettingsPalette.PrimaryText
+            ) 
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                // 当前进度
+                if (progress.total > 0) {
+                    Text(
+                        text = "进度: ${progress.current} / ${progress.total}",
+                        fontSize = 14.sp,
+                        color = SettingsPalette.SecondaryText,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // 进度条
+                    LinearProgressIndicator(
+                        progress = progress.current.toFloat() / progress.total.toFloat(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = primaryColor,
+                        trackColor = SettingsPalette.Divider,
+                    )
+                } else {
+                    // 准备中
+                    Text(
+                        text = "准备下载中...",
+                        fontSize = 14.sp,
+                        color = SettingsPalette.SecondaryText
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = primaryColor,
+                        trackColor = SettingsPalette.Divider,
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // 当前下载的文件
+                if (progress.currentTitle.isNotEmpty()) {
+                    Text(
+                        text = "当前: ${progress.currentTitle}",
+                        fontSize = 13.sp,
+                        color = SettingsPalette.SecondaryText,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                
+                // 成功和失败数量
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(primaryColor)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "成功: ${progress.successCount}",
+                            fontSize = 13.sp,
+                            color = SettingsPalette.SecondaryText
+                        )
+                    }
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.error)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "失败: ${progress.failedCount}",
+                            fontSize = 13.sp,
+                            color = SettingsPalette.SecondaryText
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (isCompleted) {
+                TextButton(onClick = onDismiss) {
+                    Text("完成", color = SettingsPalette.AccentText, fontSize = 14.sp)
+                }
+            }
+        },
+        shape = RoundedCornerShape(12.dp),
+        containerColor = SettingsPalette.DialogSurface
+    )
+}
+

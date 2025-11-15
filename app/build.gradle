@@ -129,6 +129,7 @@ dependencies {
     
     // 图片加载 (Coil) - B站番剧封面
     implementation 'io.coil-kt:coil-compose:2.5.0'
+    implementation 'io.coil-kt:coil-video:2.5.0'  // 视频帧提取支持
     
     // Gson - JSON解析
     implementation 'com.google.code.gson:gson:2.10.1'

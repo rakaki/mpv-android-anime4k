@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,12 +18,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.request.videoFramePercent
 import com.fam4k007.videoplayer.PlaybackHistoryManager
+import com.fam4k007.videoplayer.compose.SettingsColors as SettingsPalette
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +43,8 @@ fun PlaybackHistoryScreen(
     var historyList by remember { mutableStateOf(historyManager.getHistory()) }
     var showClearDialog by remember { mutableStateOf(false) }
     var itemToDelete by remember { mutableStateOf<PlaybackHistoryManager.HistoryItem?>(null) }
+
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Scaffold(
         topBar = {
@@ -52,10 +63,10 @@ fun PlaybackHistoryScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF667eea),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -63,7 +74,7 @@ fun PlaybackHistoryScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F6FA))
+                .background(SettingsPalette.ScreenBackground)
                 .padding(paddingValues)
         ) {
             if (historyList.isEmpty()) {
@@ -76,13 +87,13 @@ fun PlaybackHistoryScreen(
                         imageVector = Icons.Default.History,
                         contentDescription = null,
                         modifier = Modifier.size(80.dp),
-                        tint = Color(0xFF667eea).copy(alpha = 0.3f)
+                        tint = primaryColor.copy(alpha = 0.3f)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "暂无播放历史",
                         fontSize = 16.sp,
-                        color = Color(0xFF666666)
+                        color = SettingsPalette.SecondaryText
                     )
                 }
             } else {
@@ -111,9 +122,9 @@ fun PlaybackHistoryScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("清空历史", color = Color(0xFF222222)) },
+            title = { Text("清空历史", color = SettingsPalette.PrimaryText) },
             text = { Text("确定要清空所有播放历史吗？此操作不可恢复。", 
-                         color = Color(0xFF444444)) },
+                         color = SettingsPalette.SecondaryText) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -122,15 +133,15 @@ fun PlaybackHistoryScreen(
                         showClearDialog = false
                     }
                 ) {
-                    Text("清空", color = Color(0xFFe94560))
+                    Text("清空", color = SettingsPalette.WarningText)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("取消", color = Color(0xFF888888))
+                    Text("取消", color = SettingsPalette.SecondaryText)
                 }
             },
-            containerColor = Color.White
+            containerColor = SettingsPalette.DialogSurface
         )
     }
 
@@ -138,9 +149,9 @@ fun PlaybackHistoryScreen(
     itemToDelete?.let { item ->
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
-            title = { Text("删除记录", color = Color(0xFF222222)) },
+            title = { Text("删除记录", color = SettingsPalette.PrimaryText) },
             text = { Text("确定要删除《${item.fileName}》的播放记录吗？", 
-                         color = Color(0xFF444444)) },
+                         color = SettingsPalette.SecondaryText) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -149,15 +160,15 @@ fun PlaybackHistoryScreen(
                         itemToDelete = null
                     }
                 ) {
-                    Text("删除", color = Color(0xFFe94560))
+                    Text("删除", color = SettingsPalette.WarningText)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { itemToDelete = null }) {
-                    Text("取消", color = Color(0xFF888888))
+                    Text("取消", color = SettingsPalette.SecondaryText)
                 }
             },
-            containerColor = Color.White
+            containerColor = SettingsPalette.DialogSurface
         )
     }
 }
@@ -168,13 +179,15 @@ private fun HistoryCard(
     onClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = SettingsPalette.CardBackground
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -184,56 +197,85 @@ private fun HistoryCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧图标
+            // 左侧缩略图
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(90.dp, 60.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x15667eea)),
+                    .background(SettingsPalette.IconContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Color(0xFF667eea),
-                    modifier = Modifier.size(24.dp)
+                // 直接从视频 URI 提取缩略图
+                VideoThumbnail(
+                    videoUri = item.uri,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             // 中间信息
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+                // 上方三分之二：视频标题
                 Text(
                     text = item.fileName,
-                    fontSize = 16.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF222222),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = SettingsPalette.PrimaryText,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 20.sp
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = formatDuration(item.position),
-                    fontSize = 13.sp,
-                    color = Color(0xFF666666)
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = formatTimestamp(item.lastPlayed),
-                    fontSize = 12.sp,
-                    color = Color(0xFF999999)
-                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 下方三分之一：小标签显示播放进度和最后播放日期
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 播放进度标签
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SettingsPalette.IconContainer)
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = formatDuration(item.position),
+                            fontSize = 11.sp,
+                            color = primaryColor,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    // 最后播放日期标签
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SettingsPalette.IconContainer)
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = formatTimestamp(item.lastPlayed),
+                            fontSize = 11.sp,
+                            color = SettingsPalette.SecondaryText,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             // 右侧删除按钮
             IconButton(onClick = onDeleteClick) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "删除",
-                    tint = Color(0xFFe94560).copy(alpha = 0.7f)
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                 )
             }
         }
@@ -260,6 +302,35 @@ private fun formatDuration(positionMs: Long): String {
  * 格式化时间戳
  */
 private fun formatTimestamp(timestampMs: Long): String {
-    val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+    val dateFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
     return dateFormat.format(java.util.Date(timestampMs))
+}
+
+/**
+ * 视频缩略图组件 - 使用 Coil 的 videoFramePercent 加载视频帧
+ * 参照 DanDanPlay 的实现
+ */
+@Composable
+private fun VideoThumbnail(
+    videoUri: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    
+    // 将 URI 字符串转换为 Uri 对象
+    val uri = remember(videoUri) { Uri.parse(videoUri) }
+    
+    AsyncImage(
+        model = ImageRequest.Builder(context)
+            .data(uri)
+            .diskCachePolicy(CachePolicy.ENABLED)  // 启用缓存以提高性能
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .videoFramePercent(0.1)  // 提取视频10%位置的帧
+            .crossfade(true)
+            .build(),
+        contentDescription = null,
+        modifier = modifier,
+        contentScale = ContentScale.Crop,
+        error = painterResource(android.R.drawable.ic_media_play)  // 加载失败时显示播放图标
+    )
 }
