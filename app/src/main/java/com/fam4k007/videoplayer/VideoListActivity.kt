@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.fam4k007.videoplayer.utils.DialogUtils
+import com.fam4k007.videoplayer.utils.NoMediaChecker
 import com.fam4k007.videoplayer.utils.ThemeManager
 
 class VideoListActivity : AppCompatActivity() {
@@ -560,6 +561,12 @@ class VideoListActivity : AppCompatActivity() {
                                 val duration = it.getLong(durationColumn)
                                 val dateAdded = it.getLong(dateColumn)
                                 
+                                // 检查文件路径是否在包含 .nomedia 的文件夹中
+                                if (NoMediaChecker.fileInNoMediaFolder(path)) {
+                                    Log.d(TAG, "跳过 .nomedia 文件夹中的视频: $path")
+                                    continue
+                                }
+                                
                                 val uri = Uri.withAppendedPath(
                                     android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                                     id.toString()
@@ -641,6 +648,12 @@ class VideoListActivity : AppCompatActivity() {
                             
                             // 检查是否在目标文件夹中
                             if (path.contains(folderPath)) {
+                                // 检查文件路径是否在包含 .nomedia 的文件夹中
+                                if (NoMediaChecker.fileInNoMediaFolder(path)) {
+                                    Log.d(TAG, "跳过 .nomedia 文件夹中的视频: $path")
+                                    continue
+                                }
+                                
                                 val id = it.getLong(idColumn)
                                 val name = it.getString(nameColumn)
                                 val size = it.getLong(sizeColumn)

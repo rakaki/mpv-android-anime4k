@@ -3,6 +3,7 @@ package com.fam4k007.videoplayer.player
 import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import com.fam4k007.videoplayer.utils.NoMediaChecker
 import java.io.File
 
 /**
@@ -232,9 +233,18 @@ class SeriesManager {
                             val parentDir = file.parentFile
 
                             if (parentDir != null && parentDir.exists() && parentDir.isDirectory) {
+                                // 检查父目录是否包含 .nomedia 文件
+                                if (NoMediaChecker.folderHasNoMedia(parentDir.absolutePath)) {
+                                    Log.d(TAG, "父目录包含 .nomedia 文件，跳过: ${parentDir.absolutePath}")
+                                    return videos
+                                }
+                                
                                 parentDir.listFiles()?.forEach { f ->
                                     if (f.isFile && f.extension.lowercase() in VIDEO_EXTENSIONS) {
-                                        videos.add(Uri.fromFile(f))
+                                        // 再次检查文件路径
+                                        if (!NoMediaChecker.fileInNoMediaFolder(f.absolutePath)) {
+                                            videos.add(Uri.fromFile(f))
+                                        }
                                     }
                                 }
                             }
@@ -291,9 +301,18 @@ class SeriesManager {
             val parentDir = file.parentFile
 
             if (parentDir != null && parentDir.exists() && parentDir.isDirectory) {
+                // 检查父目录是否包含 .nomedia 文件
+                if (NoMediaChecker.folderHasNoMedia(parentDir.absolutePath)) {
+                    Log.d(TAG, "父目录包含 .nomedia 文件，跳过: ${parentDir.absolutePath}")
+                    return videos
+                }
+                
                 parentDir.listFiles()?.forEach { f ->
                     if (f.isFile && f.extension.lowercase() in VIDEO_EXTENSIONS) {
-                        videos.add(Uri.fromFile(f))
+                        // 再次检查文件路径
+                        if (!NoMediaChecker.fileInNoMediaFolder(f.absolutePath)) {
+                            videos.add(Uri.fromFile(f))
+                        }
                     }
                 }
             }

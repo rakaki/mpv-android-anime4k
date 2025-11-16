@@ -326,34 +326,34 @@ fun SeekTimeDialog(
         },
         text = {
             Column(
-                modifier = Modifier.width(240.dp)
+                modifier = Modifier.width(280.dp)
             ) {
                 options.forEach { seconds ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .clickable { selected = seconds }
                             .background(
                                 if (selected == seconds) SettingsPalette.Highlight
                                 else Color.Transparent
                             )
-                            .padding(vertical = 8.dp, horizontal = 12.dp),
+                            .padding(vertical = 12.dp, horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
                             selected = selected == seconds,
                             onClick = { selected = seconds },
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(24.dp),
                             colors = RadioButtonDefaults.colors(
                                 selectedColor = accentColor,
                                 unselectedColor = SettingsPalette.PrimaryText.copy(alpha = 0.4f)
                             )
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(12.dp))
                         Text(
                             "${seconds}秒",
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             color = if (selected == seconds) accentColor else SettingsPalette.PrimaryText,
                             fontWeight = if (selected == seconds) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -373,7 +373,7 @@ fun SeekTimeDialog(
         },
         shape = RoundedCornerShape(12.dp),
         containerColor = SettingsPalette.DialogSurface,
-        modifier = Modifier.width(280.dp)
+        modifier = Modifier.width(320.dp)
     )
 }
 
@@ -399,34 +399,34 @@ fun SpeedDialog(
         },
         text = {
             Column(
-                modifier = Modifier.width(240.dp)
+                modifier = Modifier.width(280.dp)
             ) {
                 options.forEach { speed ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .clickable { selected = speed }
                             .background(
                                 if (selected == speed) SettingsPalette.Highlight
                                 else Color.Transparent
                             )
-                            .padding(vertical = 8.dp, horizontal = 12.dp),
+                            .padding(vertical = 12.dp, horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
                             selected = selected == speed,
                             onClick = { selected = speed },
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(24.dp),
                             colors = RadioButtonDefaults.colors(
                                 selectedColor = accentColor,
                                 unselectedColor = SettingsPalette.PrimaryText.copy(alpha = 0.4f)
                             )
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(12.dp))
                         Text(
                             String.format("%.1fx", speed),
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             color = if (selected == speed) accentColor else SettingsPalette.PrimaryText,
                             fontWeight = if (selected == speed) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -446,6 +446,7 @@ fun SpeedDialog(
         },
         shape = RoundedCornerShape(12.dp),
         containerColor = SettingsPalette.DialogSurface,
-        modifier = Modifier.width(280.dp)
+        modifier = Modifier.width(320.dp)
     )
 }
+

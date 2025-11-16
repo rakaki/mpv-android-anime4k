@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.fam4k007.videoplayer.databinding.ActivityVideoBrowserBinding
 import com.fam4k007.videoplayer.utils.DialogUtils
+import com.fam4k007.videoplayer.utils.NoMediaChecker
 import com.fam4k007.videoplayer.utils.ThemeManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -242,6 +243,12 @@ class VideoBrowserActivity : AppCompatActivity() {
                             val size = it.getLong(sizeColumn)
                             val duration = it.getLong(durationColumn)
                             val dateAdded = it.getLong(dateColumn)
+
+                            // 检查文件路径是否在包含 .nomedia 的文件夹中
+                            if (NoMediaChecker.fileInNoMediaFolder(path)) {
+                                Log.d(TAG, "跳过 .nomedia 文件夹中的视频: $path")
+                                continue
+                            }
 
                             val uri = Uri.withAppendedPath(
                                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
