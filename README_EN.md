@@ -10,27 +10,25 @@ This project aims to optimize and upscale anime-style videos, though it can also
 
 ### Application Interface (Portrait)
 
-| Home | Folder List | Video List | WebDAV Feature |
-|------|------------|------------|----------------|
-| <img src="docs/screenshots/主页.jpg" width="280"/> | <img src="docs/screenshots/文件夹列表.jpg" width="280"/> | <img src="docs/screenshots/视频列表.jpg" width="280"/> | <img src="docs/screenshots/webdav功能.jpg" width="280"/> |
+| Home | Folder List | Video List |
+|------|------------|------------|
+| <img src="docs/screenshots/软件首页.jpg" width="280"/> | <img src="docs/screenshots/文件夹列表.jpg" width="280"/> | <img src="docs/screenshots/视频列表.jpg" width="280"/> |
 
-| Bangumi Parsing |
-|----------------|
-| <img src="docs/screenshots/番剧解析.jpg" width="280"/> |
+| WebDAV Feature | Bangumi Parsing | Settings Page |
+|----------------|----------------|----------------|
+| <img src="docs/screenshots/webdav支持.jpg" width="280"/> | <img src="docs/screenshots/番剧解析.jpg" width="280"/> | <img src="docs/screenshots/设置页面.jpg" width="280"/> |
+
+---
 
 ### Player Interface (Landscape)
 
-| Player Main Interface | Danmaku Feature |
-|----------------------|----------------|
-| <img src="docs/screenshots/播放器主界面.jpg" width="280"/> | <img src="docs/screenshots/弹幕功能.jpg" width="280"/> |
+| Player Main Interface | Danmaku Styling | Subtitle Styling |
+|----------------------|----------------|------------------|
+| <img src="docs/screenshots/播放器主界面.jpg" width="280"/> | <img src="docs/screenshots/弹幕样式设置.jpg" width="280"/> | <img src="docs/screenshots/字幕样式设置.jpg" width="280"/> |
 
-| Danmaku Styling | Subtitle Styling |
-|----------------|------------------|
-| <img src="docs/screenshots/弹幕样式设置.jpg" width="280"/> | <img src="docs/screenshots/字幕样式设置.jpg" width="280"/> |
-
-| Super-Resolution |
-|------------------|
-| <img src="docs/screenshots/超分功能.jpg" width="280"/> |
+| Resume Playback | More Menu | Super-Resolution |
+|----------------|-----------|------------------|
+| <img src="docs/screenshots/记忆播放.jpg" width="280"/> | <img src="docs/screenshots/更多菜单.jpg" width="280"/> | <img src="docs/screenshots/超分功能.jpg" width="280"/> |
 
 ## Key Features
 
@@ -208,6 +206,6 @@ If you encounter any issues or have suggestions, please feel free to report them
 
 ---
 
-**Last Updated:** 2025-11-15
+**Last Updated:** 2025-11-16
 
 **[中文版本](README.md) | [English Version](README_EN.md)**
