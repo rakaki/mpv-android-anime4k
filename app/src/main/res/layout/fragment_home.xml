@@ -19,6 +19,23 @@
         android:foreground="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="设置"/>
 
+    <!-- 下载按钮 -->
+    <ImageView
+        android:id="@+id/ivDownload"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentEnd="true"
+        android:layout_below="@id/ivSettings"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:src="@drawable/down"
+        android:scaleType="centerInside"
+        android:padding="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="下载管理"/>
+
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="match_parent"

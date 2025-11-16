@@ -49,6 +49,13 @@ object VideoScanner {
                 while (it.moveToNext()) {
                     val name = it.getString(nameIdx) ?: continue
                     val path = it.getString(pathIdx) ?: continue
+                    
+                    // 检查文件路径是否在包含 .nomedia 的文件夹中
+                    if (NoMediaChecker.fileInNoMediaFolder(path)) {
+                        android.util.Log.d("VideoScanner", "跳过 .nomedia 文件夹中的视频: $path")
+                        continue
+                    }
+                    
                     val folder = path.substringBeforeLast('/')
                     videos.add(VideoItem(name, path, folder))
                 }
@@ -102,6 +109,13 @@ object VideoScanner {
             while (it.moveToNext()) {
                 val name = it.getString(nameIdx)
                 val path = it.getString(pathIdx)
+                
+                // 检查文件路径是否在包含 .nomedia 的文件夹中
+                if (NoMediaChecker.fileInNoMediaFolder(path)) {
+                    android.util.Log.d("VideoScanner", "跳过 .nomedia 文件夹中的视频: $path")
+                    continue
+                }
+                
                 val folder = path.substringBeforeLast('/')
                 videos.add(VideoItem(name, path, folder))
             }

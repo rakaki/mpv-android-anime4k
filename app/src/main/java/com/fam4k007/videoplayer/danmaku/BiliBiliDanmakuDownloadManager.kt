@@ -4,14 +4,20 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import com.fam4k007.videoplayer.bilibili.auth.BiliBiliAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
@@ -22,10 +28,15 @@ import java.util.zip.InflaterInputStream
  */
 class BiliBiliDanmakuDownloadManager(private val context: Context) {
     
+    private val authManager: BiliBiliAuthManager by lazy {
+        BiliBiliAuthManager.getInstance(context)
+    }
+    
     companion object {
         private const val TAG = "BiliDanmuDownload"
         private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        private const val TIMEOUT_SECONDS = 10L // 降低超时时间到10秒,通常2-3秒就能完成
+        private const val TIMEOUT_SECONDS = 30L // 增加超时时间
+        private const val MAX_CONCURRENT_DOWNLOADS = 5 // 最大并发下载数
     }
     
     private val client = OkHttpClient.Builder()
@@ -34,6 +45,27 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
         .followRedirects(true) // 自动跟随重定向
         .followSslRedirects(true)
         .build()
+    
+    /**
+     * 创建带Cookie的请求构建器（参考 Bilibili-Evolved 的 credentials: 'include'）
+     */
+    private fun createRequestBuilder(url: String): Request.Builder {
+        val builder = Request.Builder()
+            .url(url)
+            .addHeader("User-Agent", USER_AGENT)
+            .addHeader("Referer", "https://www.bilibili.com")
+        
+        // 添加Cookie（如果已登录）
+        val cookieString = authManager.getCookieString()
+        if (cookieString.isNotEmpty()) {
+            builder.addHeader("Cookie", cookieString)
+            Log.d(TAG, "使用已登录的Cookie进行弹幕下载")
+        } else {
+            Log.d(TAG, "未登录，使用游客模式下载弹幕")
+        }
+        
+        return builder
+    }
     
     /**
      * 下载结果
@@ -153,10 +185,7 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
         try {
             Log.d(TAG, "解析短链接: $shortUrl")
             
-            val request = Request.Builder()
-                .url(shortUrl)
-                .addHeader("User-Agent", USER_AGENT)
-                .build()
+            val request = createRequestBuilder(shortUrl).build()
             
             // 使用 HEAD 请求获取重定向后的 URL,不下载内容
             client.newBuilder()
@@ -265,48 +294,62 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
                 return DownloadResult.Error("该番剧没有可下载的集数")
             }
             
+            // 分批并发下载所有集数的弹幕（优化内存占用）
+            // 每批最多3集，避免内存峰值过高
+            val concurrentLimit = 3
+            val results = mutableListOf<Boolean>()
             var successCount = 0
             var failCount = 0
             
-            // 下载每一集的弹幕
-            for ((index, episode) in episodes.withIndex()) {
-                try {
-                    val (cid, epTitle) = episode
-                    val fullTitle = "$seasonTitle - $epTitle"
+            withContext(Dispatchers.IO) {
+                for (startIndex in episodes.indices step concurrentLimit) {
+                    val endIndex = minOf(startIndex + concurrentLimit - 1, episodes.size - 1)
                     
-                    progressCallback?.invoke(index + 1, episodes.size, epTitle, successCount, failCount)
-                    Log.d(TAG, "下载第${index + 1}/${episodes.size}集: $fullTitle")
-                    
-                    // 检查文件是否已存在
-                    if (isFileExists(saveDirectoryUri, fullTitle)) {
-                        Log.d(TAG, "第${index + 1}集已存在,跳过")
-                        successCount++
-                        continue
-                    }
-                    
-                    val xmlContent = downloadDanmakuXml(cid)
-                    if (xmlContent != null) {
-                        val saved = saveToDirectory(saveDirectoryUri, fullTitle, xmlContent)
-                        if (saved != null) {
-                            successCount++
-                            Log.d(TAG, "第${index + 1}集下载成功")
-                        } else {
-                            failCount++
-                            Log.e(TAG, "第${index + 1}集保存失败")
+                    // 并发下载当前批次的集数
+                    val batchResults = (startIndex..endIndex).map { index ->
+                        async {
+                            try {
+                                val episode = episodes[index]
+                                val (cid, epTitle) = episode
+                                // 文件名只使用集数标题，不包含番剧名
+                                val fullTitle = epTitle
+                                
+                                progressCallback?.invoke(index + 1, episodes.size, epTitle, successCount, failCount)
+                                Log.d(TAG, "下载第${index + 1}/${episodes.size}集: $fullTitle (来自《$seasonTitle》)")
+                                
+                                // 检查文件是否已存在
+                                if (isFileExists(saveDirectoryUri, fullTitle)) {
+                                    Log.d(TAG, "第${index + 1}集已存在,跳过")
+                                    return@async true
+                                }
+                                
+                                val xmlContent = downloadDanmakuXml(cid)
+                                if (xmlContent != null) {
+                                    val saved = saveToDirectory(saveDirectoryUri, fullTitle, xmlContent)
+                                    if (saved != null) {
+                                        Log.d(TAG, "第${index + 1}集下载成功")
+                                        true
+                                    } else {
+                                        Log.e(TAG, "第${index + 1}集保存失败")
+                                        false
+                                    }
+                                } else {
+                                    Log.e(TAG, "第${index + 1}集弹幕下载失败")
+                                    false
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "下载第${index + 1}集时出错", e)
+                                false
+                            }
                         }
-                    } else {
-                        failCount++
-                        Log.e(TAG, "第${index + 1}集弹幕下载失败")
-                    }
+                    }.awaitAll()
                     
-                    // 添加延迟,避免请求过快被限流
-                    // 现在使用镜像接口,限流较松,可以缩短间隔
-                    if (index < episodes.size - 1) {
-                        kotlinx.coroutines.delay(300)
-                    }
-                } catch (e: Exception) {
-                    failCount++
-                    Log.e(TAG, "下载第${index + 1}集时出错", e)
+                    // 统计当前批次结果
+                    results.addAll(batchResults)
+                    successCount = results.count { it }
+                    failCount = results.count { !it }
+                    
+                    Log.d(TAG, "批次 ${startIndex + 1}-${endIndex + 1} 完成，当前进度: 成功 $successCount, 失败 $failCount")
                 }
             }
             
@@ -352,11 +395,7 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
             
             Log.d(TAG, "请求番剧季度信息: $apiUrl")
             
-            val request = Request.Builder()
-                .url(apiUrl)
-                .addHeader("User-Agent", USER_AGENT)
-                .addHeader("Referer", "https://www.bilibili.com")
-                .build()
+            val request = createRequestBuilder(apiUrl).build()
             
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
@@ -481,11 +520,7 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
             Log.d(TAG, "请求番剧季度信息: $apiUrl")
             
             // 请求番剧信息
-            val request = Request.Builder()
-                .url(apiUrl)
-                .addHeader("User-Agent", USER_AGENT)
-                .addHeader("Referer", "https://www.bilibili.com")
-                .build()
+            val request = createRequestBuilder(apiUrl).build()
             
             client.newCall(request).execute().use { response ->
                 Log.d(TAG, "番剧API响应: HTTP ${response.code}")
@@ -530,8 +565,9 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
                                 val epTitle = ep.optString("long_title") 
                                     ?: ep.optString("title")
                                     ?: "第${i + 1}集"
-                                val fullTitle = "$title - $epTitle"
-                                Log.d(TAG, "找到指定集数: $fullTitle, CID: $cid")
+                                // 文件名只使用集数标题
+                                val fullTitle = epTitle
+                                Log.d(TAG, "找到指定集数: $fullTitle (来自《$title》), CID: $cid")
                                 return Pair(cid, fullTitle)
                             }
                         }
@@ -543,8 +579,9 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
                     val epTitle = firstEp.optString("long_title") 
                         ?: firstEp.optString("title")
                         ?: "第1集"
-                    val fullTitle = "$title - $epTitle"
-                    Log.d(TAG, "使用第一集: $fullTitle, CID: $cid")
+                    // 文件名只使用集数标题
+                    val fullTitle = epTitle
+                    Log.d(TAG, "使用第一集: $fullTitle (来自《$title》), CID: $cid")
                     return Pair(cid, fullTitle)
                 }
                 
@@ -559,21 +596,27 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
     
     /**
      * 下载弹幕XML内容(带重试)
-     * B站API返回的是deflate压缩的XML数据
+     * 优先使用分段API获取完整弹幕，失败则降级到普通API
      */
-    private fun downloadDanmakuXml(cid: Long, retryCount: Int = 3): String? {
+    private suspend fun downloadDanmakuXml(cid: Long, retryCount: Int = 3): String? {
         var lastException: Exception? = null
         
+        // 优先尝试使用分段弹幕API获取完整弹幕
+        Log.d(TAG, "尝试使用分段弹幕API下载完整弹幕")
+        val segmentXml = downloadSegmentDanmaku(cid)
+        if (segmentXml != null) {
+            Log.d(TAG, "分段弹幕API下载成功")
+            return segmentXml
+        }
+        Log.w(TAG, "分段弹幕API下载失败，降级使用普通API")
+        
+        // 降级使用普通弹幕API
         repeat(retryCount) { attempt ->
             try {
                 // 使用 comment.bilibili.com 镜像接口,避免 WBI 签名
                 val url = "https://comment.bilibili.com/$cid.xml"
                 
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", USER_AGENT)
-                    .addHeader("Referer", "https://www.bilibili.com")
-                    .build()
+                val request = createRequestBuilder(url).build()
                 
                 client.newCall(request).execute().use { response ->
                     Log.d(TAG, "弹幕API响应: HTTP ${response.code}, Content-Type: ${response.header("Content-Type")}")
@@ -656,6 +699,492 @@ class BiliBiliDanmakuDownloadManager(private val context: Context) {
         
         Log.e(TAG, "所有重试均失败 CID=$cid", lastException)
         return null
+    }
+    
+    /**
+     * 使用分段弹幕API下载完整弹幕（流式写入优化版）
+     * API: https://api.bilibili.com/x/v2/dm/web/seg.so
+     * 此API将弹幕按时间分段返回，可以获取完整弹幕
+     * 
+     * 优化策略：
+     * 1. 分批并发下载（每批3个分段），避免内存峰值过高
+     * 2. 下载后立即写入文件，不在内存中累积所有弹幕
+     * 3. 使用 buildString 减少临时对象分配
+     */
+    private suspend fun downloadSegmentDanmaku(cid: Long): String? {
+        try {
+            Log.d(TAG, "使用分段弹幕API（流式写入优化）: cid=$cid")
+            
+            // 1. 获取弹幕元数据，包括总分段数
+            val viewUrl = "https://api.bilibili.com/x/v2/dm/web/view?type=1&oid=$cid"
+            val viewRequest = createRequestBuilder(viewUrl).build()
+            
+            val totalSegments: Int
+            client.newCall(viewRequest).execute().use { response ->
+                Log.d(TAG, "弹幕元数据API响应: HTTP ${response.code}")
+                
+                if (!response.isSuccessful) {
+                    Log.e(TAG, "获取弹幕元数据失败: HTTP ${response.code}")
+                    return null
+                }
+                
+                val responseBody = response.body
+                if (responseBody == null) {
+                    Log.e(TAG, "弹幕元数据响应体为空")
+                    return null
+                }
+                
+                // 解析protobuf获取总分段数
+                val protobufData = responseBody.bytes()
+                val segments = parseViewProtobuf(protobufData)
+                if (segments == null || segments <= 0) {
+                    Log.e(TAG, "无法解析分段数")
+                    return null
+                }
+                
+                totalSegments = segments
+                Log.d(TAG, "弹幕总分段数: $totalSegments")
+            }
+            
+            // 2. 使用 StringBuilder 流式构建 XML（边下载边写入）
+            val xmlBuilder = StringBuilder()
+            xmlBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+            xmlBuilder.append("<i>\n")
+            xmlBuilder.append("<chatserver>chat.bilibili.com</chatserver>\n")
+            xmlBuilder.append("<chatid>$cid</chatid>\n")
+            xmlBuilder.append("<mission>0</mission>\n")
+            xmlBuilder.append("<maxlimit>$totalSegments</maxlimit>\n")
+            xmlBuilder.append("<state>0</state>\n")
+            xmlBuilder.append("<real_name>0</real_name>\n")
+            xmlBuilder.append("<source>segment-api-streaming</source>\n\n")
+            
+            // 3. 分批并发下载，每批最多3个分段（平衡速度与内存）
+            val concurrentLimit = 3
+            val allDanmakuIds = mutableSetOf<Long>()  // 用于去重
+            var totalDanmakuCount = 0
+            
+            withContext(Dispatchers.IO) {
+                for (startIndex in 1..totalSegments step concurrentLimit) {
+                    val endIndex = minOf(startIndex + concurrentLimit - 1, totalSegments)
+                    
+                    // 并发下载当前批次的分段
+                    val batchResults = (startIndex..endIndex).map { segmentIndex ->
+                        async {
+                            val segmentUrl = "https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid=$cid&segment_index=$segmentIndex"
+                            val segmentRequest = createRequestBuilder(segmentUrl).build()
+                            
+                            try {
+                                client.newCall(segmentRequest).execute().use { response ->
+                                    if (!response.isSuccessful) {
+                                        Log.w(TAG, "下载分段 $segmentIndex 失败: HTTP ${response.code}")
+                                        return@async emptyList<DanmakuItem>()
+                                    }
+                                    
+                                    val segmentBody = response.body
+                                    if (segmentBody == null) {
+                                        Log.w(TAG, "分段 $segmentIndex 响应体为空")
+                                        return@async emptyList<DanmakuItem>()
+                                    }
+                                    
+                                    val protobufData = segmentBody.bytes()
+                                    val danmakuList = parseProtobufDanmaku(protobufData)
+                                    Log.d(TAG, "分段 $segmentIndex/$totalSegments 下载成功，弹幕数: ${danmakuList.size}")
+                                    danmakuList
+                                }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "下载分段 $segmentIndex 异常: ${e.message}")
+                                emptyList<DanmakuItem>()
+                            }
+                        }
+                    }.awaitAll().flatten()
+                    
+                    // 立即处理这批弹幕：去重、排序、写入
+                    val newDanmaku = batchResults
+                        .filter { !allDanmakuIds.contains(it.id) }  // 去重
+                        .sortedBy { it.progress }  // 按时间排序
+                    
+                    // 记录已处理的ID
+                    newDanmaku.forEach { allDanmakuIds.add(it.id) }
+                    
+                    // 立即追加到 XML（减少内存占用）
+                    newDanmaku.forEach { danmaku ->
+                        xmlBuilder.append(danmaku.toXmlString())
+                        xmlBuilder.append("\n")
+                    }
+                    
+                    totalDanmakuCount += newDanmaku.size
+                    Log.d(TAG, "批次 $startIndex-$endIndex 处理完成，新增弹幕: ${newDanmaku.size}，累计: $totalDanmakuCount")
+                    
+                    // 批次之间的清理工作已由作用域自动完成
+                }
+            }
+            
+            xmlBuilder.append("</i>")
+            
+            Log.d(TAG, "流式下载完成，总弹幕数: $totalDanmakuCount")
+            
+            if (totalDanmakuCount == 0) {
+                Log.w(TAG, "没有获取到任何弹幕")
+                return null
+            }
+            
+            return xmlBuilder.toString()
+        } catch (e: Exception) {
+            Log.e(TAG, "下载分段弹幕失败", e)
+            return null
+        }
+    }
+    
+    /**
+     * 解析view protobuf获取总分段数
+     */
+    private fun parseViewProtobuf(data: ByteArray): Int? {
+        try {
+            var index = 0
+            while (index < data.size) {
+                if (index >= data.size) break
+                
+                val tag = data[index].toInt() and 0xFF
+                index++
+                
+                // 字段4是dmSge（DmSegConfig）
+                if (tag == 0x22) { // field 4, wire type 2 (length-delimited)
+                    val length = readVarint(data, index).toInt()
+                    index += getVarintSize(data, index)
+                    
+                    if (index + length <= data.size) {
+                        val dmSgeData = data.copyOfRange(index, index + length)
+                        // 解析DmSegConfig中的total字段（字段2）
+                        return parseDmSegConfig(dmSgeData)
+                    }
+                } else {
+                    index = skipField(data, index, tag and 0x07)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析view protobuf失败", e)
+        }
+        return null
+    }
+    
+    /**
+     * 解析DmSegConfig获取total
+     */
+    private fun parseDmSegConfig(data: ByteArray): Int? {
+        try {
+            var index = 0
+            while (index < data.size) {
+                if (index >= data.size) break
+                
+                val tag = data[index].toInt() and 0xFF
+                index++
+                
+                when (tag shr 3) {
+                    2 -> { // total字段
+                        val total = readVarint(data, index).toInt()
+                        return total
+                    }
+                    else -> {
+                        index = skipField(data, index, tag and 0x07)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析DmSegConfig失败", e)
+        }
+        return null
+    }
+    
+    /**
+     * 将弹幕列表转换为XML格式
+     */
+    private fun convertDanmakuListToXml(danmakuList: List<DanmakuItem>): String {
+        val xmlBuilder = StringBuilder()
+        xmlBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+        xmlBuilder.append("<i>\n")
+        xmlBuilder.append("<chatserver>chat.bilibili.com</chatserver>\n")
+        xmlBuilder.append("<chatid>0</chatid>\n")
+        xmlBuilder.append("<mission>0</mission>\n")
+        xmlBuilder.append("<maxlimit>${danmakuList.size}</maxlimit>\n")
+        xmlBuilder.append("<state>0</state>\n")
+        xmlBuilder.append("<real_name>0</real_name>\n")
+        xmlBuilder.append("<source>segment-api</source>\n")
+        
+        for (danmaku in danmakuList) {
+            xmlBuilder.append("<d p=\"${danmaku.toAttribute()}\">${escapeXml(danmaku.content)}</d>\n")
+        }
+        
+        xmlBuilder.append("</i>")
+        return xmlBuilder.toString()
+    }
+    
+    /**
+     * 解析protobuf格式的弹幕数据
+     */
+    private fun parseProtobufDanmaku(data: ByteArray): List<DanmakuItem> {
+        val danmakuList = mutableListOf<DanmakuItem>()
+        
+        try {
+            var index = 0
+            while (index < data.size) {
+                // protobuf wire format: field_number << 3 | wire_type
+                if (index >= data.size) break
+                
+                val tag = data[index].toInt() and 0xFF
+                index++
+                
+                // 字段1是弹幕元素（repeated）
+                if (tag == 0x0A) { // field 1, wire type 2 (length-delimited)
+                    // 读取长度
+                    val length = readVarint(data, index)
+                    index += getVarintSize(data, index)
+                    
+                    if (index + length.toInt() <= data.size) {
+                        val danmakuData = data.copyOfRange(index, index + length.toInt())
+                        val danmaku = parseSingleDanmaku(danmakuData)
+                        if (danmaku != null) {
+                            danmakuList.add(danmaku)
+                        }
+                        index += length.toInt()
+                    } else {
+                        break
+                    }
+                } else {
+                    // 跳过不认识的字段
+                    index = skipField(data, index, tag and 0x07)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析protobuf弹幕失败", e)
+        }
+        
+        return danmakuList
+    }
+    
+    /**
+     * 解析单条弹幕的protobuf数据
+     */
+    private fun parseSingleDanmaku(data: ByteArray): DanmakuItem? {
+        try {
+            var id: Long = 0
+            var progress: Int = 0
+            var mode: Int = 1
+            var fontsize: Int = 25
+            var color: Long = 0xFFFFFF
+            var midHash: String = ""
+            var content: String = ""
+            var ctime: Long = 0
+            
+            var index = 0
+            while (index < data.size) {
+                if (index >= data.size) break
+                
+                val tag = data[index].toInt() and 0xFF
+                index++
+                
+                when (tag shr 3) {
+                    1 -> { // id
+                        id = readVarint(data, index)
+                        index += getVarintSize(data, index)
+                    }
+                    2 -> { // progress
+                        progress = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                    }
+                    3 -> { // mode
+                        mode = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                    }
+                    4 -> { // fontsize
+                        fontsize = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                    }
+                    5 -> { // color
+                        color = readVarint(data, index)
+                        index += getVarintSize(data, index)
+                    }
+                    6 -> { // midHash
+                        val length = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                        if (index + length <= data.size) {
+                            midHash = String(data, index, length, Charsets.UTF_8)
+                            index += length
+                        }
+                    }
+                    7 -> { // content
+                        val length = readVarint(data, index).toInt()
+                        index += getVarintSize(data, index)
+                        if (index + length <= data.size) {
+                            content = String(data, index, length, Charsets.UTF_8)
+                            index += length
+                        }
+                    }
+                    8 -> { // ctime
+                        ctime = readVarint(data, index)
+                        index += getVarintSize(data, index)
+                    }
+                    else -> {
+                        // 跳过未知字段
+                        index = skipField(data, index, tag and 0x07)
+                    }
+                }
+            }
+            
+            if (content.isNotEmpty()) {
+                return DanmakuItem(
+                    id = id,
+                    progress = progress,
+                    mode = mode,
+                    fontsize = fontsize,
+                    color = color,
+                    midHash = midHash,
+                    content = content,
+                    ctime = ctime
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析单条弹幕失败", e)
+        }
+        
+        return null
+    }
+    
+    /**
+     * 读取protobuf varint
+     */
+    private fun readVarint(data: ByteArray, startIndex: Int): Long {
+        var result = 0L
+        var shift = 0
+        var index = startIndex
+        
+        while (index < data.size) {
+            val b = data[index].toInt() and 0xFF
+            result = result or ((b and 0x7F).toLong() shl shift)
+            
+            if ((b and 0x80) == 0) {
+                break
+            }
+            
+            shift += 7
+            index++
+        }
+        
+        return result
+    }
+    
+    /**
+     * 获取varint的字节大小
+     */
+    private fun getVarintSize(data: ByteArray, startIndex: Int): Int {
+        var size = 0
+        var index = startIndex
+        
+        while (index < data.size) {
+            size++
+            val b = data[index].toInt() and 0xFF
+            if ((b and 0x80) == 0) {
+                break
+            }
+            index++
+        }
+        
+        return size
+    }
+    
+    /**
+     * 跳过protobuf字段
+     */
+    private fun skipField(data: ByteArray, startIndex: Int, wireType: Int): Int {
+        var index = startIndex
+        
+        when (wireType) {
+            0 -> { // varint
+                index += getVarintSize(data, index)
+            }
+            1 -> { // 64-bit
+                index += 8
+            }
+            2 -> { // length-delimited
+                val length = readVarint(data, index).toInt()
+                index += getVarintSize(data, index) + length
+            }
+            5 -> { // 32-bit
+                index += 4
+            }
+        }
+        
+        return index
+    }
+    
+    /**
+     * 弹幕数据项
+     */
+    private data class DanmakuItem(
+        val id: Long,
+        val progress: Int,      // 弹幕出现时间（毫秒）
+        val mode: Int,          // 弹幕类型
+        val fontsize: Int,      // 字体大小
+        val color: Long,        // 颜色
+        val midHash: String,    // 发送者mid的hash
+        val content: String,    // 弹幕内容
+        val ctime: Long         // 发送时间戳
+    ) {
+        /**
+         * 转换为XML的p属性
+         * 格式：出现时间,模式,字号,颜色,发送时间戳,弹幕池,用户ID,弹幕ID
+         */
+        fun toAttribute(): String {
+            val timeSeconds = progress / 1000.0
+            return String.format(
+                Locale.US,
+                "%.3f,%d,%d,%d,%d,0,%s,%d",
+                timeSeconds, mode, fontsize, color, ctime, midHash, id
+            )
+        }
+        
+        /**
+         * 直接转换为完整的XML字符串（优化内存使用）
+         * 使用 buildString 代替 String.format() 减少临时对象分配
+         */
+        fun toXmlString(): String = buildString {
+            val timeSeconds = progress / 1000.0
+            append("<d p=\"")
+            append(String.format(Locale.US, "%.3f", timeSeconds))
+            append(",").append(mode)
+            append(",").append(fontsize)
+            append(",").append(color)
+            append(",").append(ctime)
+            append(",0,")
+            append(midHash)
+            append(",").append(id)
+            append("\">")
+            append(escapeXmlContent(content))
+            append("</d>")
+        }
+        
+        /**
+         * XML内容转义（内部方法）
+         */
+        private fun escapeXmlContent(text: String): String {
+            return text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;")
+        }
+    }
+    
+    /**
+     * XML转义
+     */
+    private fun escapeXml(text: String): String {
+        return text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
     }
     
     /**

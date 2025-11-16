@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment
 import com.fam4k007.videoplayer.VideoBrowserActivity
 import com.fam4k007.videoplayer.BiliBiliPlayActivity
 import com.fam4k007.videoplayer.VideoPlayerActivity
+import com.fam4k007.videoplayer.DownloadActivity
 import com.fam4k007.videoplayer.PlaybackHistoryManager
 import com.fam4k007.videoplayer.databinding.FragmentHomeBinding
 import com.fanchen.fam4k007.manager.compose.BiliBiliLoginActivity
@@ -49,10 +50,19 @@ class HomeFragment : Fragment() {
         
         // 右上角设置按钮点击事件
         binding.ivSettings.setOnClickListener {
-            startActivity(Intent(requireContext(), com.fam4k007.videoplayer.SettingsActivity::class.java))
+            startActivity(Intent(requireContext(), com.fam4k007.videoplayer.SettingsComposeActivity::class.java))
             requireActivity().overridePendingTransition(
                 com.fam4k007.videoplayer.R.anim.scale_in,
                 com.fam4k007.videoplayer.R.anim.scale_out
+            )
+        }
+        
+        // 下载按钮点击事件
+        binding.ivDownload.setOnClickListener {
+            startActivity(Intent(requireContext(), DownloadActivity::class.java))
+            requireActivity().overridePendingTransition(
+                com.fam4k007.videoplayer.R.anim.slide_in_right,
+                com.fam4k007.videoplayer.R.anim.slide_out_left
             )
         }
         

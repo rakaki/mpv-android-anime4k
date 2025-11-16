@@ -26,8 +26,8 @@ android {
         applicationId "com.fam4k007.videoplayer"
         minSdkVersion 26
         targetSdkVersion 34
-        versionCode 9
-        versionName "1.0.9"
+        versionCode 10
+        versionName "1.1.0"
         
         // 移除 defaultConfig 中的 ndk 配置，让各个 buildType 自己控制
     }
@@ -101,6 +101,7 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.8.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1'
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.6.1'
+    implementation 'androidx.compose.material:material-icons-extended'  // Material Icons Extended
     debugImplementation 'androidx.compose.ui:ui-tooling'
     
     implementation(name: 'mpv-android-lib-v0.1.10', ext: 'aar')
@@ -128,6 +129,7 @@ dependencies {
     
     // 图片加载 (Coil) - B站番剧封面
     implementation 'io.coil-kt:coil-compose:2.5.0'
+    implementation 'io.coil-kt:coil-video:2.5.0'  // 视频帧提取支持
     
     // Gson - JSON解析
     implementation 'com.google.code.gson:gson:2.10.1'

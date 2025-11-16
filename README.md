@@ -6,36 +6,68 @@
 
 本项目旨在将二次元动漫/动画/番剧风格的视频进行优化超分，当然你也可以当作普通的播放器使用。
 
+---
+
+## 声明
+
+> [!IMPORTANT]
+> 本项目遵守 [GPL-3.0-or-later](LICENSE) 开源协议，免费开源。
+> 
+> **任何形式的二次分发必须继续开源、遵守相同协议、保留原作者及版权信息。**
+
+---
+
+## ⚠️ 重要声明
+
+**本项目旨在学习技术与测试代码，切勿滥用！**
+
+我们强烈反对且不纵容任何形式的盗版、非法转载、黑产及其他违法用途或行为。
+
+- 因使用本项目而产生的任何后果（包括但不限于非法用途、账号风控或其他损失），均由用户个人承担，与[本人](https://github.com/azxcvn)无关，概不负责
+- 本项目 **开源免费**，作者未从中获得经济收益
+- 本项目不会绕过身份验证机制、破解付费资源或实施其他非法行为
+- "哔哩哔哩" 及 "Bilibili" 名称、LOGO及相关图形是上海幻电信息科技有限公司的注册商标或商标。
+- 本项目为独立的第三方工具，与哔哩哔哩及其关联公司无任何关联、合作、授权或背书等关系。
+- 使用本项目获取的内容，其版权归原权利人所有，请遵守相关法律法规及平台服务协议。
+- 如有侵权，可随时[联系](https://github.com/azxcvn)处理。
+
+---
+
 ## 功能截图
 
 ### 应用主界面（竖屏）
 
-| 主页 | 文件夹列表 | 视频列表 | WebDAV功能 |
-|------|---------|---------|-----------|
-| <img src="docs/screenshots/主页.jpg" width="180"/> | <img src="docs/screenshots/文件夹列表.jpg" width="180"/> | <img src="docs/screenshots/视频列表.jpg" width="180"/> | <img src="docs/screenshots/webdav功能.jpg" width="180"/> |
+| 软件首页 | 文件夹列表 | 视频列表 |
+|----------|------------|----------|
+| <img src="docs/screenshots/软件首页.jpg" width="280"/> | <img src="docs/screenshots/文件夹列表.jpg" width="280"/> | <img src="docs/screenshots/视频列表.jpg" width="280"/> |
 
-| 番剧解析 |
-|---------|
-| <img src="docs/screenshots/番剧解析.jpg" width="180"/> |
+| webdav支持 | 番剧解析 | 设置页面 |
+|------------|----------|----------|
+| <img src="docs/screenshots/webdav支持.jpg" width="280"/> | <img src="docs/screenshots/番剧解析.jpg" width="280"/> | <img src="docs/screenshots/设置页面.jpg" width="280"/> |
+
+---
 
 ### 播放器界面（横屏）
 
-| 播放器主界面 | 弹幕功能 |
-|-----------|---------|
-| <img src="docs/screenshots/播放器主界面.jpg" width="380"/> | <img src="docs/screenshots/弹幕功能.jpg" width="380"/> |
+| 播放器主界面 | 弹幕样式设置 | 字幕样式设置 |
+|--------------|--------------|--------------|
+| <img src="docs/screenshots/播放器主界面.jpg" width="280"/> | <img src="docs/screenshots/弹幕样式设置.jpg" width="280"/> | <img src="docs/screenshots/字幕样式设置.jpg" width="280"/> |
 
-| 弹幕样式设置 | 字幕样式设置 |
-|------------|------------|
-| <img src="docs/screenshots/弹幕样式设置.jpg" width="380"/> | <img src="docs/screenshots/字幕样式设置.jpg" width="380"/> |
-
-| 超分功能 |
-|---------|
-| <img src="docs/screenshots/超分功能.jpg" width="380"/> |
+| 记忆播放 | 更多菜单 | 超分功能 |
+|----------|----------|----------|
+| <img src="docs/screenshots/记忆播放.jpg" width="280"/> | <img src="docs/screenshots/更多菜单.jpg" width="280"/> | <img src="docs/screenshots/超分功能.jpg" width="280"/> |
 
 ## 主要功能
 
 - **视频播放**：支持主流视频格式（MP4、MKV、AVI 等）
 - **哔哩哔哩番剧支持**：支持登录B站账号、在线播放番剧（详见[登录实现说明](docs/bilibili_login.md)和[番剧解析原理](docs/bilibili_bangumi.md)）
+- **哔哩哔哩视频/番剧下载**：支持下载B站视频和番剧到本地（详见[下载实现原理](docs/bilibili_download_principle.md)）
+  - 支持完整URL、短链（b23.tv）、带文本的分享链接
+  - 自动解析视频信息，支持番剧多集选择下载
+  - 音视频自动合并为MP4格式
+  - 支持暂停、恢复、取消下载
+  - 下载进度实时显示
+  - ⚠️ **仅供个人学习使用，严禁商业用途**
 - **WebDAV 网络存储**：支持连接 WebDAV 服务器，直接播放云端视频文件（详见[WebDAV 使用说明](docs/webdav使用说明.md)）
 - **播放列表**：自动扫描文件夹、支持视频排序和分类
 - **字幕管理**：内嵌字幕解析、外部字幕导入、字幕位置和大小调整
@@ -43,7 +75,11 @@
 - **音量增强**：支持开关增强功能，且可精细到0.1%调整
 - **弹幕功能**：
   - 支持导入本地 XML 格式弹幕文件
-  - **支持从哔哩哔哩下载弹幕**（使用B站公开API）
+  - **支持从哔哩哔哩下载弹幕**（详见[弹幕下载原理说明](docs/bilibili_danmaku_download.md)）
+    - 使用B站分段弹幕API，获取完整弹幕数据
+    - 支持普通视频和番剧整季批量下载
+    - 并发下载技术，速度提升10-20倍
+    - 自动携带登录Cookie，获取会员专属弹幕
   - 弹幕样式自定义（大小、速度、透明度、描边等）
   - 弹幕轨道管理，支持显示/隐藏不同类型弹幕
   - 自动记忆弹幕文件和显示状态
@@ -108,6 +144,12 @@
 - **[SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**  
   感谢此项目收集的公开API，将散落的API集中起来，本项目参考了其中的使用方法
 
+- **[the1812/Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved)**  
+  哔哩哔哩增强脚本，参考了弹幕下载的并发优化策略和API调用方式
+
+- **[btjawa/BiliTools](https://github.com/btjawa/BiliTools)**  
+  本项目参考了此项目的视频/番剧下载的实现原理
+
 - **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
   提供了 WebDAV 协议的 Android 客户端实现，支持文件浏览、上传、下载等操作
 
@@ -122,11 +164,14 @@
 
 本应用使用了以下第三方服务的公开API：
 
-- **哔哩哔哩 (Bilibili)** - 用于登录、解析番剧链接并在线播放、下载弹幕
+- **哔哩哔哩 (Bilibili)** - 用于登录、解析番剧链接并在线播放、下载弹幕、下载视频/番剧
   - 登录API: `https://passport.bilibili.com/x/passport-login/web/qrcode/*`
   - 番剧信息API: `https://api.bilibili.com/pgc/view/web/season`
   - 番剧播放API: `https://api.bilibili.com/pgc/player/web/playurl`
   - 弹幕下载API: `https://api.bilibili.com/x/v1/dm/list.so`
+  - 视频信息API: `https://api.bilibili.com/x/web-interface/view`
+  - 视频下载API: `https://api.bilibili.com/x/player/playurl`
+  - 番剧下载API: `https://api.bilibili.com/pgc/player/web/playurl`
   - 使用场景：
     - 用户主动扫码登录B站账号
     - 用户输入番剧链接观看在线番剧
@@ -159,10 +204,21 @@
 - 下载功能完全由**用户主动触发**
 - 数据仅存储在本地，**不会同步或备份到云端**
 
+### 视频/番剧下载功能
+- ⚠️ **重要提醒**：视频下载功能仅供**个人学习与技术交流**使用
+- 下载的视频内容**版权归原作者所有**，请在下载后24小时内删除
+- **严禁用于任何商业用途**，包括但不限于：
+  - 二次传播、倒卖、去水印上传
+  - 商业放映、广告盈利
+  - 侵犯版权方权益的任何行为
+- 使用下载功能产生的**法律责任由用户自行承担**，与本项目无关
+- 本项目不对下载功能的滥用负责，请遵守相关法律法规
+- 建议仅下载自己有版权或创作的内容，尊重UP主和版权方的劳动成果
+
 ### 权限说明
 应用仅请求以下必要权限：
 - **存储权限**：读取和保存本地视频、字幕、弹幕文件
-- **网络权限**：用于哔哩哔哩番剧在线播放和弹幕下载（用户主动触发）
+- **网络权限**：用于哔哩哔哩番剧在线播放、视频/番剧下载和弹幕下载（用户主动触发）
 
 ### 开源透明
 - ✅ 项目**完全开源**，所有代码公开可审查
@@ -201,4 +257,4 @@
 
 ---
 
-**Last Updated:** 2025-11-13
+**Last Updated:** 2025-11-16
