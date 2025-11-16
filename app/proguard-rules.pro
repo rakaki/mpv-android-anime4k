@@ -129,6 +129,46 @@
 -keep class com.fam4k007.videoplayer.bilibili.** { *; }
 -keepclassmembers class com.fam4k007.videoplayer.bilibili.** { *; }
 
+# 保护 Bilibili 下载功能（新增）
+-keep class com.fam4k007.videoplayer.download.** { *; }
+-keepclassmembers class com.fam4k007.videoplayer.download.** { *; }
+
+# 保护下载相关的数据类和枚举
+-keep class com.fam4k007.videoplayer.download.DownloadItem { *; }
+-keep class com.fam4k007.videoplayer.download.MediaParseResult { *; }
+-keep class com.fam4k007.videoplayer.download.EpisodeInfo { *; }
+-keep class com.fam4k007.videoplayer.download.VideoInfo { *; }
+-keep class com.fam4k007.videoplayer.download.DownloadFragment { *; }
+-keep enum com.fam4k007.videoplayer.download.MediaType { *; }
+-keep enum com.fam4k007.videoplayer.download.DownloadStatus { *; }
+
+# 保护下载管理器的关键方法（防止被内联或移除）
+-keep class com.fam4k007.videoplayer.download.BilibiliDownloadManager {
+    public <methods>;
+    private ** parseMediaUrl(...);
+    private ** getVideoDetail(...);
+    private ** getMediaInfo(...);
+    private ** bv2av(...);
+    private ** resolveShortUrl(...);
+}
+
+# 保护 ViewModel（Compose 和 Activity 需要反射访问）
+-keep class com.fam4k007.videoplayer.download.BilibiliDownloadViewModel {
+    public <methods>;
+}
+
+# 保护 DownloadActivity（Compose 使用）
+-keep class com.fam4k007.videoplayer.DownloadActivity { *; }
+-keep class com.fam4k007.videoplayer.DownloadActivityKt { *; }
+
+# 保护 CookieManager（SharedPreferences 键名不能混淆）
+-keep class com.fam4k007.videoplayer.utils.CookieManager { *; }
+-keepclassmembers class com.fam4k007.videoplayer.utils.CookieManager { *; }
+
+# JSON 解析需要的类（org.json）
+-keep class org.json.** { *; }
+-keepclassmembers class org.json.** { *; }
+
 # 保护所有 sealed class 和它们的子类（防止反射和序列化问题）
 -keep class com.fam4k007.videoplayer.bilibili.model.LoginResult { *; }
 -keep class com.fam4k007.videoplayer.bilibili.model.LoginResult$** { *; }

@@ -26,7 +26,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity 
+            android:name=".UserAgreementActivity"
+            android:exported="false"
+            android:theme="@style/Theme.VideoPlayer" />
         <activity android:name=".SettingsComposeActivity" />
+        <activity android:name=".DownloadActivity" />
         <activity android:name=".PlaybackSettingsComposeActivity" />
         <activity android:name=".PlaybackHistoryComposeActivity" />
         <activity android:name=".BiliBiliDanmakuComposeActivity" />

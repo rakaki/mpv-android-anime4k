@@ -1,10 +1,37 @@
-# XiaoMiao Player - Local Video Player
+# XiaoMiao Player - Local Anime Video Real-time Upscaling Player
 
 **[中文版本](README.md) | [English Version](README_EN.md)**
 
 An Android local video player based on libmpv, supporting multiple video formats, subtitle processing, gesture controls, and real-time upscaling features.
 
 This project aims to optimize and upscale anime-style videos, though it can also be used as a regular video player.
+
+---
+
+## License
+
+> [!IMPORTANT]
+> This project is licensed under [GPL-3.0-or-later](LICENSE) and is free and open source.
+> 
+> **Any form of redistribution must remain open source, follow the same license, and retain the original author and copyright information.**
+
+---
+
+## ⚠️ Important Notice
+
+**This project is intended for learning and testing purposes only. Please do not abuse it!**
+
+We strongly oppose and do not condone any form of piracy, illegal distribution, dark web activities, or other illegal uses or behaviors.
+
+- Any consequences arising from the use of this project (including but not limited to illegal purposes, account restrictions, or other losses) shall be borne by the user personally and have nothing to do with [me](https://github.com/azxcvn). I am not responsible.
+- This project is **free and open source**, and the author has not obtained any economic benefits from it.
+- This project does not bypass authentication mechanisms, crack paid resources, or engage in other illegal activities.
+- "哔哩哔哩" and "Bilibili" names, logos, and related graphics are registered trademarks or trademarks of Shanghai Huandian Information Technology Co., Ltd.
+- This project is an independent third-party tool and has no affiliation, cooperation, authorization, or endorsement with Bilibili or its affiliated companies.
+- Content obtained using this project is copyrighted by the original rights holders. Please comply with relevant laws, regulations, and platform service agreements.
+- If there is any infringement, please feel free to [contact](https://github.com/azxcvn) for resolution.
+
+---
 
 ## Screenshots
 
@@ -34,6 +61,13 @@ This project aims to optimize and upscale anime-style videos, though it can also
 
 - **Video Playback**: Support for mainstream video formats (MP4, MKV, AVI, etc.)
 - **Bilibili Bangumi Support**: Login to Bilibili account, stream bangumi online (see [Login Implementation](docs/bilibili_login.md) and [Bangumi Parsing Principle](docs/bilibili_bangumi.md))
+- **Bilibili Video/Bangumi Download**: Download Bilibili videos and bangumi to local storage (see [Download Implementation Principle](docs/bilibili_download_principle.md))
+  - Support for full URLs, short links (b23.tv), and text-embedded share links
+  - Automatic video information parsing, support for multi-episode bangumi selection
+  - Automatic audio-video merging into MP4 format
+  - Support for pause, resume, and cancel downloads
+  - Real-time download progress display
+  - ⚠️ **For personal learning use only, commercial use is strictly prohibited**
 - **WebDAV Network Storage**: Connect to WebDAV servers and stream cloud-hosted videos directly (see [WebDAV Usage Guide](docs/webdav使用说明.md))
 - **Playlist Management**: Automatic folder scanning, video sorting and categorization
 - **Subtitle Handling**: Built-in subtitle parsing, external subtitle import, subtitle position and size adjustment
@@ -48,28 +82,28 @@ This project aims to optimize and upscale anime-style videos, though it can also
     - Automatically includes login cookies to access premium danmaku
   - Customizable danmaku styles (size, speed, transparency, stroke, etc.)
   - Danmaku track management, show/hide different types of danmaku
-  - Auto-save danmaku files and display states
+  - Auto-remember danmaku files and display status
   - High refresh rate screen adaptation (supports 90Hz/120Hz/144Hz)
-  - Danmaku synchronization with video progress, supports chapter jumping
+  - Danmaku synchronized with video progress, supports chapter jumping
 - **Gesture Controls**:
   - Left swipe: Adjust brightness
   - Right swipe: Adjust volume
   - Horizontal swipe: Fast forward/rewind
   - Double tap: Pause/play
-  - Long press: Speed up playback
+  - Long press: Speed playback
   - Progress bar drag: Precise positioning
-- **Playback Controls**: Fast forward/rewind, speed control, subtitle delay adjustment
-- **Super-Resolution**: Integrated Anime4K for real-time video upscaling
-- **Resume Playback**: Automatically saves playback progress and resumes from where you left off
-- **Screenshot**: Support for video screenshot capture
+- **Playback Controls**: Fast forward/rewind, speed playback, subtitle delay adjustment
+- **Super Resolution**: Integrated Anime4K, supports real-time video upscaling
+- **Playback Progress Resume**: Automatically save playback progress, resume on next open
+- **Screenshot Feature**: Support for video screenshot saving
 
 ## Technical Architecture
 
-- **Video Engine**: libmpv (Open-source multimedia player library)
+- **Video Engine**: libmpv (open-source multimedia player library)
 - **UI Framework**: Android AppCompat
-- **Programming Language**: Kotlin + Java
+- **Programming Languages**: Kotlin + Java
 - **Minimum SDK**: 26 (Android 8.0)
-- **Compile SDK**: 34 (Android 14)
+- **Target SDK**: 34 (Android 14)
 
 ## Planned Features
 
@@ -113,6 +147,9 @@ This project would not be possible without the support of the following open-sou
 - **[the1812/Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved)**  
   Bilibili enhancement script, referenced concurrent optimization strategies and API calling methods for danmaku downloads
 
+- **[btjawa/BiliTools](https://github.com/btjawa/BiliTools)**  
+  Referenced the implementation principles of video/bangumi download from this project
+
 - **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
   Provides Android WebDAV client implementation, supporting file browsing, uploading, and downloading operations
 
@@ -127,11 +164,14 @@ Thanks to all the above open-source projects and developers for their selfless c
 
 This application uses public APIs from the following third-party services:
 
-- **Bilibili** - For login, parsing bangumi links for online streaming, and downloading danmaku
+- **Bilibili** - For login, parsing bangumi links for online streaming, downloading danmaku, and downloading videos/bangumi
   - Login API: `https://passport.bilibili.com/x/passport-login/web/qrcode/*`
   - Bangumi Info API: `https://api.bilibili.com/pgc/view/web/season`
   - Bangumi Playback API: `https://api.bilibili.com/pgc/player/web/playurl`
   - Danmaku Download API: `https://api.bilibili.com/x/v1/dm/list.so`
+  - Video Info API: `https://api.bilibili.com/x/web-interface/view`
+  - Video Download API: `https://api.bilibili.com/x/player/playurl`
+  - Bangumi Download API: `https://api.bilibili.com/pgc/player/web/playurl`
   - Usage Scenarios:
     - User actively scans QR code to login to Bilibili account
     - User inputs bangumi link to watch online bangumi
@@ -164,10 +204,21 @@ This application highly values user privacy protection. Here is our statement:
 - Download features are entirely **user-initiated**
 - Data is only stored locally, **not synced or backed up to cloud**
 
+### Video/Bangumi Download Feature
+- ⚠️ **Important Reminder**: The video download feature is **for personal learning and technical exchange only**
+- Downloaded video content is **copyrighted by the original authors**, please delete within 24 hours after download
+- **Commercial use is strictly prohibited**, including but not limited to:
+  - Redistribution, resale, watermark removal and re-upload
+  - Commercial screening, advertising profit
+  - Any behavior that infringes on copyright owners' rights
+- **Legal liability arising from the use of the download feature is borne by the user**, and has nothing to do with this project
+- This project is not responsible for the abuse of the download feature, please comply with relevant laws and regulations
+- It is recommended to only download content you own the copyright to or have created, respecting the labor of UP主 and copyright owners
+
 ### Permission Statement
 The app only requests the following necessary permissions:
 - **Storage Permission**: Read and save local videos, subtitles, and danmaku files
-- **Network Permission**: For Bilibili bangumi online streaming and danmaku downloads (user-initiated)
+- **Network Permission**: For Bilibili bangumi online streaming, video/bangumi downloads, and danmaku downloads (user-initiated)
 
 ### Open Source Transparency
 - ✅ Project is **completely open source**, all code is publicly auditable
@@ -207,5 +258,3 @@ If you encounter any issues or have suggestions, please feel free to report them
 ---
 
 **Last Updated:** 2025-11-16
-
-**[中文版本](README.md) | [English Version](README_EN.md)**

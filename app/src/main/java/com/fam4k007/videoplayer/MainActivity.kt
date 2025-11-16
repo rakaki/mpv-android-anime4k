@@ -15,6 +15,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
+        
+        // 检查用户是否已同意协议
+        if (!UserAgreementActivity.isAgreed(this)) {
+            // 未同意，跳转到协议页面
+            val intent = Intent(this, UserAgreementActivity::class.java)
+            startActivity(intent)
+            finish()
+            return
+        }
+        
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
