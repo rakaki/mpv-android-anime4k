@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -25,12 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.request.videoFramePercent
 import com.fam4k007.videoplayer.PlaybackHistoryManager
 import com.fam4k007.videoplayer.compose.SettingsColors as SettingsPalette
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -205,9 +204,10 @@ private fun HistoryCard(
                     .background(SettingsPalette.IconContainer),
                 contentAlignment = Alignment.Center
             ) {
-                // 直接从视频 URI 提取缩略图
+                // 直接从视频 URI 提取缩略图，传入播放位置
                 VideoThumbnail(
                     videoUri = item.uri,
+                    positionMs = item.position,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -307,30 +307,77 @@ private fun formatTimestamp(timestampMs: Long): String {
 }
 
 /**
- * 视频缩略图组件 - 使用 Coil 的 videoFramePercent 加载视频帧
- * 参照 DanDanPlay 的实现
+ * 视频缩略图组件 - 使用 MediaMetadataRetriever 手动提取视频帧
+ * 更可靠，支持所有视频格式
  */
 @Composable
 private fun VideoThumbnail(
     videoUri: String,
+    positionMs: Long,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     
-    // 将 URI 字符串转换为 Uri 对象
-    val uri = remember(videoUri) { Uri.parse(videoUri) }
+    // 使用 produceState 异步加载视频帧
+    val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, videoUri, positionMs) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                val retriever = android.media.MediaMetadataRetriever()
+                
+                // 解析并设置数据源
+                val uri = Uri.parse(videoUri)
+                when {
+                    uri.scheme == "content" -> {
+                        retriever.setDataSource(context, uri)
+                    }
+                    uri.scheme == "file" -> {
+                        retriever.setDataSource(uri.path)
+                    }
+                    else -> {
+                        retriever.setDataSource(videoUri)
+                    }
+                }
+                
+                // ⭐ 提取指定位置的视频帧（微秒）
+                val frameTimeMicros = positionMs * 1000L
+                android.util.Log.d("VideoThumbnail", "提取视频帧: URI=$videoUri, 位置=${positionMs}ms, 微秒=$frameTimeMicros")
+                
+                val frame = retriever.getFrameAtTime(
+                    frameTimeMicros,
+                    android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                )
+                
+                retriever.release()
+                
+                if (frame != null) {
+                    android.util.Log.d("VideoThumbnail", "视频帧提取成功: ${frame.width}x${frame.height}")
+                } else {
+                    android.util.Log.e("VideoThumbnail", "视频帧提取失败: getFrameAtTime返回null")
+                }
+                
+                frame
+            } catch (e: Exception) {
+                android.util.Log.e("VideoThumbnail", "视频帧提取异常: ${e.message}", e)
+                null
+            }
+        }
+    }
     
-    AsyncImage(
-        model = ImageRequest.Builder(context)
-            .data(uri)
-            .diskCachePolicy(CachePolicy.ENABLED)  // 启用缓存以提高性能
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .videoFramePercent(0.1)  // 提取视频10%位置的帧
-            .crossfade(true)
-            .build(),
-        contentDescription = null,
-        modifier = modifier,
-        contentScale = ContentScale.Crop,
-        error = painterResource(android.R.drawable.ic_media_play)  // 加载失败时显示播放图标
-    )
+    // 显示提取的帧或占位图
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap!!.asImageBitmap(),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        // 加载中或失败时显示占位图
+        Icon(
+            painter = painterResource(android.R.drawable.ic_media_play),
+            contentDescription = null,
+            modifier = modifier.padding(20.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        )
+    }
 }

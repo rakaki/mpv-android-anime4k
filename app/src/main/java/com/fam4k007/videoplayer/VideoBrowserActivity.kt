@@ -108,11 +108,10 @@ class VideoBrowserActivity : AppCompatActivity() {
             requestStoragePermission()
         }
 
-        // 设置下拉刷新动画（无实际刷新，仅动画，延长时间）
+        // 设置下拉刷新：执行实际的重新扫描
         binding.swipeRefreshLayout.setOnRefreshListener {
-            binding.swipeRefreshLayout.postDelayed({
-                binding.swipeRefreshLayout.isRefreshing = false
-            }, 800)
+            Log.d(TAG, "用户下拉刷新，重新扫描视频")
+            scanVideoFiles()
         }
         binding.swipeRefreshLayout.setColorSchemeResources(
             R.color.primary,
@@ -247,6 +246,13 @@ class VideoBrowserActivity : AppCompatActivity() {
                             // 检查文件路径是否在包含 .nomedia 的文件夹中
                             if (NoMediaChecker.fileInNoMediaFolder(path)) {
                                 Log.d(TAG, "跳过 .nomedia 文件夹中的视频: $path")
+                                continue
+                            }
+
+                            // ⭐ 关键修复：验证文件是否真实存在
+                            val file = java.io.File(path)
+                            if (!file.exists()) {
+                                Log.d(TAG, "跳过不存在的文件: $path")
                                 continue
                             }
 
@@ -473,5 +479,34 @@ class VideoBrowserActivity : AppCompatActivity() {
     override fun onBackPressed() {
         super.onBackPressed()
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+    }
+    
+    /**
+     * 清理MediaStore中已删除文件的缓存记录（可选功能）
+     * 在设置中或长按刷新按钮时调用
+     */
+    private fun cleanupMediaStore() {
+        lifecycleScope.launch {
+            try {
+                binding.swipeRefreshLayout.isRefreshing = true
+                
+                val deletedCount = withContext(Dispatchers.IO) {
+                    com.fam4k007.videoplayer.utils.MediaStoreSync.cleanupDeletedFiles(this@VideoBrowserActivity)
+                }
+                
+                DialogUtils.showToastShort(
+                    this@VideoBrowserActivity, 
+                    "已清理 $deletedCount 条无效记录"
+                )
+                
+                // 清理后重新扫描
+                scanVideoFiles()
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "清理MediaStore失败", e)
+                binding.swipeRefreshLayout.isRefreshing = false
+                DialogUtils.showToastShort(this@VideoBrowserActivity, "清理失败: ${e.message}")
+            }
+        }
     }
 }

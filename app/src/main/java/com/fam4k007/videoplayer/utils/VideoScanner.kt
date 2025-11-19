@@ -56,6 +56,13 @@ object VideoScanner {
                         continue
                     }
                     
+                    // ⭐ 关键修复：验证文件是否真实存在
+                    val file = java.io.File(path)
+                    if (!file.exists()) {
+                        android.util.Log.d("VideoScanner", "跳过不存在的文件: $path")
+                        continue
+                    }
+                    
                     val folder = path.substringBeforeLast('/')
                     videos.add(VideoItem(name, path, folder))
                 }
@@ -113,6 +120,13 @@ object VideoScanner {
                 // 检查文件路径是否在包含 .nomedia 的文件夹中
                 if (NoMediaChecker.fileInNoMediaFolder(path)) {
                     android.util.Log.d("VideoScanner", "跳过 .nomedia 文件夹中的视频: $path")
+                    continue
+                }
+                
+                // ⭐ 关键修复：验证文件是否真实存在
+                val file = java.io.File(path)
+                if (!file.exists()) {
+                    android.util.Log.d("VideoScanner", "跳过不存在的文件: $path")
                     continue
                 }
                 
