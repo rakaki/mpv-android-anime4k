@@ -124,6 +124,7 @@ fun HomeScreen(
             isExpanded = isExpanded,
             onToggle = { isExpanded = !isExpanded },
             onBiliBiliClick = {
+                isExpanded = false  // 点击后自动收起
                 context.startActivity(Intent(context, BiliBiliPlayActivity::class.java))
                 (context as? android.app.Activity)?.overridePendingTransition(
                     R.anim.scale_in,
@@ -131,6 +132,7 @@ fun HomeScreen(
                 )
             },
             onWebDavClick = {
+                isExpanded = false  // 点击后自动收起
                 if (WebDavConfig.isConfigured(context)) {
                     context.startActivity(Intent(context, WebDavBrowserActivity::class.java))
                     (context as? android.app.Activity)?.overridePendingTransition(

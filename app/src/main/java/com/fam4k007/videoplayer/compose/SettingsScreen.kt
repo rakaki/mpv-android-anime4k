@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fam4k007.videoplayer.*
 import com.fam4k007.videoplayer.R
+import com.fam4k007.videoplayer.bilibili.auth.BiliBiliAuthManager
 import com.fam4k007.videoplayer.utils.ThemeManager
 import com.fam4k007.videoplayer.compose.SettingsColors as SettingsPalette
 
@@ -36,6 +37,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val authManager = remember { BiliBiliAuthManager.getInstance(context) }
     val currentTheme = remember { mutableStateOf(ThemeManager.getCurrentTheme(context)) }
     var showThemeDialog by remember { mutableStateOf(false) }
     
@@ -116,11 +118,19 @@ fun SettingsScreen(
                     title = "哔哩哔哩弹幕下载",
                     subtitle = "下载B站视频弹幕",
                     onClick = {
-                        context.startActivity(Intent(context, BiliBiliDanmakuComposeActivity::class.java))
-                        (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.slide_in_bottom,
-                            R.anim.no_anim
-                        )
+                        if (authManager.isLoggedIn()) {
+                            context.startActivity(Intent(context, BiliBiliDanmakuComposeActivity::class.java))
+                            (context as? android.app.Activity)?.overridePendingTransition(
+                                R.anim.slide_in_bottom,
+                                R.anim.no_anim
+                            )
+                        } else {
+                            android.widget.Toast.makeText(
+                                context,
+                                "请先在主页左上角登录哔哩哔哩账号",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 )
             }
@@ -136,11 +146,19 @@ fun SettingsScreen(
                     title = "哔哩哔哩视频下载",
                     subtitle = "下载B站视频/番剧",
                     onClick = {
-                        context.startActivity(Intent(context, DownloadActivity::class.java))
-                        (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.slide_in_right,
-                            R.anim.slide_out_left
-                        )
+                        if (authManager.isLoggedIn()) {
+                            context.startActivity(Intent(context, DownloadActivity::class.java))
+                            (context as? android.app.Activity)?.overridePendingTransition(
+                                R.anim.slide_in_right,
+                                R.anim.slide_out_left
+                            )
+                        } else {
+                            android.widget.Toast.makeText(
+                                context,
+                                "请先在主页左上角登录哔哩哔哩账号",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 )
             }
