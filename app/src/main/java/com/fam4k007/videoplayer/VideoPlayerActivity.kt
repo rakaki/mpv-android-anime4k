@@ -394,7 +394,12 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
                 
                 override fun onSingleTap() {
-                    controlsManager?.toggleControls()
+                    // 如果处于锁定状态，切换解锁按钮显示
+                    if (controlsManager?.isLocked == true) {
+                        controlsManager?.toggleUnlockButtonVisibility()
+                    } else {
+                        controlsManager?.toggleControls()
+                    }
                 }
                 
                 override fun onDoubleTap() {

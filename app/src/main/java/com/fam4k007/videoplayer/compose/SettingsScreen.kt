@@ -125,6 +125,26 @@ fun SettingsScreen(
                 )
             }
             
+            // 下载分组
+            item {
+                SettingsSectionHeader(title = "下载")
+            }
+            
+            item {
+                SettingsCard(
+                    icon = Icons.Default.Download,
+                    title = "哔哩哔哩视频下载",
+                    subtitle = "下载B站视频/番剧",
+                    onClick = {
+                        context.startActivity(Intent(context, DownloadActivity::class.java))
+                        (context as? android.app.Activity)?.overridePendingTransition(
+                            R.anim.slide_in_right,
+                            R.anim.slide_out_left
+                        )
+                    }
+                )
+            }
+            
             // 其他设置分组
             item {
                 SettingsSectionHeader(title = "其他")

@@ -89,6 +89,7 @@ class PlayerControlsManager(
     private var hasActivePopup = false  // 记录是否有弹窗显示
     var isLocked = false  // 新增：锁定状态
         private set
+    private var isUnlockButtonVisible = true  // 新增：解锁按钮可见状态
     
     // Handler（使用 WeakReference）
     private val handler = Handler(Looper.getMainLooper())
@@ -99,6 +100,21 @@ class PlayerControlsManager(
         override fun run() {
             updateTime()
             handler.postDelayed(this, 60000) // 每分钟更新
+        }
+    }
+    private val hideUnlockButtonRunnable = Runnable {
+        // 自动隐藏解锁按钮
+        if (isLocked && isUnlockButtonVisible) {
+            isUnlockButtonVisible = false
+            btnUnlock?.animate()
+                ?.alpha(0f)
+                ?.setDuration(300)
+                ?.setInterpolator(android.view.animation.AccelerateInterpolator())
+                ?.withEndAction {
+                    btnUnlock?.visibility = View.GONE
+                }
+                ?.start()
+            Log.d(TAG, "Unlock button auto-hidden")
         }
     }
 
@@ -524,26 +540,133 @@ class PlayerControlsManager(
     fun toggleLock() {
         isLocked = !isLocked
         if (isLocked) {
-            // 锁定：隐藏所有控制组件，只显示解锁按钮
-            topInfoPanel?.visibility = View.GONE
-            controlPanel?.visibility = View.GONE
-            btnUnlock?.visibility = View.VISIBLE
+            // 锁定：隐藏所有控制组件，显示解锁按钮
+            // 控制面板淡出
+            topInfoPanel?.animate()
+                ?.alpha(0f)
+                ?.setDuration(200)
+                ?.withEndAction {
+                    topInfoPanel?.visibility = View.GONE
+                    topInfoPanel?.alpha = 1f
+                }
+                ?.start()
+            
+            controlPanel?.animate()
+                ?.alpha(0f)
+                ?.setDuration(200)
+                ?.withEndAction {
+                    controlPanel?.visibility = View.GONE
+                    controlPanel?.alpha = 1f
+                }
+                ?.start()
+            
+            // 解锁按钮淡入
+            btnUnlock?.let { unlockBtn ->
+                unlockBtn.visibility = View.VISIBLE
+                unlockBtn.alpha = 0f
+                unlockBtn.scaleX = 0.8f
+                unlockBtn.scaleY = 0.8f
+                unlockBtn.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(300)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(1.2f))
+                    .start()
+            }
+            isUnlockButtonVisible = true
             
             // 停止自动隐藏定时器
             handler.removeCallbacks(hideControlsRunnable)
             
+            // 启动解锁按钮的自动隐藏定时器（5秒后）
+            handler.postDelayed(hideUnlockButtonRunnable, 5000)
+            
             Log.d(TAG, "Controls locked")
         } else {
             // 解锁：显示所有控制组件，隐藏解锁按钮
-            topInfoPanel?.visibility = View.VISIBLE
-            controlPanel?.visibility = View.VISIBLE
-            btnUnlock?.visibility = View.GONE
+            // 控制面板淡入
+            topInfoPanel?.let { panel ->
+                panel.visibility = View.VISIBLE
+                panel.alpha = 0f
+                panel.animate()
+                    .alpha(1f)
+                    .setDuration(300)
+                    .start()
+            }
+            
+            controlPanel?.let { panel ->
+                panel.visibility = View.VISIBLE
+                panel.alpha = 0f
+                panel.animate()
+                    .alpha(1f)
+                    .setDuration(300)
+                    .start()
+            }
+            
+            // 取消解锁按钮的自动隐藏定时器
+            handler.removeCallbacks(hideUnlockButtonRunnable)
+            
+            // 解锁按钮淡出
+            btnUnlock?.animate()
+                ?.alpha(0f)
+                ?.scaleX(0.8f)
+                ?.scaleY(0.8f)
+                ?.setDuration(200)
+                ?.withEndAction {
+                    btnUnlock?.visibility = View.GONE
+                    btnUnlock?.alpha = 1f
+                    btnUnlock?.scaleX = 1f
+                    btnUnlock?.scaleY = 1f
+                }
+                ?.start()
+            isUnlockButtonVisible = true
             
             // 重新启动自动隐藏定时器
             resetAutoHideTimer()
             
             Log.d(TAG, "Controls unlocked")
         }
+    }
+    
+    /**
+     * 切换解锁按钮的显示/隐藏（锁定状态下）
+     */
+    fun toggleUnlockButtonVisibility() {
+        if (!isLocked) return  // 只在锁定状态下有效
+        
+        // 先取消之前的自动隐藏定时器
+        handler.removeCallbacks(hideUnlockButtonRunnable)
+        
+        isUnlockButtonVisible = !isUnlockButtonVisible
+        
+        btnUnlock?.let { unlockBtn ->
+            if (isUnlockButtonVisible) {
+                // 显示：淡入动画
+                unlockBtn.visibility = View.VISIBLE
+                unlockBtn.alpha = 0f
+                unlockBtn.animate()
+                    .alpha(1f)
+                    .setDuration(300)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator())
+                    .start()
+                
+                // 启动5秒后自动隐藏
+                handler.postDelayed(hideUnlockButtonRunnable, 5000)
+            } else {
+                // 隐藏：淡出动画
+                unlockBtn.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .setInterpolator(android.view.animation.AccelerateInterpolator())
+                    .withEndAction {
+                        unlockBtn.visibility = View.GONE
+                    }
+                    .start()
+            }
+        }
+        
+        Log.d(TAG, "Unlock button visibility: $isUnlockButtonVisible")
     }
     
     /**
@@ -561,6 +684,7 @@ class PlayerControlsManager(
         
         handler.removeCallbacks(hideControlsRunnable)
         handler.removeCallbacks(timeUpdateRunnable)
+        handler.removeCallbacks(hideUnlockButtonRunnable)
         
         activityRef.get()?.let { activity ->
             batteryReceiver?.let {
