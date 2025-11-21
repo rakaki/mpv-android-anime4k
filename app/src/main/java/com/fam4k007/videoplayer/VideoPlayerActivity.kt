@@ -84,6 +84,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     private lateinit var mpvView: CustomMPVView
     private lateinit var danmakuView: com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
     private lateinit var clickArea: View
+    private lateinit var loadingIndicator: android.widget.ProgressBar
     
     private var resumeProgressPrompt: LinearLayout? = null
     private var btnResumePromptConfirm: TextView? = null
@@ -231,6 +232,7 @@ class VideoPlayerActivity : AppCompatActivity(),
         mpvView = findViewById(R.id.surfaceView)
         danmakuView = findViewById(R.id.danmakuView)
         clickArea = findViewById(R.id.clickArea)
+        loadingIndicator = findViewById(R.id.loadingIndicator)
         
         Log.d(TAG, "Initializing MPV in Activity...")
         try {
@@ -322,6 +324,15 @@ class VideoPlayerActivity : AppCompatActivity(),
                     isPlaying = true
                     controlsManager?.updatePlayPauseButton(true)
                     
+                    // 隐藏加载动画
+                    loadingIndicator.animate()
+                        .alpha(0f)
+                        .setDuration(300)
+                        .withEndAction {
+                            loadingIndicator.visibility = View.GONE
+                        }
+                        .start()
+                    
                     // 重置片头片尾跳过标记
                     skipIntroOutroManager.resetFlags()
                     
@@ -394,7 +405,12 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
                 
                 override fun onSingleTap() {
-                    controlsManager?.toggleControls()
+                    // 如果处于锁定状态，切换解锁按钮显示
+                    if (controlsManager?.isLocked == true) {
+                        controlsManager?.toggleUnlockButtonVisibility()
+                    } else {
+                        controlsManager?.toggleControls()
+                    }
                 }
                 
                 override fun onDoubleTap() {
@@ -998,6 +1014,10 @@ class VideoPlayerActivity : AppCompatActivity(),
      */
     private fun playVideo(uri: Uri) {
         videoUri = uri
+        
+        // 显示加载动画
+        loadingIndicator.visibility = View.VISIBLE
+        loadingIndicator.alpha = 1f
         
         val fileName = getFileNameFromUri(uri)
         controlsManager?.setFileName(fileName)

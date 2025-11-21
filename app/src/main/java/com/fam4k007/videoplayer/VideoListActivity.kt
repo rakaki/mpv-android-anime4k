@@ -567,6 +567,13 @@ class VideoListActivity : AppCompatActivity() {
                                     continue
                                 }
                                 
+                                // ⭐ 关键修复：验证文件是否真实存在
+                                val file = java.io.File(path)
+                                if (!file.exists()) {
+                                    Log.d(TAG, "跳过不存在的文件: $path")
+                                    continue
+                                }
+                                
                                 val uri = Uri.withAppendedPath(
                                     android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                                     id.toString()
@@ -651,6 +658,13 @@ class VideoListActivity : AppCompatActivity() {
                                 // 检查文件路径是否在包含 .nomedia 的文件夹中
                                 if (NoMediaChecker.fileInNoMediaFolder(path)) {
                                     Log.d(TAG, "跳过 .nomedia 文件夹中的视频: $path")
+                                    continue
+                                }
+                                
+                                // ⭐ 关键修复：验证文件是否真实存在
+                                val file = java.io.File(path)
+                                if (!file.exists()) {
+                                    Log.d(TAG, "跳过不存在的文件: $path")
                                     continue
                                 }
                                 

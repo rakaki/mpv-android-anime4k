@@ -236,9 +236,12 @@ class GestureHandler(
      * 处理触摸事件
      */
     fun onTouchEvent(event: MotionEvent): Boolean {
-        // 如果控制已锁定，不处理任何手势（只允许解锁按钮响应）
+        // 如果控制已锁定，只处理单击手势（用于切换解锁按钮显示），不处理其他手势
         if (controlsManagerRef?.get()?.isControlsLocked() == true) {
-            return false
+            // 锁定状态下，只让手势检测器处理单击事件
+            val result = gestureDetector.onTouchEvent(event)
+            // 不处理滑动手势的后续逻辑
+            return result
         }
         
         val result = gestureDetector.onTouchEvent(event)
@@ -502,12 +505,20 @@ class GestureHandler(
         }
         
         override fun onDoubleTap(e: MotionEvent): Boolean {
+            // 如果控制已锁定，不响应双击
+            if (controlsManagerRef?.get()?.isControlsLocked() == true) {
+                return false
+            }
             // 双击全屏响应 - 暂停/播放
             callback.onDoubleTap()
             return true
         }
         
         override fun onLongPress(e: MotionEvent) {
+            // 如果控制已锁定，不响应长按
+            if (controlsManagerRef?.get()?.isControlsLocked() == true) {
+                return
+            }
             // 长按全屏响应 - 触发倍速播放
             isLongPressing = true
             callback.onLongPress()
@@ -520,6 +531,11 @@ class GestureHandler(
             distanceY: Float
         ): Boolean {
             if (e1 == null) return false
+            
+            // 如果控制已锁定，不处理滑动手势
+            if (controlsManagerRef?.get()?.isControlsLocked() == true) {
+                return false
+            }
             
             // 使用缓存的屏幕尺寸，避免每次都调用 context.resources.displayMetrics
             val screenWidth = cachedScreenWidth

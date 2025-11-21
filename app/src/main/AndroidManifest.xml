@@ -60,7 +60,7 @@
         <activity 
             android:name=".VideoPlayerActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
-            android:screenOrientation="landscape"
+            android:screenOrientation="sensorLandscape"
             android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
             android:exported="true">
