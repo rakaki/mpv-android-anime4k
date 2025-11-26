@@ -302,6 +302,18 @@ class VideoPlayerActivity : AppCompatActivity(),
                     this@VideoPlayerActivity.duration = duration
                     controlsManager?.updateProgress(position, duration)
                     
+                    // 如果视频有进度且正在播放，强制隐藏加载动画
+                    if (position > 0.5 && isPlaying && loadingIndicator.visibility == View.VISIBLE) {
+                        Log.d(TAG, "Video has progress ($position), force hide loading")
+                        loadingIndicator.animate()
+                            .alpha(0f)
+                            .setDuration(300)
+                            .withEndAction {
+                                loadingIndicator.visibility = View.GONE
+                            }
+                            .start()
+                    }
+                    
                     // 处理片头片尾跳过
                     skipIntroOutroManager.handleSkipIntroOutro(
                         folderPath = currentFolderPath,
@@ -324,14 +336,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                     isPlaying = true
                     controlsManager?.updatePlayPauseButton(true)
                     
-                    // 隐藏加载动画
-                    loadingIndicator.animate()
-                        .alpha(0f)
-                        .setDuration(300)
-                        .withEndAction {
-                            loadingIndicator.visibility = View.GONE
-                        }
-                        .start()
+                    // 不在这里隐藏加载动画，让 onBufferingStateChanged 来控制
+                    // 因为文件加载后可能还在缓冲
                     
                     // 重置片头片尾跳过标记
                     skipIntroOutroManager.resetFlags()
@@ -357,6 +363,30 @@ class VideoPlayerActivity : AppCompatActivity(),
                 
                 override fun onError(message: String) {
                     DialogUtils.showToastLong(this@VideoPlayerActivity, message)
+                }
+                
+                override fun onBufferingStateChanged(isBuffering: Boolean) {
+                    // 根据缓冲状态显示或隐藏加载动画
+                    Log.d(TAG, "Buffering state changed: $isBuffering")
+                    
+                    if (isBuffering) {
+                        // 显示加载动画
+                        loadingIndicator.visibility = View.VISIBLE
+                        loadingIndicator.alpha = 0f
+                        loadingIndicator.animate()
+                            .alpha(1f)
+                            .setDuration(200)
+                            .start()
+                    } else {
+                        // 隐藏加载动画
+                        loadingIndicator.animate()
+                            .alpha(0f)
+                            .setDuration(300)
+                            .withEndAction {
+                                loadingIndicator.visibility = View.GONE
+                            }
+                            .start()
+                    }
                 }
                 
                 override fun onSurfaceReady() {

@@ -123,6 +123,14 @@ fun HomeScreen(
         ExpandableActionButton(
             isExpanded = isExpanded,
             onToggle = { isExpanded = !isExpanded },
+            onTVClick = {
+                isExpanded = false
+                com.fam4k007.videoplayer.tv.TVBrowserActivity.start(context)
+                (context as? android.app.Activity)?.overridePendingTransition(
+                    R.anim.slide_in_right,
+                    R.anim.slide_out_left
+                )
+            },
             onBiliBiliClick = {
                 isExpanded = false  // 点击后自动收起
                 context.startActivity(Intent(context, BiliBiliPlayActivity::class.java))
@@ -293,8 +301,16 @@ fun ExpandableActionButton(
     isExpanded: Boolean,
     onToggle: () -> Unit,
     onBiliBiliClick: () -> Unit,
-    onWebDavClick: () -> Unit
+    onWebDavClick: () -> Unit,
+    onTVClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    var localIsExpanded by remember { mutableStateOf(isExpanded) }
+    
+    LaunchedEffect(isExpanded) {
+        localIsExpanded = isExpanded
+    }
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomEnd
@@ -327,9 +343,16 @@ fun ExpandableActionButton(
                         modifier = Modifier.padding(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        // 哔哩哔哩番剧
+                        // TV浏览器（视频嗅探）
                         ActionItem(
                             icon = Icons.Default.Tv,
+                            label = "TV",
+                            onClick = onTVClick
+                        )
+                        
+                        // 哔哩哔哩番剧
+                        ActionItem(
+                            icon = Icons.Default.VideoLibrary,
                             label = "哔哩哔哩番剧",
                             onClick = onBiliBiliClick
                         )

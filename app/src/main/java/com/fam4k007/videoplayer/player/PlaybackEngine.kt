@@ -32,6 +32,7 @@ class PlaybackEngine(
         fun onEndOfFile()
         fun onError(message: String)
         fun onSurfaceReady()  // 新增：Surface准备完成回调
+        fun onBufferingStateChanged(isBuffering: Boolean)  // 新增：缓冲状态回调
     }
 
     // 播放状态
@@ -44,6 +45,12 @@ class PlaybackEngine(
     var currentSpeed: Double = 1.0
         private set
     var isHardwareDecoding: Boolean = true
+        private set
+    
+    // 缓冲状态
+    var isBuffering: Boolean = false
+        private set
+    var isSeeking: Boolean = false
         private set
     
     // 保存当前文件路径
@@ -177,6 +184,7 @@ class PlaybackEngine(
 
     /**
      * 从URL字符串加载视频（用于在线视频）
+     * 支持格式：url;{Cookie@xxx&&User-Agent@yyy&&Referer@zzz}
      */
     fun loadVideoFromUrl(urlString: String, startPosition: Double = 0.0) {
         if (!isInitialized) {
@@ -188,8 +196,18 @@ class PlaybackEngine(
             Log.d(TAG, "Loading video from URL: $urlString")
             Log.d(TAG, "Start position: $startPosition seconds")
             
+            // 解析URL和HTTP头（支持海阔视界格式）
+            val (actualUrl, httpHeaders) = parseUrlWithHeaders(urlString)
+            
             // 保存文件路径
-            currentFilePath = urlString
+            currentFilePath = actualUrl
+            
+            // 设置HTTP头
+            if (httpHeaders.isNotEmpty()) {
+                val headerString = httpHeaders.joinToString(",")
+                MPVLib.setOptionString("http-header-fields", headerString)
+                Log.d(TAG, "Set HTTP headers: $headerString")
+            }
             
             // 为在线视频设置必要的缓存和流选项，确保可以跳转
             // 注意：这些都是内存缓存，不占用存储空间，应用关闭后自动释放
@@ -199,8 +217,8 @@ class PlaybackEngine(
             MPVLib.setOptionString("demuxer-seekable-cache", "yes")  // 启用可跳转缓存
             MPVLib.setOptionString("stream-buffer-size", "5M")  // 流缓冲区5MB
             
-            Log.d(TAG, "MPV loading URL: $urlString")
-            MPVLib.command("loadfile", urlString)
+            Log.d(TAG, "MPV loading URL: $actualUrl")
+            MPVLib.command("loadfile", actualUrl)
             
             // 确保视频加载后开始播放
             handler.postDelayed({
@@ -250,6 +268,49 @@ class PlaybackEngine(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load video from URL", e)
             eventCallback.onError("加载视频失败: ${e.message}")
+        }
+    }
+    
+    /**
+     * 解析URL和HTTP头信息
+     * 支持格式：url;{Cookie@xxx&&User-Agent@yyy&&Referer@zzz}
+     * @return Pair<实际URL, HTTP头列表>
+     */
+    private fun parseUrlWithHeaders(input: String): Pair<String, List<String>> {
+        if (!input.contains(";{") || !input.contains("}")) {
+            // 普通URL，没有头信息
+            return Pair(input, emptyList())
+        }
+        
+        try {
+            val parts = input.split(";{", "}")
+            if (parts.size < 2) {
+                return Pair(input, emptyList())
+            }
+            
+            val url = parts[0].trim()
+            val headersStr = parts[1]
+            
+            // 解析HTTP头：Cookie@xxx&&User-Agent@yyy
+            val headers = headersStr.split("&&").mapNotNull { header ->
+                val keyValue = header.split("@", limit = 2)
+                if (keyValue.size == 2) {
+                    val key = keyValue[0].trim()
+                    // 将全角分号转换为半角分号（海阔视界的格式）
+                    val value = keyValue[1].replace("；；", "; ").trim()
+                    "$key: $value"
+                } else {
+                    null
+                }
+            }
+            
+            Log.d(TAG, "Parsed URL: $url")
+            Log.d(TAG, "Parsed ${headers.size} HTTP headers")
+            
+            return Pair(url, headers)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse URL with headers: ${e.message}")
+            return Pair(input, emptyList())
         }
     }
 
@@ -473,9 +534,47 @@ class PlaybackEngine(
             if (duration > 0) {
                 eventCallback.onProgressUpdate(currentPosition, duration)
             }
+            
+            // 检查缓冲状态
+            checkBufferingState()
         } catch (e: Exception) {
             // 只记录警告,不阻塞播放
             Log.w(TAG, "Failed to update progress: ${e.message}")
+        }
+    }
+    
+    /**
+     * 检查缓冲状态
+     */
+    private fun checkBufferingState() {
+        try {
+            // 检查是否因缓冲而暂停
+            val pausedForCache = try {
+                MPVLib.getPropertyBoolean("paused-for-cache") ?: false
+            } catch (e: Exception) {
+                false
+            }
+            
+            // 检查是否在快进
+            val seeking = try {
+                MPVLib.getPropertyBoolean("seeking") ?: false
+            } catch (e: Exception) {
+                false
+            }
+            
+            val newBufferingState = pausedForCache || seeking
+            
+            // 只在状态改变时通知
+            if (newBufferingState != isBuffering) {
+                isBuffering = newBufferingState
+                isSeeking = seeking
+                Log.d(TAG, "Buffering state changed: buffering=$isBuffering, seeking=$isSeeking")
+                handler.post {
+                    eventCallback.onBufferingStateChanged(isBuffering)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to check buffering state: ${e.message}")
         }
     }
 

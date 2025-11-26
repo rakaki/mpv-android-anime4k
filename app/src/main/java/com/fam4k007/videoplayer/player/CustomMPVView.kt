@@ -74,13 +74,17 @@ class CustomMPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context
         MPVLib.setOptionString("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         MPVLib.setOptionString("http-header-fields", "Accept: */*")
         
-        // 流媒体配置 - 改进在线视频处理
-        MPVLib.setOptionString("stream-lavf-o", "seekable=0")
+        // 流媒体配置 - 改进在线视频处理，支持HLS(m3u8)
+        MPVLib.setOptionString("stream-lavf-o", "protocol_whitelist=file,http,https,tcp,tls,crypto,hls,applehttp")
+        MPVLib.setOptionString("hls-bitrate", "max")  // HLS使用最高码率
+        MPVLib.setOptionString("http-allow-redirect", "yes")  // 允许HTTP重定向
         
-        // 缓存限制
-        val cacheMegs = 64
+        // 缓存限制 - 针对m3u8等流媒体增大缓存
+        val cacheMegs = 128  // 增大到128MB
         MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
         MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
+        MPVLib.setOptionString("cache", "yes")
+        MPVLib.setOptionString("cache-secs", "180")  // 缓存180秒（3分钟）
 
         // 默认播放速度
         MPVLib.setOptionString("speed", "1.0")
@@ -105,7 +109,7 @@ class CustomMPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context
         Log.d(TAG, "Setting up property observers")
         
         // BaseMPVView 会自动处理属性观察
-        // 如果需要观察特定属性，可以在这里添加
+        // 缓冲状态将通过 PlaybackEngine 的进度更新来检测
         
         Log.d(TAG, "Property observers initialized")
     }
