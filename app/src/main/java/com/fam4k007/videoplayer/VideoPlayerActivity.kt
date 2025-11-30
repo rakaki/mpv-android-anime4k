@@ -13,7 +13,10 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import android.view.MotionEvent
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import com.fam4k007.videoplayer.player.CustomMPVView
 import com.fam4k007.videoplayer.player.VideoAspect
 import android.widget.Button
@@ -85,6 +88,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     private lateinit var danmakuView: com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
     private lateinit var clickArea: View
     private lateinit var loadingIndicator: android.widget.ProgressBar
+    private lateinit var pauseIndicator: android.widget.ImageView
     
     private var resumeProgressPrompt: LinearLayout? = null
     private var btnResumePromptConfirm: TextView? = null
@@ -112,6 +116,9 @@ class VideoPlayerActivity : AppCompatActivity(),
     private var lastPositionForBuffering = 0.0
     private var lastPositionUpdateTime = 0L
     private var isStalledBuffering = false
+    
+    // 播放状态跟踪
+    private var previousIsPlaying = false
     
     private var seekTimeSeconds = 5
     
@@ -239,6 +246,20 @@ class VideoPlayerActivity : AppCompatActivity(),
         clickArea = findViewById(R.id.clickArea)
         loadingIndicator = findViewById(R.id.loadingIndicator)
         
+        // 初始化暂停指示器
+        pauseIndicator = ImageView(this).apply {
+            setImageResource(R.drawable.media)  // 使用提供的media.png图标
+            visibility = View.GONE
+            alpha = 1f
+            setColorFilter(android.graphics.Color.WHITE)  // 设置图标为白色
+        }
+        // 添加到根布局中央
+        (findViewById(android.R.id.content) as ViewGroup)?.addView(pauseIndicator, FrameLayout.LayoutParams(
+            200,  // 固定宽度200px
+            200,  // 固定高度200px
+            Gravity.CENTER
+        ))
+        
         Log.d(TAG, "Initializing MPV in Activity...")
         try {
             // 总是调用 initialize，CustomMPVView 内部会处理重复初始化的保护
@@ -306,6 +327,18 @@ class VideoPlayerActivity : AppCompatActivity(),
                     this@VideoPlayerActivity.currentPosition = position
                     this@VideoPlayerActivity.duration = duration
                     controlsManager?.updateProgress(position, duration)
+                    
+                    // 检测播放状态变化，显示/隐藏暂停指示器
+                    if (isPlaying != previousIsPlaying) {
+                        if (!isPlaying) {
+                            // 暂停，显示暂停指示器
+                            showPauseIndicator()
+                        } else {
+                            // 播放，隐藏暂停指示器
+                            hidePauseIndicator()
+                        }
+                        previousIsPlaying = isPlaying
+                    }
                     
                     // 检测播放停顿缓冲
                     val currentTime = System.currentTimeMillis()
@@ -726,7 +759,7 @@ class VideoPlayerActivity : AppCompatActivity(),
         // 设置controlsManager引用到gestureHandler，用于检查锁定状态
         gestureHandler.setControlsManager(controlsManager)
         
-        clickArea.setOnTouchListener { _, event ->
+        clickArea.setOnTouchListener { v: View, event: MotionEvent ->
             gestureHandler.onTouchEvent(event)
         }
         
@@ -1255,6 +1288,35 @@ class VideoPlayerActivity : AppCompatActivity(),
             )
             Log.d(TAG, "Danmaku visibility updated in history: $visible")
         }
+    }
+    
+    /**
+     * 显示暂停指示器（淡入动画）
+     */
+    private fun showPauseIndicator() {
+        pauseIndicator.apply {
+            visibility = View.VISIBLE
+            alpha = 0f
+            translationY = 0f  // 位置居中
+            animate()
+                .alpha(1f)
+                .setDuration(200)  // 与淡出速度一致
+                .start()
+        }
+    }
+    
+    /**
+     * 隐藏暂停指示器（快速淡出）
+     */
+    private fun hidePauseIndicator() {
+        pauseIndicator.animate()
+            .alpha(0f)
+            .setDuration(200)  // 加快淡出速度
+            .withEndAction {
+                pauseIndicator.visibility = View.GONE
+                pauseIndicator.translationY = -200f  // 重置位置
+            }
+            .start()
     }
     
     override fun onScreenshot() {
