@@ -599,7 +599,7 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentBottom="true"
         android:layout_marginStart="20dp"
-        android:layout_marginBottom="100dp"
+        android:layout_marginBottom="130dp"
         android:orientation="horizontal"
         android:background="@drawable/resume_prompt_background"
         android:paddingVertical="6dp"
@@ -627,7 +627,7 @@
             android:id="@+id/tvResumePromptText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="从上次停止的位置继续"
+            android:text="已为您恢复上次播放进度"
             android:textColor="#FFFFFF"
             android:textSize="12sp"
             android:layout_marginEnd="10dp" />
