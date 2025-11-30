@@ -31,6 +31,15 @@ object UrlDetector {
         ".webp", ".svg", ".woff", ".woff2", ".ttf", ".apk"
     )
     
+    // 视频路径关键词（用于检测动态URL）
+    private val videoPathKeywords = listOf(
+        "/video/", "/play/", "/stream/", "/media/", "/vod/", "/movie/",
+        "/tv/", "/anime/", "/film/", "/clip/", "/episode/"
+    )
+    
+    // 视频参数关键词
+    private val videoParamKeywords = listOf("video", "url", "src", "source", "stream")
+    
     // 明确排除的URL模式
     private val excludePatterns = listOf(
         ".mp4.jpg", ".mp4.png", ".mp4.webp",  // 视频缩略图
@@ -47,7 +56,7 @@ object UrlDetector {
         
         // 检查是否明确排除
         for (pattern in excludePatterns) {
-            if (url.contains(pattern)) {
+            if (url.contains(pattern, ignoreCase = true)) {
                 return false
             }
         }
@@ -77,6 +86,30 @@ object UrlDetector {
             if (url.contains(ext, ignoreCase = true)) {
                 Log.d(TAG, "Detected video by extension: $ext in $url")
                 return true
+            }
+        }
+        
+        // 检查路径关键词（用于动态URL检测）
+        for (keyword in videoPathKeywords) {
+            if (pathUrl.contains(keyword, ignoreCase = true)) {
+                // 进一步检查：确保不是JS/CSS等资源
+                val hasMediaExt = videoExtensions.any { pathUrl.contains(it, ignoreCase = true) } ||
+                                 audioExtensions.any { pathUrl.contains(it, ignoreCase = true) }
+                if (!hasMediaExt) {
+                    Log.d(TAG, "Detected video by path keyword: $keyword in $url")
+                    return true
+                }
+            }
+        }
+        
+        // 检查URL参数（有些网站通过参数传递视频信息）
+        val queryParams = url.split("?").getOrNull(1)
+        if (queryParams != null) {
+            for (keyword in videoParamKeywords) {
+                if (queryParams.contains("$keyword=", ignoreCase = true)) {
+                    Log.d(TAG, "Detected video by param keyword: $keyword in $url")
+                    return true
+                }
             }
         }
         

@@ -432,26 +432,119 @@ private fun WebView.setupWebView(
  * 1. .m3u8 流媒体格式（通常是清晰度最高的）
  * 2. .mp4 格式
  * 3. 其他视频格式
- * 4. URL最长的（通常包含更多参数，可能是真实视频地址）
+ * 在相同格式内，按质量评分选择最佳
  */
 private fun selectBestVideo(videos: List<DetectedVideo>): DetectedVideo {
     if (videos.isEmpty()) return videos.first()
     if (videos.size == 1) return videos.first()
-    
+
     // 优先选择m3u8
     val m3u8Videos = videos.filter { it.url.contains(".m3u8", ignoreCase = true) }
     if (m3u8Videos.isNotEmpty()) {
-        return m3u8Videos.maxByOrNull { it.url.length } ?: m3u8Videos.first()
+        return selectBestInGroup(m3u8Videos)
     }
-    
+
     // 其次选择mp4
     val mp4Videos = videos.filter { it.url.contains(".mp4", ignoreCase = true) }
     if (mp4Videos.isNotEmpty()) {
-        return mp4Videos.maxByOrNull { it.url.length } ?: mp4Videos.first()
+        return selectBestInGroup(mp4Videos)
     }
-    
-    // 最后选择URL最长的
-    return videos.maxByOrNull { it.url.length } ?: videos.first()
+
+    // 最后选择其他格式
+    return selectBestInGroup(videos)
+}
+
+/**
+ * 在视频组内选择最佳的（按质量评分）
+ */
+private fun selectBestInGroup(videos: List<DetectedVideo>): DetectedVideo {
+    if (videos.size == 1) return videos.first()
+
+    // 计算每个视频的质量评分
+    val scoredVideos = videos.map { video ->
+        val score = calculateQualityScore(video.url)
+        Pair(video, score)
+    }
+
+    // 按评分降序，评分相同时按URL长度降序
+    return scoredVideos.sortedWith(compareByDescending<Pair<DetectedVideo, Int>> { it.second }.thenByDescending { it.first.url.length })
+        .first().first
+}
+
+/**
+ * 计算视频URL的质量评分
+ * 基于URL中的质量关键词
+ */
+private fun calculateQualityScore(url: String): Int {
+    val lowerUrl = url.lowercase()
+
+    // 高质量关键词（高分）
+    val highQualityKeywords = listOf(
+        "1080p", "1080", "4k", "2160p", "2160", "uhd",
+        "hd", "high", "best", "master", "premium", "vip"
+    )
+
+    // 中等质量关键词
+    val mediumQualityKeywords = listOf(
+        "720p", "720", "fhd", "fullhd"
+    )
+
+    // 低质量关键词（低分）
+    val lowQualityKeywords = listOf(
+        "360p", "360", "480p", "480", "sd", "low", "mobile"
+    )
+
+    var score = 0
+
+    // 检查高质量关键词
+    for (keyword in highQualityKeywords) {
+        if (lowerUrl.contains(keyword)) {
+            score += 10
+        }
+    }
+
+    // 检查中等质量关键词
+    for (keyword in mediumQualityKeywords) {
+        if (lowerUrl.contains(keyword)) {
+            score += 5
+        }
+    }
+
+    // 检查低质量关键词（降低分数）
+    for (keyword in lowQualityKeywords) {
+        if (lowerUrl.contains(keyword)) {
+            score -= 5
+        }
+    }
+
+    // 降低重定向/包装URL的分数
+    if (lowerUrl.contains("php?") || lowerUrl.contains("?url=") || lowerUrl.contains("redirect")) {
+        score -= 10  // 大幅降低重定向URL分数
+    }
+
+    // 如果URL包含数字分辨率，尝试解析
+    val resolutionPattern = Regex("(\\d{3,4})p")
+    val match = resolutionPattern.find(lowerUrl)
+    if (match != null) {
+        val res = match.groupValues[1].toIntOrNull()
+        if (res != null) {
+            // 按分辨率给分：1080p=10, 720p=7, 480p=4, 360p=3
+            score += when {
+                res >= 1080 -> 10
+                res >= 720 -> 7
+                res >= 480 -> 4
+                res >= 360 -> 3
+                else -> 1
+            }
+        }
+    }
+
+    // 如果没有质量标识，给予基础分数（避免0分）
+    if (score == 0) {
+        score = 1
+    }
+
+    return score
 }
 
 /**

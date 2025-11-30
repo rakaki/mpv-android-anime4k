@@ -562,13 +562,23 @@ class PlaybackEngine(
                 false
             }
             
-            val newBufferingState = pausedForCache || seeking
+            // 检查缓存时长（针对流媒体）
+            val cacheDuration = try {
+                MPVLib.getPropertyDouble("demuxer-cache-duration") ?: 0.0
+            } catch (e: Exception) {
+                0.0
+            }
+            
+            // 如果缓存时长小于10秒，认为是缓冲状态
+            val lowCache = cacheDuration < 10.0
+            
+            val newBufferingState = pausedForCache  // 移除seeking，只基于缓存暂停状态 || lowCache
             
             // 只在状态改变时通知
             if (newBufferingState != isBuffering) {
                 isBuffering = newBufferingState
                 isSeeking = seeking
-                Log.d(TAG, "Buffering state changed: buffering=$isBuffering, seeking=$isSeeking")
+                Log.d(TAG, "Buffering state changed: buffering=$isBuffering, seeking=$isSeeking, cacheDuration=$cacheDuration")
                 handler.post {
                     eventCallback.onBufferingStateChanged(isBuffering)
                 }

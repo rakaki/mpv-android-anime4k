@@ -108,6 +108,11 @@ class VideoPlayerActivity : AppCompatActivity(),
     
     private var currentVideoAspect = VideoAspect.FIT  // 当前画面比例模式
     
+    // 缓冲检测相关变量
+    private var lastPositionForBuffering = 0.0
+    private var lastPositionUpdateTime = 0L
+    private var isStalledBuffering = false
+    
     private var seekTimeSeconds = 5
     
     private var currentSeries: List<Uri> = emptyList()
@@ -302,16 +307,28 @@ class VideoPlayerActivity : AppCompatActivity(),
                     this@VideoPlayerActivity.duration = duration
                     controlsManager?.updateProgress(position, duration)
                     
-                    // 如果视频有进度且正在播放，强制隐藏加载动画
-                    if (position > 0.5 && isPlaying && loadingIndicator.visibility == View.VISIBLE) {
-                        Log.d(TAG, "Video has progress ($position), force hide loading")
-                        loadingIndicator.animate()
-                            .alpha(0f)
-                            .setDuration(300)
-                            .withEndAction {
-                                loadingIndicator.visibility = View.GONE
-                            }
-                            .start()
+                    // 检测播放停顿缓冲
+                    val currentTime = System.currentTimeMillis()
+                    if (position != lastPositionForBuffering) {
+                        // 位置在前进，隐藏停顿缓冲
+                        if (isStalledBuffering) {
+                            isStalledBuffering = false
+                            loadingIndicator.visibility = View.GONE
+                            Log.d(TAG, "Playback resumed, hide stalled buffering indicator")
+                        }
+                        lastPositionForBuffering = position
+                        lastPositionUpdateTime = currentTime
+                    } else if (isPlaying && currentTime - lastPositionUpdateTime > 200 && !isStalledBuffering) {
+                        // 位置停顿超过0.2秒，且正在播放，显示停顿缓冲
+                        isStalledBuffering = true
+                        loadingIndicator.visibility = View.VISIBLE
+                        Log.d(TAG, "Playback stalled, show buffering indicator")
+                    }
+                    
+                    // 初始播放后隐藏加载动画（防止MPV缓冲状态延迟）
+                    if (position > 1.0 && isPlaying && loadingIndicator.visibility == View.VISIBLE && !isStalledBuffering) {
+                        loadingIndicator.visibility = View.GONE
+                        Log.d(TAG, "Initial playback started, hide loading indicator")
                     }
                     
                     // 处理片头片尾跳过
@@ -378,14 +395,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                             .setDuration(200)
                             .start()
                     } else {
-                        // 隐藏加载动画
-                        loadingIndicator.animate()
-                            .alpha(0f)
-                            .setDuration(300)
-                            .withEndAction {
-                                loadingIndicator.visibility = View.GONE
-                            }
-                            .start()
+                        // 缓冲完成时立即隐藏加载动画，不使用动画延迟
+                        loadingIndicator.visibility = View.GONE
                     }
                 }
                 
