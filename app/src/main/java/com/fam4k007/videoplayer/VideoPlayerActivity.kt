@@ -158,6 +158,15 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         setContentView(R.layout.activity_video_player)
         
+        // 确保内容不受系统栏影响，视频画面完全居中
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        // 处理刘海屏/挖孔屏，让视频延伸到刘海区域，确保横屏时完全居中
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode = 
+                android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         Log.d(TAG, "Screen keep-on enabled")
 

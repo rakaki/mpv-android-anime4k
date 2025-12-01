@@ -2,13 +2,15 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="#000000"
+    android:fitsSystemWindows="false">
 
     <com.fam4k007.videoplayer.player.CustomMPVView
         android:id="@+id/surfaceView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_centerInParent="true" />
+        android:layout_centerInParent="true"
+        android:fitsSystemWindows="false" />
 
     <!-- 弹幕视图 - 覆盖在视频播放器上方 -->
     <com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
