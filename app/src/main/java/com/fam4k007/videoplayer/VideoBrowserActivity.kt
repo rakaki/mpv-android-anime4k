@@ -140,6 +140,7 @@ class VideoBrowserActivity : AppCompatActivity() {
 
         if (hasPermission) {
             binding.permissionPrompt.visibility = View.GONE
+            binding.recyclerViewFolders.visibility = View.VISIBLE
             scanVideoFiles()
         } else {
             binding.permissionPrompt.visibility = View.VISIBLE
@@ -196,10 +197,8 @@ class VideoBrowserActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // 从设置返回后重新检查权限
-        if (binding.permissionPrompt.visibility == View.VISIBLE) {
-            checkPermissions()
-        }
+        // 从设置返回后重新检查权限（每次都检查，确保授权后立即刷新）
+        checkPermissions()
     }
 
     private fun scanVideoFiles() {
