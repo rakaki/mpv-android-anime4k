@@ -102,6 +102,44 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().putBoolean(AppConstants.Preferences.VOLUME_BOOST_ENABLED, enabled).apply()
     }
     
+    // ==================== Anime4K 超分模式记忆 ====================
+    
+    /**
+     * 获取是否启用Anime4K模式记忆
+     */
+    fun isAnime4KMemoryEnabled(): Boolean {
+        return sharedPreferences.getBoolean(
+            AppConstants.Preferences.ANIME4K_MEMORY_ENABLED,
+            false  // 默认关闭
+        )
+    }
+    
+    /**
+     * 保存Anime4K模式记忆设置
+     */
+    fun setAnime4KMemoryEnabled(enabled: Boolean) {
+        sharedPreferences.edit().putBoolean(AppConstants.Preferences.ANIME4K_MEMORY_ENABLED, enabled).apply()
+    }
+    
+    /**
+     * 获取上次使用的Anime4K模式
+     * @return 模式名称（OFF, A, B, C, A_PLUS, B_PLUS, C_PLUS）
+     */
+    fun getLastAnime4KMode(): String {
+        return sharedPreferences.getString(
+            AppConstants.Preferences.ANIME4K_LAST_MODE,
+            "OFF"  // 默认为OFF
+        ) ?: "OFF"
+    }
+    
+    /**
+     * 保存当前使用的Anime4K模式
+     * @param mode 模式名称
+     */
+    fun setLastAnime4KMode(mode: String) {
+        sharedPreferences.edit().putString(AppConstants.Preferences.ANIME4K_LAST_MODE, mode).apply()
+    }
+    
     // ==================== 播放位置（用于记忆播放进度）====================
     
     /**

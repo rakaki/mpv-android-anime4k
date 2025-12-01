@@ -20,6 +20,8 @@ object AppConstants {
         const val VOLUME_BOOST_ENABLED = "volume_boost_enabled"
         const val SEEK_TIME = "seek_time"
         const val LONG_PRESS_SPEED = "long_press_speed"
+        const val ANIME4K_MEMORY_ENABLED = "anime4k_memory_enabled"
+        const val ANIME4K_LAST_MODE = "anime4k_last_mode"
 
         // 播放历史记录 Key
         const val HISTORY_LIST = "history_list"

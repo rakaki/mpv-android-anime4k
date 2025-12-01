@@ -689,6 +689,12 @@ class VideoPlayerActivity : AppCompatActivity(),
                 anime4KMode = mode
                 anime4KQuality = quality
                 applyAnime4K()
+                
+                // 如果启用了记忆功能，保存当前模式
+                if (preferencesManager.isAnime4KMemoryEnabled()) {
+                    preferencesManager.setLastAnime4KMode(mode.name)
+                    Log.d(TAG, "Anime4K mode saved to memory: ${mode.name}")
+                }
             }
         })
         
@@ -834,11 +840,171 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
             }
             
-            // 使用协程延迟恢复字幕设置
+            // 使用协程延迟恢复字幕设置和Anime4K效果
             lifecycleScope.launch {
                 delay(500)
+                
+                Log.d(TAG, "Post-load coroutine started, isOnlineVideo=$isOnlineVideo")
+                
+                // 先尝试自动加载同名字幕（本地视频，包括content://）
+                if (!isOnlineVideo) {
+                    Log.d(TAG, "Calling autoLoadSubtitleIfExists")
+                    autoLoadSubtitleIfExists(uri)
+                } else {
+                    Log.d(TAG, "Skipping subtitle auto-load for online video")
+                }
+                
+                // 再恢复用户的字幕偏好设置（会覆盖自动加载的）
                 restoreSubtitlePreferences(uri)
+                
+                // 如果记忆的Anime4K模式已启用，在视频加载后应用shader
+                if (anime4KEnabled && anime4KMode != Anime4KManager.Mode.OFF) {
+                    delay(200) // 额外延迟确保MPV完全初始化
+                    applyAnime4K()
+                    Log.d(TAG, "Applied remembered Anime4K mode: $anime4KMode")
+                }
             }
+        }
+    }
+    
+    /**
+     * 自动加载同文件夹下的同名字幕文件
+     * 例如：movie.mp4 -> 自动查找 movie.srt, movie.ass 等
+     * 需要MANAGE_EXTERNAL_STORAGE权限才能访问所有目录
+     */
+    private fun autoLoadSubtitleIfExists(videoUri: android.net.Uri) {
+        try {
+            Log.d(TAG, "===== Auto-load subtitle start =====")
+            Log.d(TAG, "Video URI: $videoUri")
+            
+            // 检查PreferencesManager中是否已有字幕路径，如果有则跳过自动加载
+            val savedSubtitlePath = preferencesManager.getExternalSubtitle(videoUri.toString())
+            if (savedSubtitlePath != null && File(savedSubtitlePath).exists()) {
+                Log.d(TAG, "Subtitle already exists in preferences: $savedSubtitlePath, skipping auto-load")
+                return
+            }
+            
+            // 获取视频文件真实路径
+            val videoPath = getRealPathFromUri(videoUri)
+            Log.d(TAG, "Real video path: $videoPath")
+            
+            if (videoPath == null) {
+                Log.d(TAG, "Cannot get real path from URI")
+                return
+            }
+            
+            val videoFile = File(videoPath)
+            Log.d(TAG, "Video file exists: ${videoFile.exists()}, isFile: ${videoFile.isFile}")
+            
+            if (!videoFile.exists() || !videoFile.isFile) {
+                Log.d(TAG, "Video file not accessible")
+                return
+            }
+            
+            // 获取视频文件名（不含扩展名）
+            val videoNameWithoutExt = videoFile.nameWithoutExtension
+            val videoDir = videoFile.parentFile
+            
+            Log.d(TAG, "Video name without ext: $videoNameWithoutExt")
+            Log.d(TAG, "Video directory: ${videoDir?.absolutePath}")
+            
+            if (videoDir == null) {
+                Log.d(TAG, "Video directory is null")
+                return
+            }
+            
+            // 按优先级排序：ass > srt > 其他
+            val priorityExtensions = listOf("ass", "srt", "ssa", "vtt", "sub", "sbv", "json")
+            
+            // 查找同名字幕文件
+            var foundSubtitle: File? = null
+            for (ext in priorityExtensions) {
+                val subtitleFile = File(videoDir, "$videoNameWithoutExt.$ext")
+                if (subtitleFile.exists() && subtitleFile.isFile) {
+                    foundSubtitle = subtitleFile
+                    Log.d(TAG, "Found subtitle: ${subtitleFile.name}")
+                    break
+                }
+            }
+            
+            // 如果找到字幕文件，自动加载
+            if (foundSubtitle != null) {
+                val subtitlePath = foundSubtitle.absolutePath
+                Log.d(TAG, "Auto-loading subtitle: $subtitlePath")
+                
+                try {
+                    MPVLib.command("sub-add", subtitlePath, "select")
+                    Log.d(TAG, "Successfully auto-loaded subtitle: ${foundSubtitle.name}")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to auto-load subtitle", e)
+                }
+            } else {
+                Log.d(TAG, "No matching subtitle file found")
+            }
+            
+            Log.d(TAG, "===== Auto-load subtitle end =====")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in autoLoadSubtitleIfExists", e)
+        }
+    }
+    
+    /**
+     * 从content:// URI获取真实文件路径
+     * 支持媒体库URI和文件URI
+     */
+    private fun getRealPathFromUri(uri: android.net.Uri): String? {
+        return when (uri.scheme) {
+            "file" -> uri.path
+            "content" -> {
+                try {
+                    val projection = arrayOf(android.provider.MediaStore.Video.Media.DATA)
+                    contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val columnIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DATA)
+                            cursor.getString(columnIndex)
+                        } else {
+                            null
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to get real path from content URI", e)
+                    null
+                }
+            }
+            else -> null
+        }
+    }
+    
+    /**
+     * 根据文件路径查找对应的content:// URI（从MediaStore）
+     * 用于解决某些目录的权限问题
+     */
+    private fun getContentUriForFile(file: File): android.net.Uri? {
+        return try {
+            val projection = arrayOf(android.provider.MediaStore.Files.FileColumns._ID)
+            val selection = "${android.provider.MediaStore.Files.FileColumns.DATA}=?"
+            val selectionArgs = arrayOf(file.absolutePath)
+            
+            contentResolver.query(
+                android.provider.MediaStore.Files.getContentUri("external"),
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns._ID))
+                    android.content.ContentUris.withAppendedId(
+                        android.provider.MediaStore.Files.getContentUri("external"),
+                        id
+                    )
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to get content URI for file: ${file.absolutePath}", e)
+            null
         }
     }
     
@@ -1017,6 +1183,24 @@ class VideoPlayerActivity : AppCompatActivity(),
     private fun loadUserSettings() {
         seekTimeSeconds = preferencesManager.getSeekTime()
         Log.d(SEEK_DEBUG, "loadUserSettings: seekTimeSeconds loaded = $seekTimeSeconds seconds")
+        
+        // 如果启用了Anime4K记忆功能，恢复上次使用的模式
+        if (preferencesManager.isAnime4KMemoryEnabled()) {
+            val lastMode = preferencesManager.getLastAnime4KMode()
+            try {
+                anime4KMode = Anime4KManager.Mode.valueOf(lastMode)
+                // 只有非OFF模式才启用Anime4K
+                anime4KEnabled = (anime4KMode != Anime4KManager.Mode.OFF)
+                Log.d(TAG, "Anime4K mode restored from memory: $lastMode, enabled=$anime4KEnabled")
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "Invalid Anime4K mode in preferences: $lastMode", e)
+                anime4KMode = Anime4KManager.Mode.OFF
+                anime4KEnabled = false
+            }
+        } else {
+            anime4KMode = Anime4KManager.Mode.OFF
+            anime4KEnabled = false
+        }
     }
     
     /**

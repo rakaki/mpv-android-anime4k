@@ -35,6 +35,7 @@ fun PlaybackSettingsScreen(
     
     var preciseSeeking by remember { mutableStateOf(preferencesManager.isPreciseSeekingEnabled()) }
     var volumeBoost by remember { mutableStateOf(preferencesManager.isVolumeBoostEnabled()) }
+    var anime4KMemory by remember { mutableStateOf(preferencesManager.isAnime4KMemoryEnabled()) }
     var seekTime by remember { mutableIntStateOf(preferencesManager.getSeekTime()) }
     var longPressSpeed by remember { mutableFloatStateOf(preferencesManager.getLongPressSpeed()) }
     var showSeekTimeDialog by remember { mutableStateOf(false) }
@@ -116,6 +117,23 @@ fun PlaybackSettingsScreen(
                     title = "长按倍速",
                     value = String.format("%.1fx", longPressSpeed),
                     onClick = { showSpeedDialog = true }
+                )
+            }
+            
+            // 画质增强
+            item {
+                SectionHeader("画质增强")
+            }
+            
+            item {
+                SwitchSettingCard(
+                    title = "记忆超分模式",
+                    description = if (anime4KMemory) "记住上次使用的Anime4K模式" else "每次播放都从关闭状态开始",
+                    checked = anime4KMemory,
+                    onCheckedChange = {
+                        anime4KMemory = it
+                        preferencesManager.setAnime4KMemoryEnabled(it)
+                    }
                 )
             }
             

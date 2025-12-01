@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
@@ -129,13 +130,15 @@ class VideoBrowserActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_VIDEO
+        // Android 11+ 使用MANAGE_EXTERNAL_STORAGE权限（管理所有文件）
+        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
         } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            // Android 10及以下使用传统权限
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
 
-        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+        if (hasPermission) {
             binding.permissionPrompt.visibility = View.GONE
             scanVideoFiles()
         } else {
@@ -145,23 +148,22 @@ class VideoBrowserActivity : AppCompatActivity() {
     }
 
     private fun requestStoragePermission() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_VIDEO
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
-            // 用户之前拒绝过权限，显示详细说明
-            binding.tvPermissionMessage.text = "需要存储权限以浏览您的视频文件。请在设置中授予权限。"
-            binding.btnRequestPermission.text = "前往设置"
-            binding.btnRequestPermission.setOnClickListener {
-                openAppSettings()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ 请求管理所有文件权限
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+            } catch (e: Exception) {
+                // 如果上面的方式失败，使用通用设置页面
+                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                startActivity(intent)
             }
         } else {
+            // Android 10及以下使用传统权限请求
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(permission),
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
                 PERMISSION_REQUEST_CODE
             )
         }
@@ -180,6 +182,7 @@ class VideoBrowserActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // 仅用于Android 10及以下版本
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 binding.permissionPrompt.visibility = View.GONE
