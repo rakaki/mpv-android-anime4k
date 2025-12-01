@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -222,6 +223,10 @@ fun LogoSection(
             contentDescription = "继续播放",
             modifier = Modifier
                 .size(120.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(20.dp)
+                )
                 .clickable {
                     val video = historyManager.getLastPlayedLocalVideo()
                     if (video != null) {
@@ -455,6 +460,10 @@ fun IconWithBackground(
     Box(
         modifier = Modifier
             .size(40.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(10.dp)
+            )
             .clip(RoundedCornerShape(10.dp))
             .background(
                 brush = Brush.linearGradient(

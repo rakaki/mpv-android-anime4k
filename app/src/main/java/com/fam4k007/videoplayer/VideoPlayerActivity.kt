@@ -262,12 +262,15 @@ class VideoPlayerActivity : AppCompatActivity(),
             alpha = 1f
             setColorFilter(android.graphics.Color.WHITE)  // 设置图标为白色
         }
-        // 添加到根布局中央
+        // 添加到根布局右下角（距离边框约三分之一位置）
         (findViewById(android.R.id.content) as ViewGroup)?.addView(pauseIndicator, FrameLayout.LayoutParams(
-            200,  // 固定宽度200px
-            200,  // 固定高度200px
-            Gravity.CENTER
-        ))
+            250,  // 图标宽度250px
+            250,  // 图标高度250px
+            Gravity.BOTTOM or Gravity.END
+        ).apply {
+            rightMargin = 180   // 右边距180px
+            bottomMargin = 100  // 底部边距100px
+        })
         
         Log.d(TAG, "Initializing MPV in Activity...")
         try {
