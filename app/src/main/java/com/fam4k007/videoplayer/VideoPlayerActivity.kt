@@ -1296,6 +1296,23 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         playbackEngine?.loadVideo(uri, position)
         
+        // 自动加载字幕（和初始播放一样的逻辑）
+        lifecycleScope.launch {
+            delay(500)
+            
+            // 检查是否为在线视频
+            val isOnlineVideo = uri.scheme?.startsWith("http") == true
+            
+            // 本地视频自动加载同名字幕
+            if (!isOnlineVideo) {
+                Log.d(TAG, "Auto-loading subtitle for next video")
+                autoLoadSubtitleIfExists(uri)
+            }
+            
+            // 恢复字幕偏好设置
+            restoreSubtitlePreferences(uri)
+        }
+        
         updateEpisodeButtons()
     }
     
