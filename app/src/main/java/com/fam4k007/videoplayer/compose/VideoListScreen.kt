@@ -216,9 +216,10 @@ private fun VideoItem(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var thumbnailBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var thumbnailBitmap by remember(video.uri) { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     LaunchedEffect(video.uri) {
+        thumbnailBitmap = null // 立即清空旧缩略图
         lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val cacheManager = ThumbnailCacheManager.getInstance(context)
