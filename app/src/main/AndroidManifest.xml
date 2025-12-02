@@ -48,13 +48,17 @@
             android:exported="false"
             android:theme="@style/Theme.VideoPlayer" />
         <activity 
-            android:name=".VideoBrowserActivity"
+            android:name=".VideoBrowserComposeActivity"
             android:exported="false" />
         <activity 
-            android:name=".VideoListActivity"
+            android:name=".VideoListComposeActivity"
             android:exported="false" />
         <activity 
             android:name=".webdav.WebDavBrowserActivity"
+            android:exported="false"
+            android:theme="@style/Theme.VideoPlayer" />
+        <activity 
+            android:name=".tv.TVBrowserActivity"
             android:exported="false"
             android:theme="@style/Theme.VideoPlayer" />
         <activity 

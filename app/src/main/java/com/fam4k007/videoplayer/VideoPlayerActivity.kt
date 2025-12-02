@@ -13,7 +13,10 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import android.view.MotionEvent
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import com.fam4k007.videoplayer.player.CustomMPVView
 import com.fam4k007.videoplayer.player.VideoAspect
 import android.widget.Button
@@ -85,6 +88,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     private lateinit var danmakuView: com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
     private lateinit var clickArea: View
     private lateinit var loadingIndicator: android.widget.ProgressBar
+    private lateinit var pauseIndicator: android.widget.ImageView
     
     private var resumeProgressPrompt: LinearLayout? = null
     private var btnResumePromptConfirm: TextView? = null
@@ -107,6 +111,14 @@ class VideoPlayerActivity : AppCompatActivity(),
     private var isHardwareDecoding = true
     
     private var currentVideoAspect = VideoAspect.FIT  // 当前画面比例模式
+    
+    // 缓冲检测相关变量
+    private var lastPositionForBuffering = 0.0
+    private var lastPositionUpdateTime = 0L
+    private var isStalledBuffering = false
+    
+    // 播放状态跟踪
+    private var previousIsPlaying = false
     
     private var seekTimeSeconds = 5
     
@@ -145,6 +157,15 @@ class VideoPlayerActivity : AppCompatActivity(),
         super.onCreate(savedInstanceState)
         
         setContentView(R.layout.activity_video_player)
+        
+        // 确保内容不受系统栏影响，视频画面完全居中
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        // 处理刘海屏/挖孔屏，让视频延伸到刘海区域，确保横屏时完全居中
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode = 
+                android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
         
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         Log.d(TAG, "Screen keep-on enabled")
@@ -234,6 +255,23 @@ class VideoPlayerActivity : AppCompatActivity(),
         clickArea = findViewById(R.id.clickArea)
         loadingIndicator = findViewById(R.id.loadingIndicator)
         
+        // 初始化暂停指示器
+        pauseIndicator = ImageView(this).apply {
+            setImageResource(R.drawable.media)  // 使用提供的media.png图标
+            visibility = View.GONE
+            alpha = 1f
+            setColorFilter(android.graphics.Color.WHITE)  // 设置图标为白色
+        }
+        // 添加到根布局右下角（距离边框约三分之一位置）
+        (findViewById(android.R.id.content) as ViewGroup)?.addView(pauseIndicator, FrameLayout.LayoutParams(
+            250,  // 图标宽度250px
+            250,  // 图标高度250px
+            Gravity.BOTTOM or Gravity.END
+        ).apply {
+            rightMargin = 180   // 右边距180px
+            bottomMargin = 100  // 底部边距100px
+        })
+        
         Log.d(TAG, "Initializing MPV in Activity...")
         try {
             // 总是调用 initialize，CustomMPVView 内部会处理重复初始化的保护
@@ -302,6 +340,42 @@ class VideoPlayerActivity : AppCompatActivity(),
                     this@VideoPlayerActivity.duration = duration
                     controlsManager?.updateProgress(position, duration)
                     
+                    // 检测播放状态变化，显示/隐藏暂停指示器
+                    if (isPlaying != previousIsPlaying) {
+                        if (!isPlaying) {
+                            // 暂停，显示暂停指示器
+                            showPauseIndicator()
+                        } else {
+                            // 播放，隐藏暂停指示器
+                            hidePauseIndicator()
+                        }
+                        previousIsPlaying = isPlaying
+                    }
+                    
+                    // 检测播放停顿缓冲
+                    val currentTime = System.currentTimeMillis()
+                    if (position != lastPositionForBuffering) {
+                        // 位置在前进，隐藏停顿缓冲
+                        if (isStalledBuffering) {
+                            isStalledBuffering = false
+                            loadingIndicator.visibility = View.GONE
+                            Log.d(TAG, "Playback resumed, hide stalled buffering indicator")
+                        }
+                        lastPositionForBuffering = position
+                        lastPositionUpdateTime = currentTime
+                    } else if (isPlaying && currentTime - lastPositionUpdateTime > 200 && !isStalledBuffering) {
+                        // 位置停顿超过0.2秒，且正在播放，显示停顿缓冲
+                        isStalledBuffering = true
+                        loadingIndicator.visibility = View.VISIBLE
+                        Log.d(TAG, "Playback stalled, show buffering indicator")
+                    }
+                    
+                    // 初始播放后隐藏加载动画（防止MPV缓冲状态延迟）
+                    if (position > 1.0 && isPlaying && loadingIndicator.visibility == View.VISIBLE && !isStalledBuffering) {
+                        loadingIndicator.visibility = View.GONE
+                        Log.d(TAG, "Initial playback started, hide loading indicator")
+                    }
+                    
                     // 处理片头片尾跳过
                     skipIntroOutroManager.handleSkipIntroOutro(
                         folderPath = currentFolderPath,
@@ -324,14 +398,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                     isPlaying = true
                     controlsManager?.updatePlayPauseButton(true)
                     
-                    // 隐藏加载动画
-                    loadingIndicator.animate()
-                        .alpha(0f)
-                        .setDuration(300)
-                        .withEndAction {
-                            loadingIndicator.visibility = View.GONE
-                        }
-                        .start()
+                    // 不在这里隐藏加载动画，让 onBufferingStateChanged 来控制
+                    // 因为文件加载后可能还在缓冲
                     
                     // 重置片头片尾跳过标记
                     skipIntroOutroManager.resetFlags()
@@ -357,6 +425,24 @@ class VideoPlayerActivity : AppCompatActivity(),
                 
                 override fun onError(message: String) {
                     DialogUtils.showToastLong(this@VideoPlayerActivity, message)
+                }
+                
+                override fun onBufferingStateChanged(isBuffering: Boolean) {
+                    // 根据缓冲状态显示或隐藏加载动画
+                    Log.d(TAG, "Buffering state changed: $isBuffering")
+                    
+                    if (isBuffering) {
+                        // 显示加载动画
+                        loadingIndicator.visibility = View.VISIBLE
+                        loadingIndicator.alpha = 0f
+                        loadingIndicator.animate()
+                            .alpha(1f)
+                            .setDuration(200)
+                            .start()
+                    } else {
+                        // 缓冲完成时立即隐藏加载动画，不使用动画延迟
+                        loadingIndicator.visibility = View.GONE
+                    }
                 }
                 
                 override fun onSurfaceReady() {
@@ -603,6 +689,12 @@ class VideoPlayerActivity : AppCompatActivity(),
                 anime4KMode = mode
                 anime4KQuality = quality
                 applyAnime4K()
+                
+                // 如果启用了记忆功能，保存当前模式
+                if (preferencesManager.isAnime4KMemoryEnabled()) {
+                    preferencesManager.setLastAnime4KMode(mode.name)
+                    Log.d(TAG, "Anime4K mode saved to memory: ${mode.name}")
+                }
             }
         })
         
@@ -685,7 +777,7 @@ class VideoPlayerActivity : AppCompatActivity(),
         // 设置controlsManager引用到gestureHandler，用于检查锁定状态
         gestureHandler.setControlsManager(controlsManager)
         
-        clickArea.setOnTouchListener { _, event ->
+        clickArea.setOnTouchListener { v: View, event: MotionEvent ->
             gestureHandler.onTouchEvent(event)
         }
         
@@ -748,11 +840,171 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
             }
             
-            // 使用协程延迟恢复字幕设置
+            // 使用协程延迟恢复字幕设置和Anime4K效果
             lifecycleScope.launch {
                 delay(500)
+                
+                Log.d(TAG, "Post-load coroutine started, isOnlineVideo=$isOnlineVideo")
+                
+                // 先尝试自动加载同名字幕（本地视频，包括content://）
+                if (!isOnlineVideo) {
+                    Log.d(TAG, "Calling autoLoadSubtitleIfExists")
+                    autoLoadSubtitleIfExists(uri)
+                } else {
+                    Log.d(TAG, "Skipping subtitle auto-load for online video")
+                }
+                
+                // 再恢复用户的字幕偏好设置（会覆盖自动加载的）
                 restoreSubtitlePreferences(uri)
+                
+                // 如果记忆的Anime4K模式已启用，在视频加载后应用shader
+                if (anime4KEnabled && anime4KMode != Anime4KManager.Mode.OFF) {
+                    delay(200) // 额外延迟确保MPV完全初始化
+                    applyAnime4K()
+                    Log.d(TAG, "Applied remembered Anime4K mode: $anime4KMode")
+                }
             }
+        }
+    }
+    
+    /**
+     * 自动加载同文件夹下的同名字幕文件
+     * 例如：movie.mp4 -> 自动查找 movie.srt, movie.ass 等
+     * 需要MANAGE_EXTERNAL_STORAGE权限才能访问所有目录
+     */
+    private fun autoLoadSubtitleIfExists(videoUri: android.net.Uri) {
+        try {
+            Log.d(TAG, "===== Auto-load subtitle start =====")
+            Log.d(TAG, "Video URI: $videoUri")
+            
+            // 检查PreferencesManager中是否已有字幕路径，如果有则跳过自动加载
+            val savedSubtitlePath = preferencesManager.getExternalSubtitle(videoUri.toString())
+            if (savedSubtitlePath != null && File(savedSubtitlePath).exists()) {
+                Log.d(TAG, "Subtitle already exists in preferences: $savedSubtitlePath, skipping auto-load")
+                return
+            }
+            
+            // 获取视频文件真实路径
+            val videoPath = getRealPathFromUri(videoUri)
+            Log.d(TAG, "Real video path: $videoPath")
+            
+            if (videoPath == null) {
+                Log.d(TAG, "Cannot get real path from URI")
+                return
+            }
+            
+            val videoFile = File(videoPath)
+            Log.d(TAG, "Video file exists: ${videoFile.exists()}, isFile: ${videoFile.isFile}")
+            
+            if (!videoFile.exists() || !videoFile.isFile) {
+                Log.d(TAG, "Video file not accessible")
+                return
+            }
+            
+            // 获取视频文件名（不含扩展名）
+            val videoNameWithoutExt = videoFile.nameWithoutExtension
+            val videoDir = videoFile.parentFile
+            
+            Log.d(TAG, "Video name without ext: $videoNameWithoutExt")
+            Log.d(TAG, "Video directory: ${videoDir?.absolutePath}")
+            
+            if (videoDir == null) {
+                Log.d(TAG, "Video directory is null")
+                return
+            }
+            
+            // 按优先级排序：ass > srt > 其他
+            val priorityExtensions = listOf("ass", "srt", "ssa", "vtt", "sub", "sbv", "json")
+            
+            // 查找同名字幕文件
+            var foundSubtitle: File? = null
+            for (ext in priorityExtensions) {
+                val subtitleFile = File(videoDir, "$videoNameWithoutExt.$ext")
+                if (subtitleFile.exists() && subtitleFile.isFile) {
+                    foundSubtitle = subtitleFile
+                    Log.d(TAG, "Found subtitle: ${subtitleFile.name}")
+                    break
+                }
+            }
+            
+            // 如果找到字幕文件，自动加载
+            if (foundSubtitle != null) {
+                val subtitlePath = foundSubtitle.absolutePath
+                Log.d(TAG, "Auto-loading subtitle: $subtitlePath")
+                
+                try {
+                    MPVLib.command("sub-add", subtitlePath, "select")
+                    Log.d(TAG, "Successfully auto-loaded subtitle: ${foundSubtitle.name}")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to auto-load subtitle", e)
+                }
+            } else {
+                Log.d(TAG, "No matching subtitle file found")
+            }
+            
+            Log.d(TAG, "===== Auto-load subtitle end =====")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in autoLoadSubtitleIfExists", e)
+        }
+    }
+    
+    /**
+     * 从content:// URI获取真实文件路径
+     * 支持媒体库URI和文件URI
+     */
+    private fun getRealPathFromUri(uri: android.net.Uri): String? {
+        return when (uri.scheme) {
+            "file" -> uri.path
+            "content" -> {
+                try {
+                    val projection = arrayOf(android.provider.MediaStore.Video.Media.DATA)
+                    contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val columnIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DATA)
+                            cursor.getString(columnIndex)
+                        } else {
+                            null
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to get real path from content URI", e)
+                    null
+                }
+            }
+            else -> null
+        }
+    }
+    
+    /**
+     * 根据文件路径查找对应的content:// URI（从MediaStore）
+     * 用于解决某些目录的权限问题
+     */
+    private fun getContentUriForFile(file: File): android.net.Uri? {
+        return try {
+            val projection = arrayOf(android.provider.MediaStore.Files.FileColumns._ID)
+            val selection = "${android.provider.MediaStore.Files.FileColumns.DATA}=?"
+            val selectionArgs = arrayOf(file.absolutePath)
+            
+            contentResolver.query(
+                android.provider.MediaStore.Files.getContentUri("external"),
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns._ID))
+                    android.content.ContentUris.withAppendedId(
+                        android.provider.MediaStore.Files.getContentUri("external"),
+                        id
+                    )
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to get content URI for file: ${file.absolutePath}", e)
+            null
         }
     }
     
@@ -931,6 +1183,24 @@ class VideoPlayerActivity : AppCompatActivity(),
     private fun loadUserSettings() {
         seekTimeSeconds = preferencesManager.getSeekTime()
         Log.d(SEEK_DEBUG, "loadUserSettings: seekTimeSeconds loaded = $seekTimeSeconds seconds")
+        
+        // 如果启用了Anime4K记忆功能，恢复上次使用的模式
+        if (preferencesManager.isAnime4KMemoryEnabled()) {
+            val lastMode = preferencesManager.getLastAnime4KMode()
+            try {
+                anime4KMode = Anime4KManager.Mode.valueOf(lastMode)
+                // 只有非OFF模式才启用Anime4K
+                anime4KEnabled = (anime4KMode != Anime4KManager.Mode.OFF)
+                Log.d(TAG, "Anime4K mode restored from memory: $lastMode, enabled=$anime4KEnabled")
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "Invalid Anime4K mode in preferences: $lastMode", e)
+                anime4KMode = Anime4KManager.Mode.OFF
+                anime4KEnabled = false
+            }
+        } else {
+            anime4KMode = Anime4KManager.Mode.OFF
+            anime4KEnabled = false
+        }
     }
     
     /**
@@ -1025,6 +1295,23 @@ class VideoPlayerActivity : AppCompatActivity(),
         val position = preferencesManager.getPlaybackPosition(uri.toString())
         
         playbackEngine?.loadVideo(uri, position)
+        
+        // 自动加载字幕（和初始播放一样的逻辑）
+        lifecycleScope.launch {
+            delay(500)
+            
+            // 检查是否为在线视频
+            val isOnlineVideo = uri.scheme?.startsWith("http") == true
+            
+            // 本地视频自动加载同名字幕
+            if (!isOnlineVideo) {
+                Log.d(TAG, "Auto-loading subtitle for next video")
+                autoLoadSubtitleIfExists(uri)
+            }
+            
+            // 恢复字幕偏好设置
+            restoreSubtitlePreferences(uri)
+        }
         
         updateEpisodeButtons()
     }
@@ -1214,6 +1501,35 @@ class VideoPlayerActivity : AppCompatActivity(),
             )
             Log.d(TAG, "Danmaku visibility updated in history: $visible")
         }
+    }
+    
+    /**
+     * 显示暂停指示器（淡入动画）
+     */
+    private fun showPauseIndicator() {
+        pauseIndicator.apply {
+            visibility = View.VISIBLE
+            alpha = 0f
+            translationY = 0f  // 位置居中
+            animate()
+                .alpha(1f)
+                .setDuration(200)  // 与淡出速度一致
+                .start()
+        }
+    }
+    
+    /**
+     * 隐藏暂停指示器（快速淡出）
+     */
+    private fun hidePauseIndicator() {
+        pauseIndicator.animate()
+            .alpha(0f)
+            .setDuration(200)  // 加快淡出速度
+            .withEndAction {
+                pauseIndicator.visibility = View.GONE
+                pauseIndicator.translationY = -200f  // 重置位置
+            }
+            .start()
     }
     
     override fun onScreenshot() {

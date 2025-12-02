@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -31,7 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import com.fam4k007.videoplayer.R
 import com.fam4k007.videoplayer.PlaybackHistoryManager
-import com.fam4k007.videoplayer.VideoBrowserActivity
+import com.fam4k007.videoplayer.VideoBrowserComposeActivity
 import com.fam4k007.videoplayer.VideoPlayerActivity
 import com.fam4k007.videoplayer.BiliBiliPlayActivity
 import com.fam4k007.videoplayer.webdav.WebDavBrowserActivity
@@ -108,7 +109,7 @@ fun HomeScreen(
             GradientButton(
                 text = "播放本地视频",
                 onClick = {
-                    context.startActivity(Intent(context, VideoBrowserActivity::class.java))
+                    context.startActivity(Intent(context, VideoBrowserComposeActivity::class.java))
                     (context as? android.app.Activity)?.overridePendingTransition(
                         R.anim.slide_in_right,
                         R.anim.slide_out_left
@@ -123,6 +124,14 @@ fun HomeScreen(
         ExpandableActionButton(
             isExpanded = isExpanded,
             onToggle = { isExpanded = !isExpanded },
+            onTVClick = {
+                isExpanded = false
+                com.fam4k007.videoplayer.tv.TVBrowserActivity.start(context)
+                (context as? android.app.Activity)?.overridePendingTransition(
+                    R.anim.slide_in_right,
+                    R.anim.slide_out_left
+                )
+            },
             onBiliBiliClick = {
                 isExpanded = false  // 点击后自动收起
                 context.startActivity(Intent(context, BiliBiliPlayActivity::class.java))
@@ -214,6 +223,10 @@ fun LogoSection(
             contentDescription = "继续播放",
             modifier = Modifier
                 .size(120.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(20.dp)
+                )
                 .clickable {
                     val video = historyManager.getLastPlayedLocalVideo()
                     if (video != null) {
@@ -293,8 +306,16 @@ fun ExpandableActionButton(
     isExpanded: Boolean,
     onToggle: () -> Unit,
     onBiliBiliClick: () -> Unit,
-    onWebDavClick: () -> Unit
+    onWebDavClick: () -> Unit,
+    onTVClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    var localIsExpanded by remember { mutableStateOf(isExpanded) }
+    
+    LaunchedEffect(isExpanded) {
+        localIsExpanded = isExpanded
+    }
+    
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomEnd
@@ -327,9 +348,16 @@ fun ExpandableActionButton(
                         modifier = Modifier.padding(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        // 哔哩哔哩番剧
+                        // TV浏览器（视频嗅探）
                         ActionItem(
                             icon = Icons.Default.Tv,
+                            label = "TV",
+                            onClick = onTVClick
+                        )
+                        
+                        // 哔哩哔哩番剧
+                        ActionItem(
+                            icon = Icons.Default.VideoLibrary,
                             label = "哔哩哔哩番剧",
                             onClick = onBiliBiliClick
                         )
@@ -432,6 +460,10 @@ fun IconWithBackground(
     Box(
         modifier = Modifier
             .size(40.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(10.dp)
+            )
             .clip(RoundedCornerShape(10.dp))
             .background(
                 brush = Brush.linearGradient(
