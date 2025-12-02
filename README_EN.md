@@ -39,7 +39,7 @@ We strongly oppose and do not condone any form of piracy, illegal distribution, 
 
 | Home | Folder List | Video List |
 |------|------------|------------|
-| <img src="docs/screenshots/软件首页.jpg" width="280"/> | <img src="docs/screenshots/文件夹列表.jpg" width="280"/> | <img src="docs/screenshots/视频列表.jpg" width="280"/> |
+| <img src="docs/screenshots/软件主页2.jpg" width="280"/> | <img src="docs/screenshots/文件夹列表2.jpg" width="280"/> | <img src="docs/screenshots/视频列表2.jpg" width="280"/> |
 
 | WebDAV Feature | Bangumi Parsing | Settings Page |
 |----------------|----------------|----------------|
@@ -60,6 +60,7 @@ We strongly oppose and do not condone any form of piracy, illegal distribution, 
 ## Key Features
 
 - **Video Playback**: Support for mainstream video formats (MP4, MKV, AVI, etc.)
+- **Web Sniffing Feature**: Built-in WebView for sniffing web videos, automatically selecting the best quality, and one-click playback
 - **Bilibili Bangumi Support**: Login to Bilibili account, stream bangumi online (see [Login Implementation](docs/bilibili_login.md) and [Bangumi Parsing Principle](docs/bilibili_bangumi.md))
 - **Bilibili Video/Bangumi Download**: Download Bilibili videos and bangumi to local storage (see [Download Implementation Principle](docs/bilibili_download_principle.md))
   - Support for full URLs, short links (b23.tv), and text-embedded share links
@@ -71,6 +72,7 @@ We strongly oppose and do not condone any form of piracy, illegal distribution, 
 - **WebDAV Network Storage**: Connect to WebDAV servers and stream cloud-hosted videos directly (see [WebDAV Usage Guide](docs/webdav使用说明.md))
 - **Playlist Management**: Automatic folder scanning, video sorting and categorization
 - **Subtitle Handling**: Built-in subtitle parsing, external subtitle import, subtitle position and size adjustment
+- **Auto-load Subtitles**: Automatically load subtitle files with the same name in the same folder
 - **Audio Tracks**: Multi-track audio switching
 - **Volume Boost**: Toggle volume boost feature with fine-grained 0.1% adjustment
 - **Danmaku Features**:
@@ -102,7 +104,7 @@ We strongly oppose and do not condone any form of piracy, illegal distribution, 
 - **Video Engine**: libmpv (open-source multimedia player library)
 - **UI Framework**: Android AppCompat
 - **Programming Languages**: Kotlin + Java
-- **Minimum SDK**: 26 (Android 8.0)
+- **Minimum SDK**: 28 (Android 9.0)
 - **Target SDK**: 34 (Android 14)
 
 ## Planned Features
@@ -149,6 +151,9 @@ This project would not be possible without the support of the following open-sou
 
 - **[btjawa/BiliTools](https://github.com/btjawa/BiliTools)**  
   Referenced the implementation principles of video/bangumi download from this project
+
+- **[qiusunshine/hikerView](https://github.com/qiusunshine/hikerView)**  
+  Referenced the sniffing feature implementation and specific anti-sniffing algorithm logic for certain scenarios
 
 - **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
   Provides Android WebDAV client implementation, supporting file browsing, uploading, and downloading operations
@@ -217,7 +222,7 @@ This application highly values user privacy protection. Here is our statement:
 
 ### Permission Statement
 The app only requests the following necessary permissions:
-- **Storage Permission**: Read and save local videos, subtitles, and danmaku files
+- **Storage Permission (Manage All Files)**: Read and save local videos, subtitles, and danmaku files, auto-load subtitle files with the same name
 - **Network Permission**: For Bilibili bangumi online streaming, video/bangumi downloads, and danmaku downloads (user-initiated)
 
 ### Open Source Transparency
@@ -240,9 +245,9 @@ We apologize for any optimization shortcomings! The project is still under conti
 
 ## System Requirements
 
-- Android 8.0 or higher
-- At least 100MB storage space
-- Recommended 2GB or more RAM
+- Android 9.0 or higher
+- At least 64GB storage space
+- Recommended 8GB or more RAM
 
 ## Usage
 
@@ -257,4 +262,4 @@ If you encounter any issues or have suggestions, please feel free to report them
 
 ---
 
-**Last Updated:** 2025-11-16
+**Last Updated:** 2025-12-02

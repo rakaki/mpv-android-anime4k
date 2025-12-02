@@ -39,7 +39,7 @@
 
 | 软件首页 | 文件夹列表 | 视频列表 |
 |----------|------------|----------|
-| <img src="docs/screenshots/软件首页.jpg" width="280"/> | <img src="docs/screenshots/文件夹列表.jpg" width="280"/> | <img src="docs/screenshots/视频列表.jpg" width="280"/> |
+| <img src="docs/screenshots/软件主页2.jpg" width="280"/> | <img src="docs/screenshots/文件夹列表2.jpg" width="280"/> | <img src="docs/screenshots/视频列表2.jpg" width="280"/> |
 
 | webdav支持 | 番剧解析 | 设置页面 |
 |------------|----------|----------|
@@ -60,6 +60,7 @@
 ## 主要功能
 
 - **视频播放**：支持主流视频格式（MP4、MKV、AVI 等）
+- **网页嗅探功能**：软件内置 WebView，可以嗅探网页视频并自动选择最佳地址，一键播放
 - **哔哩哔哩番剧支持**：支持登录B站账号、在线播放番剧（详见[登录实现说明](docs/bilibili_login.md)和[番剧解析原理](docs/bilibili_bangumi.md)）
 - **哔哩哔哩视频/番剧下载**：支持下载B站视频和番剧到本地（详见[下载实现原理](docs/bilibili_download_principle.md)）
   - 支持完整URL、短链（b23.tv）、带文本的分享链接
@@ -71,6 +72,7 @@
 - **WebDAV 网络存储**：支持连接 WebDAV 服务器，直接播放云端视频文件（详见[WebDAV 使用说明](docs/webdav使用说明.md)）
 - **播放列表**：自动扫描文件夹、支持视频排序和分类
 - **字幕管理**：内嵌字幕解析、外部字幕导入、字幕位置和大小调整
+- **字幕自动加载**：同文件夹内，同名字幕可以自动加载
 - **音频轨道**：多音轨切换
 - **音量增强**：支持开关增强功能，且可精细到0.1%调整
 - **弹幕功能**：
@@ -102,7 +104,7 @@
 - **视频引擎**：libmpv（开源多媒体播放器库）
 - **UI 框架**：Android AppCompat
 - **编程语言**：Kotlin + Java
-- **最低 SDK**：26 (Android 8.0)
+- **最低 SDK**：28 (Android 9.0)
 - **编译 SDK**：34 (Android 14)
 
 ## 功能规划
@@ -149,6 +151,9 @@
 
 - **[btjawa/BiliTools](https://github.com/btjawa/BiliTools)**  
   本项目参考了此项目的视频/番剧下载的实现原理
+
+- **[qiusunshine/hikerView](https://github.com/qiusunshine/hikerView)**  
+  本项目参考了此项目的嗅探功能实现以及某些特定情况下，需要特定反嗅探的算法逻辑
 
 - **[thegrizzlylabs/sardine-android](https://github.com/thegrizzlylabs/sardine-android)**  
   提供了 WebDAV 协议的 Android 客户端实现，支持文件浏览、上传、下载等操作
@@ -217,7 +222,7 @@
 
 ### 权限说明
 应用仅请求以下必要权限：
-- **存储权限**：读取和保存本地视频、字幕、弹幕文件
+- **存储权限（管理所有文件）**：读取和保存本地视频、字幕、弹幕文件，自动加载同名字幕文件
 - **网络权限**：用于哔哩哔哩番剧在线播放、视频/番剧下载和弹幕下载（用户主动触发）
 
 ### 开源透明
@@ -240,9 +245,9 @@
 
 ## 系统要求
 
-- Android 8.0 及以上
-- 至少 100MB 存储空间
-- 建议 2GB 以上 RAM
+- Android 9.0 及以上
+- 至少 64GB 存储空间
+- 建议 8GB 以上 RAM
 
 ## 使用方式
 
@@ -257,4 +262,4 @@
 
 ---
 
-**Last Updated:** 2025-11-16
+**Last Updated:** 2025-12-02
