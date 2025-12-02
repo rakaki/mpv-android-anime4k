@@ -284,10 +284,10 @@ fun SettingsCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = SettingsPalette.CardBackground
+            containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+            defaultElevation = 4.dp
         )
     ) {
         Row(
@@ -389,8 +389,7 @@ fun ThemeSelectionDialog(
                 Text("取消", color = SettingsPalette.SecondaryText)
             }
         },
-        shape = RoundedCornerShape(16.dp),
-        containerColor = SettingsPalette.DialogSurface
+        shape = RoundedCornerShape(16.dp)
     )
 }
 

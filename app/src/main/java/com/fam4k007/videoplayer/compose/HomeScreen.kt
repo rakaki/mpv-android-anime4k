@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import com.fam4k007.videoplayer.R
 import com.fam4k007.videoplayer.PlaybackHistoryManager
-import com.fam4k007.videoplayer.VideoBrowserActivity
+import com.fam4k007.videoplayer.VideoBrowserComposeActivity
 import com.fam4k007.videoplayer.VideoPlayerActivity
 import com.fam4k007.videoplayer.BiliBiliPlayActivity
 import com.fam4k007.videoplayer.webdav.WebDavBrowserActivity
@@ -109,7 +109,7 @@ fun HomeScreen(
             GradientButton(
                 text = "播放本地视频",
                 onClick = {
-                    context.startActivity(Intent(context, VideoBrowserActivity::class.java))
+                    context.startActivity(Intent(context, VideoBrowserComposeActivity::class.java))
                     (context as? android.app.Activity)?.overridePendingTransition(
                         R.anim.slide_in_right,
                         R.anim.slide_out_left

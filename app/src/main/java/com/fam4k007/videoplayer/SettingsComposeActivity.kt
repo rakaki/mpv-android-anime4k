@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
 import com.fam4k007.videoplayer.compose.SettingsScreen
 import com.fam4k007.videoplayer.ui.theme.getThemeColors
 import com.fam4k007.videoplayer.utils.ThemeManager
@@ -27,10 +28,10 @@ class SettingsComposeActivity : ComponentActivity() {
                     primaryContainer = themeColors.primaryVariant,
                     secondary = themeColors.secondary,
                     background = themeColors.background,
-                    onBackground = themeColors.onBackground,
-                    surface = themeColors.surface,
+                    onBackground = Color(0xFF212121),
+                    surface = themeColors.background,
                     surfaceVariant = themeColors.surfaceVariant,
-                    onSurface = themeColors.onSurface
+                    onSurface = Color(0xFF212121)
                 )
             ) {
                 SettingsScreen(

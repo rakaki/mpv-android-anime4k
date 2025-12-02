@@ -61,21 +61,34 @@ object VideoMetadataHelper {
             
             // 方法1: 使用 METADATA_KEY_CAPTURE_FRAMERATE (Android 6.0+)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                frameRateValue = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)?.toFloatOrNull()
+                val captureFrameRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+                frameRateValue = captureFrameRate?.toFloatOrNull()
+                Log.d(TAG, "CAPTURE_FRAMERATE: $captureFrameRate")
             }
             
-            // 方法2: 如果方法1失败，尝试从视频编解码器信息推断 (通常为 24/25/30/60 fps)
-            if (frameRateValue == null || frameRateValue <= 0) {
-                // 尝试从 METADATA_KEY_VIDEO_FRAME_COUNT 和时长计算
-                val frameCount = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                    retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT)?.toLongOrNull()
-                } else {
-                    null
-                }
+            // 方法2: 如果方法1失败，尝试从视频帧数和时长计算 (Android 9.0+)
+            if ((frameRateValue == null || frameRateValue <= 0) && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val frameCountStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT)
+                val frameCount = frameCountStr?.toLongOrNull()
+                Log.d(TAG, "VIDEO_FRAME_COUNT: $frameCountStr, duration: $duration")
                 
                 if (frameCount != null && frameCount > 0 && duration > 0) {
                     frameRateValue = (frameCount * 1000.0f) / duration.toFloat()
+                    Log.d(TAG, "Calculated frame rate from count: $frameRateValue")
                 }
+            }
+            
+            // 方法3: 如果还是失败，尝试估算常见帧率
+            if (frameRateValue == null || frameRateValue <= 0) {
+                // 对于无法获取帧率的视频，根据常见视频标准估算
+                val estimatedFps = when {
+                    height >= 2160 -> 60.0f  // 4K通常是60fps
+                    height >= 1080 && bitrateValue > 8_000_000 -> 60.0f  // 高码率1080p可能是60fps
+                    height >= 720 -> 30.0f   // 720p通常是30fps
+                    else -> 24.0f            // 默认24fps（电影标准）
+                }
+                Log.d(TAG, "Estimated frame rate based on resolution ($width x $height): $estimatedFps")
+                frameRateValue = estimatedFps
             }
             
             val frameRate = if (frameRateValue != null && frameRateValue > 0) {
