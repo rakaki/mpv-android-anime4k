@@ -32,9 +32,9 @@
 - 如有侵权，可随时[联系](https://github.com/azxcvn)处理。
 
 ## 素材归属
-- 1.本项目图标由AI生成
-- 2.本项目播放器界面的控制组件图标来自FLATICON（https://www.flaticon.com/）
-- 3.其余图标来自compose架构自带图标:Material Icons；Material Icons 是由 Google 提供的开源图标库，遵循 Apache License 2.0。
+- 本项目图标由AI生成
+- 本项目播放器界面的控制组件图标来自FLATICON （ https://www.flaticon.com/ ）
+- 其余图标来自compose架构自带图标:Material Icons；Material Icons 是由 Google 提供的开源图标库，遵循 Apache License 2.0。
 ---
 
 ## 功能截图
