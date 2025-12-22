@@ -12,4 +12,7 @@
     
     <!-- 字幕样式设置 -->
     <string name="subtitle_style_hint">需在"更多"中启用样式覆盖</string>
+    
+    <!-- 视频播放器 -->
+    <string name="video_thumbnail">视频缩略图</string>
 </resources>

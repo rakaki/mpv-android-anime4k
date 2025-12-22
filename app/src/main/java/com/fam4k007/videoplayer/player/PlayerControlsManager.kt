@@ -278,15 +278,24 @@ class PlayerControlsManager(
     // 用于防止进度条拖动时频繁触发seek
     private var isUserSeeking = false
 
+    // 保存SeekBar监听器的引用，供外部获取
+    private var seekBarListener: SeekBar.OnSeekBarChangeListener? = null
+    
+    /**
+     * 获取SeekBar监听器（供SeekBarThumbnailHelper包装使用）
+     */
+    fun getSeekBarListener(): SeekBar.OnSeekBarChangeListener? = seekBarListener
+    
     /**
      * 设置进度条监听
      */
     private fun setupSeekBar() {
-        seekBar?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        seekBarListener = object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 // 只在拖动完成时才seek,避免频繁触发
                 if (fromUser && currentDuration > 0) {
-                    val position = (progress / 100.0) * currentDuration
+                    // progress 已经是秒数，不需要再计算
+                    val position = progress.toDouble()
                     // 实时更新时间显示,但不执行seek
                     tvTimeInfo?.text = "${formatTime(position)}/${formatTime(currentDuration)}"
                 }
@@ -303,13 +312,15 @@ class PlayerControlsManager(
                 seekBar?.let {
                     val progress = it.progress
                     if (currentDuration > 0) {
-                        val position = (progress / 100.0) * currentDuration
+                        // progress 已经是秒数，不需要再计算
+                        val position = progress.toDouble()
                         callback.onSeekBarChange(position)
                     }
                 }
                 resetAutoHideTimer()
             }
-        })
+        }
+        seekBar?.setOnSeekBarChangeListener(seekBarListener)
     }
 
     /**
@@ -319,10 +330,16 @@ class PlayerControlsManager(
         if (duration > 0) {
             currentDuration = duration  // 更新当前时长
             
+            // 设置 SeekBar 的 max 为视频总秒数，实现秒级精度
+            val durationSeconds = duration.toInt()
+            if (seekBar?.max != durationSeconds) {
+                seekBar?.max = durationSeconds
+            }
+            
             // 只在用户不拖动时更新进度条和时间
             if (!isUserSeeking) {
-                val progress = ((position / duration) * 100).toInt()
-                seekBar?.progress = progress
+                val positionSeconds = position.toInt()
+                seekBar?.progress = positionSeconds
                 
                 // 更新合并的时间显示：当前时间/总时长
                 tvTimeInfo?.text = "${formatTime(position)}/${formatTime(duration)}"
