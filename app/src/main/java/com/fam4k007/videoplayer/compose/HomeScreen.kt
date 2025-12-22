@@ -35,9 +35,7 @@ import com.fam4k007.videoplayer.PlaybackHistoryManager
 import com.fam4k007.videoplayer.VideoBrowserComposeActivity
 import com.fam4k007.videoplayer.VideoPlayerActivity
 import com.fam4k007.videoplayer.BiliBiliPlayActivity
-import com.fam4k007.videoplayer.webdav.WebDavBrowserActivity
-import com.fam4k007.videoplayer.webdav.WebDavConfig
-import com.fam4k007.videoplayer.webdav.WebDavConfigDialog
+import com.fam4k007.videoplayer.webdav.WebDavComposeActivity
 import com.fanchen.fam4k007.manager.compose.BiliBiliLoginActivity
 
 /**
@@ -142,21 +140,11 @@ fun HomeScreen(
             },
             onWebDavClick = {
                 isExpanded = false  // 点击后自动收起
-                if (WebDavConfig.isConfigured(context)) {
-                    context.startActivity(Intent(context, WebDavBrowserActivity::class.java))
-                    (context as? android.app.Activity)?.overridePendingTransition(
-                        R.anim.slide_in_right,
-                        R.anim.slide_out_left
-                    )
-                } else {
-                    WebDavConfigDialog(context, lifecycleOwner.lifecycleScope) { config ->
-                        context.startActivity(Intent(context, WebDavBrowserActivity::class.java))
-                        (context as? android.app.Activity)?.overridePendingTransition(
-                            R.anim.slide_in_right,
-                            R.anim.slide_out_left
-                        )
-                    }.show()
-                }
+                context.startActivity(Intent(context, WebDavComposeActivity::class.java))
+                (context as? android.app.Activity)?.overridePendingTransition(
+                    R.anim.slide_in_right,
+                    R.anim.slide_out_left
+                )
             }
         )
     }

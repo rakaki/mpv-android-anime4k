@@ -54,9 +54,11 @@
             android:name=".VideoListComposeActivity"
             android:exported="false" />
         <activity 
-            android:name=".webdav.WebDavBrowserActivity"
-            android:exported="false"
-            android:theme="@style/Theme.VideoPlayer" />
+            android:name=".webdav.WebDavComposeActivity"
+            android:exported="false" />
+        <activity 
+            android:name=".webdav.WebDavBrowserComposeActivity"
+            android:exported="false" />
         <activity 
             android:name=".tv.TVBrowserActivity"
             android:exported="false"
