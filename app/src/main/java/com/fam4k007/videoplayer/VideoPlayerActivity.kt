@@ -83,6 +83,8 @@ class VideoPlayerActivity : AppCompatActivity(),
     private lateinit var composeOverlayManager: com.fanchen.fam4k007.manager.compose.ComposeOverlayManager
     private lateinit var screenshotManager: com.fam4k007.videoplayer.manager.ScreenshotManager
     private lateinit var skipIntroOutroManager: com.fanchen.fam4k007.manager.SkipIntroOutroManager
+    private lateinit var thumbnailManager: com.fam4k007.videoplayer.manager.VideoThumbnailManager
+    private var seekBarThumbnailHelper: com.fam4k007.videoplayer.player.SeekBarThumbnailHelper? = null
 
     private lateinit var mpvView: CustomMPVView
     private lateinit var danmakuView: com.fam4k007.videoplayer.danmaku.DanmakuPlayerView
@@ -340,6 +342,15 @@ class VideoPlayerActivity : AppCompatActivity(),
                     this@VideoPlayerActivity.duration = duration
                     controlsManager?.updateProgress(position, duration)
                     
+                    // 初始化缩略图（当duration首次有效时）
+                    if (duration > 0) {
+                        videoUri?.let { uri ->
+                            val isWebDav = intent.getBooleanExtra("is_webdav", false)
+                            thumbnailManager.initializeVideo(uri, (duration * 1000).toLong(), isWebDav)
+                            seekBarThumbnailHelper?.updateDuration(duration)
+                        }
+                    }
+                    
                     // 检测播放状态变化，显示/隐藏暂停指示器
                     if (isPlaying != previousIsPlaying) {
                         if (!isPlaying) {
@@ -400,6 +411,8 @@ class VideoPlayerActivity : AppCompatActivity(),
                     
                     // 不在这里隐藏加载动画，让 onBufferingStateChanged 来控制
                     // 因为文件加载后可能还在缓冲
+                    
+                    // 缩略图初始化已移动到 onProgressUpdate，确保 duration 已正确设置
                     
                     // 重置片头片尾跳过标记
                     skipIntroOutroManager.resetFlags()
@@ -712,6 +725,9 @@ class VideoPlayerActivity : AppCompatActivity(),
         // 初始化截图管理器
         screenshotManager = com.fam4k007.videoplayer.manager.ScreenshotManager(this)
         
+        // 初始化缩略图管理器
+        thumbnailManager = com.fam4k007.videoplayer.manager.VideoThumbnailManager(this)
+        
         // 初始化片头片尾管理器
         skipIntroOutroManager = com.fanchen.fam4k007.manager.SkipIntroOutroManager(
             this,
@@ -757,6 +773,19 @@ class VideoPlayerActivity : AppCompatActivity(),
         }
         
         controlsManager.initialize()
+        
+        // 初始化进度条缩略图助手（在controlsManager.initialize()之后）
+        // 获取controlsManager设置的监听器，然后用代理模式包装它
+        val seekBar = findViewById<SeekBar>(R.id.seekBar)
+        val container = findViewById<ViewGroup>(android.R.id.content)
+        val originalListener = controlsManager.getSeekBarListener()
+        seekBarThumbnailHelper = com.fam4k007.videoplayer.player.SeekBarThumbnailHelper(
+            this,
+            seekBar,
+            container,
+            thumbnailManager,
+            originalListener  // 传入原监听器
+        )
         
         videoUri?.let { uri ->
             val fileName = getFileNameFromUri(uri)
@@ -1408,6 +1437,12 @@ class VideoPlayerActivity : AppCompatActivity(),
         controlsManager?.cleanup()
         gestureHandler?.cleanup()
         filePickerManager?.cleanup()
+        
+        // 释放缩略图资源
+        if (::thumbnailManager.isInitialized) {
+            thumbnailManager.release()
+        }
+        seekBarThumbnailHelper?.release()
     }
     
     private fun savePlaybackState() {

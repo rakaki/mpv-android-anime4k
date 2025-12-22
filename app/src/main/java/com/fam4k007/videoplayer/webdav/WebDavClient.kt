@@ -11,6 +11,16 @@ import javax.net.ssl.X509TrustManager
 import java.security.cert.X509Certificate
 
 /**
+ * WebDAV 配置数据类（用于客户端）
+ */
+data class WebDavConfig(
+    val serverUrl: String,
+    val account: String = "",
+    val password: String = "",
+    val isAnonymous: Boolean = false
+)
+
+/**
  * WebDAV 客户端工具类
  * 封装 Sardine 库的操作
  */
@@ -81,11 +91,6 @@ class WebDavClient(internal val config: WebDavConfig) {
             val basePath = android.net.Uri.parse(config.serverUrl).path ?: "/"
             
             resources.mapNotNull { resource: DavResource ->
-                // 跳过当前目录本身
-                if (resource.href.toString().trimEnd('/') == url.trimEnd('/')) {
-                    return@mapNotNull null
-                }
-                
                 val fileName = resource.name ?: return@mapNotNull null
                 val fullPath = resource.path ?: return@mapNotNull null
                 
@@ -94,6 +99,11 @@ class WebDavClient(internal val config: WebDavConfig) {
                     fullPath.substring(basePath.length).trimStart('/')
                 } else {
                     fullPath.trimStart('/')
+                }
+                
+                // 跳过当前目录本身（比较相对路径）
+                if (relativePath.trimEnd('/') == path.trimEnd('/')) {
+                    return@mapNotNull null
                 }
                 
                 android.util.Log.d("WebDavClient", "文件: $fileName, 完整路径: $fullPath, 相对路径: $relativePath, 是否文件夹: ${resource.isDirectory}")
