@@ -103,8 +103,10 @@ class SeriesManager {
             videoList.add(currentUri)
         }
 
-        // 按文件名排序
-        videoList.sortBy { getFileNameCallback(it) }
+        // 按文件名自然排序
+        videoList.sortWith(Comparator { uri1, uri2 ->
+            compareNatural(getFileNameCallback(uri1), getFileNameCallback(uri2))
+        })
 
         // 找到当前视频位置
         currentIndex = videoList.indexOfFirst { it.toString() == currentUri.toString() }
@@ -356,5 +358,47 @@ class SeriesManager {
         } else {
             null
         }
+    }
+    
+    /**
+     * 自然排序字符串比较
+     */
+    private fun compareNatural(str1: String, str2: String): Int {
+        val s1 = str1.lowercase()
+        val s2 = str2.lowercase()
+        
+        var i1 = 0
+        var i2 = 0
+        
+        while (i1 < s1.length && i2 < s2.length) {
+            val c1 = s1[i1]
+            val c2 = s2[i2]
+            
+            if (c1.isDigit() && c2.isDigit()) {
+                var num1 = 0
+                while (i1 < s1.length && s1[i1].isDigit()) {
+                    num1 = num1 * 10 + (s1[i1] - '0')
+                    i1++
+                }
+                
+                var num2 = 0
+                while (i2 < s2.length && s2[i2].isDigit()) {
+                    num2 = num2 * 10 + (s2[i2] - '0')
+                    i2++
+                }
+                
+                if (num1 != num2) {
+                    return num1 - num2
+                }
+            } else {
+                if (c1 != c2) {
+                    return c1 - c2
+                }
+                i1++
+                i2++
+            }
+        }
+        
+        return s1.length - s2.length
     }
 }

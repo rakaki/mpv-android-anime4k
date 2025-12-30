@@ -855,26 +855,74 @@ private fun sortFiles(fileList: List<WebDavClient.WebDavFile>, sortType: Int): L
     val files = fileList.filter { !it.isDirectory }
     
     val sortedFolders = when (sortType) {
-        0 -> folders.sortedBy { it.name.lowercase() } // 名称升序
-        1 -> folders.sortedByDescending { it.name.lowercase() } // 名称降序
+        0 -> folders.sortedWith(naturalComparator { it.name }) // 名称升序
+        1 -> folders.sortedWith(naturalComparator<WebDavClient.WebDavFile> { it.name }.reversed()) // 名称降序
         2 -> folders.sortedBy { it.size } // 大小升序
         3 -> folders.sortedByDescending { it.size } // 大小降序
         4 -> folders.sortedBy { it.modifiedTime } // 时间升序
         5 -> folders.sortedByDescending { it.modifiedTime } // 时间降序
-        else -> folders.sortedBy { it.name.lowercase() }
+        else -> folders.sortedWith(naturalComparator { it.name })
     }
     
     val sortedFiles = when (sortType) {
-        0 -> files.sortedBy { it.name.lowercase() }
-        1 -> files.sortedByDescending { it.name.lowercase() }
+        0 -> files.sortedWith(naturalComparator { it.name })
+        1 -> files.sortedWith(naturalComparator<WebDavClient.WebDavFile> { it.name }.reversed())
         2 -> files.sortedBy { it.size }
         3 -> files.sortedByDescending { it.size }
         4 -> files.sortedBy { it.modifiedTime }
         5 -> files.sortedByDescending { it.modifiedTime }
-        else -> files.sortedBy { it.name.lowercase() }
+        else -> files.sortedWith(naturalComparator { it.name })
     }
     
     return sortedFolders + sortedFiles
+}
+
+/**
+ * 自然排序比较器
+ */
+private fun <T> naturalComparator(selector: (T) -> String): Comparator<T> {
+    return Comparator { a, b ->
+        compareNatural(selector(a), selector(b))
+    }
+}
+
+private fun compareNatural(str1: String, str2: String): Int {
+    val s1 = str1.lowercase()
+    val s2 = str2.lowercase()
+    
+    var i1 = 0
+    var i2 = 0
+    
+    while (i1 < s1.length && i2 < s2.length) {
+        val c1 = s1[i1]
+        val c2 = s2[i2]
+        
+        if (c1.isDigit() && c2.isDigit()) {
+            var num1 = 0
+            while (i1 < s1.length && s1[i1].isDigit()) {
+                num1 = num1 * 10 + (s1[i1] - '0')
+                i1++
+            }
+            
+            var num2 = 0
+            while (i2 < s2.length && s2[i2].isDigit()) {
+                num2 = num2 * 10 + (s2[i2] - '0')
+                i2++
+            }
+            
+            if (num1 != num2) {
+                return num1 - num2
+            }
+        } else {
+            if (c1 != c2) {
+                return c1 - c2
+            }
+            i1++
+            i2++
+        }
+    }
+    
+    return s1.length - s2.length
 }
 
 /**

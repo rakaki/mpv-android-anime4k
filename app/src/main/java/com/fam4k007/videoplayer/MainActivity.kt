@@ -5,9 +5,12 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
+import androidx.lifecycle.lifecycleScope
 import com.fam4k007.videoplayer.compose.HomeScreen
 import com.fam4k007.videoplayer.ui.theme.getThemeColors
 import com.fam4k007.videoplayer.utils.ThemeManager
+import com.fam4k007.videoplayer.utils.UpdateManager
+import kotlinx.coroutines.launch
 
 class MainActivity : BaseActivity() {
     
@@ -31,6 +34,9 @@ class MainActivity : BaseActivity() {
         // 初始化历史记录管理器
         historyManager = PlaybackHistoryManager(this)
         lastThemeName = ThemeManager.getCurrentTheme(this).themeName
+        
+        // 自动检查更新
+        checkForUpdateSilently()
         
         setupContent()
     }
@@ -84,6 +90,47 @@ class MainActivity : BaseActivity() {
                 )
             }
         }
+    }
+    
+    /**
+     * 静默检查更新（后台执行，有新版本时弹窗提示）
+     */
+    private fun checkForUpdateSilently() {
+        lifecycleScope.launch {
+            try {
+                val updateInfo = UpdateManager.checkForUpdate(this@MainActivity)
+                if (updateInfo != null) {
+                    // 有新版本，显示更新对话框
+                    showUpdateDialog(updateInfo)
+                }
+                // 没有更新或检查失败时，不做任何提示
+            } catch (e: Exception) {
+                // 静默失败，不打扰用户
+            }
+        }
+    }
+    
+    /**
+     * 显示更新对话框
+     */
+    private fun showUpdateDialog(updateInfo: UpdateManager.UpdateInfo) {
+        val builder = android.app.AlertDialog.Builder(this)
+        builder.setTitle("发现新版本 ${updateInfo.versionName}")
+        
+        val message = if (updateInfo.releaseNotes.isNotEmpty()) {
+            "更新内容：\n${updateInfo.releaseNotes}"
+        } else {
+            "发现新版本，是否立即下载？"
+        }
+        builder.setMessage(message)
+        
+        builder.setPositiveButton("立即下载") { _, _ ->
+            UpdateManager.openDownloadPage(this, updateInfo.downloadUrl)
+        }
+        builder.setNegativeButton("稍后提醒", null)
+        builder.setCancelable(true)
+        
+        builder.create().show()
     }
 }
 
