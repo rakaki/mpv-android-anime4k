@@ -570,9 +570,9 @@ private fun sortVideos(
     return when (sortType) {
         "NAME" -> {
             if (sortOrder == "ASCENDING") {
-                videos.sortedBy { it.name.lowercase() }
+                videos.sortedWith(naturalComparator { it.name })
             } else {
-                videos.sortedByDescending { it.name.lowercase() }
+                videos.sortedWith(naturalComparator<VideoFileParcelable> { it.name }.reversed())
             }
         }
         "DATE" -> {
@@ -584,6 +584,64 @@ private fun sortVideos(
         }
         else -> videos
     }
+}
+
+/**
+ * 自然排序比较器 - 支持字符串中数字的正确排序
+ * 例如：1, 2, 3, 10, 11, 12 而不是 1, 10, 11, 12, 2, 3
+ */
+private fun <T> naturalComparator(selector: (T) -> String): Comparator<T> {
+    return Comparator { a, b ->
+        compareNatural(selector(a), selector(b))
+    }
+}
+
+/**
+ * 自然排序字符串比较
+ */
+private fun compareNatural(str1: String, str2: String): Int {
+    val s1 = str1.lowercase()
+    val s2 = str2.lowercase()
+    
+    var i1 = 0
+    var i2 = 0
+    
+    while (i1 < s1.length && i2 < s2.length) {
+        val c1 = s1[i1]
+        val c2 = s2[i2]
+        
+        // 如果两个字符都是数字，则提取完整的数字进行比较
+        if (c1.isDigit() && c2.isDigit()) {
+            // 提取第一个数字
+            var num1 = 0
+            while (i1 < s1.length && s1[i1].isDigit()) {
+                num1 = num1 * 10 + (s1[i1] - '0')
+                i1++
+            }
+            
+            // 提取第二个数字
+            var num2 = 0
+            while (i2 < s2.length && s2[i2].isDigit()) {
+                num2 = num2 * 10 + (s2[i2] - '0')
+                i2++
+            }
+            
+            // 比较数字大小
+            if (num1 != num2) {
+                return num1 - num2
+            }
+        } else {
+            // 普通字符比较
+            if (c1 != c2) {
+                return c1 - c2
+            }
+            i1++
+            i2++
+        }
+    }
+    
+    // 如果一个字符串是另一个的前缀，则较短的排在前面
+    return s1.length - s2.length
 }
 
 private fun filterVideos(

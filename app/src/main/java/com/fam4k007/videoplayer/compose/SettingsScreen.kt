@@ -26,7 +26,9 @@ import com.fam4k007.videoplayer.*
 import com.fam4k007.videoplayer.R
 import com.fam4k007.videoplayer.bilibili.auth.BiliBiliAuthManager
 import com.fam4k007.videoplayer.utils.ThemeManager
+import com.fam4k007.videoplayer.utils.UpdateManager
 import com.fam4k007.videoplayer.compose.SettingsColors as SettingsPalette
+import kotlinx.coroutines.launch
 
 /**
  * Compose 版本的设置页面
@@ -40,6 +42,10 @@ fun SettingsScreen(
     val authManager = remember { BiliBiliAuthManager.getInstance(context) }
     val currentTheme = remember { mutableStateOf(ThemeManager.getCurrentTheme(context)) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     
     Scaffold(
         topBar = {
@@ -185,6 +191,42 @@ fun SettingsScreen(
             
             item {
                 SettingsCard(
+                    icon = Icons.Default.Update,
+                    title = "检查更新",
+                    subtitle = "当前版本: ${UpdateManager.getAppVersionName(context)}",
+                    onClick = {
+                        if (!isCheckingUpdate) {
+                            isCheckingUpdate = true
+                            scope.launch {
+                                try {
+                                    val result = UpdateManager.checkForUpdate(context)
+                                    isCheckingUpdate = false
+                                    if (result != null) {
+                                        updateInfo = result
+                                        showUpdateDialog = true
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "已是最新版本",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                } catch (e: Exception) {
+                                    isCheckingUpdate = false
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "检查更新失败: ${e.message}",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+            
+            item {
+                SettingsCard(
                     icon = Icons.Default.Info,
                     title = "关于",
                     subtitle = "应用信息与许可",
@@ -216,6 +258,18 @@ fun SettingsScreen(
                 showThemeDialog = false
                 // 重启 Activity 应用主题
                 (context as? android.app.Activity)?.recreate()
+            }
+        )
+    }
+    
+    // 更新提示对话框
+    if (showUpdateDialog && updateInfo != null) {
+        UpdateAvailableDialog(
+            updateInfo = updateInfo!!,
+            onDismiss = { showUpdateDialog = false },
+            onDownload = {
+                UpdateManager.openDownloadPage(context, updateInfo!!.downloadUrl)
+                showUpdateDialog = false
             }
         )
     }
@@ -431,4 +485,74 @@ fun ThemeOption(
                      else SettingsPalette.PrimaryText
         )
     }
+}
+/**
+ * 更新提示对话框
+ */
+@Composable
+fun UpdateAvailableDialog(
+    updateInfo: UpdateManager.UpdateInfo,
+    onDismiss: () -> Unit,
+    onDownload: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SettingsPalette.CardBackground,
+        title = {
+            Text(
+                text = "发现新版本",
+                color = SettingsPalette.PrimaryText,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "最新版本: ${updateInfo.versionName}",
+                    color = SettingsPalette.PrimaryText,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (updateInfo.releaseNotes.isNotEmpty()) {
+                    Text(
+                        text = "更新内容:",
+                        color = SettingsPalette.SecondaryText,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = updateInfo.releaseNotes,
+                        color = SettingsPalette.SecondaryText,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDownload,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("立即下载", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("稍后提醒", color = SettingsPalette.SecondaryText)
+            }
+        },
+        shape = RoundedCornerShape(16.dp)
+    )
 }
