@@ -3,6 +3,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
+    id 'com.mikepenz.aboutlibraries.plugin'
 }
 
 apply plugin: 'kotlin-parcelize'
@@ -136,6 +137,10 @@ dependencies {
     
     // 加密存储 - EncryptedSharedPreferences (AndroidX Security)
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    
+    // AboutLibraries - 自动化开源许可证管理
+    implementation 'com.mikepenz:aboutlibraries-core:10.10.0'
+    implementation 'com.mikepenz:aboutlibraries-compose:10.10.0'
     
     // If you use annotation processing for Glide's generated API, enable kapt and add the compiler below:
     // kapt 'com.github.bumptech.glide:compiler:4.15.1'
