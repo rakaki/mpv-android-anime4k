@@ -22,6 +22,10 @@ object AppConstants {
         const val LONG_PRESS_SPEED = "long_press_speed"
         const val ANIME4K_MEMORY_ENABLED = "anime4k_memory_enabled"
         const val ANIME4K_LAST_MODE = "anime4k_last_mode"
+        
+        // 双击手势设置 Key
+        const val DOUBLE_TAP_MODE = "double_tap_mode"  // 0=暂停, 1=快进快退
+        const val DOUBLE_TAP_SEEK_SECONDS = "double_tap_seek_seconds"  // 双击跳转秒数
 
         // 播放历史记录 Key
         const val HISTORY_LIST = "history_list"
@@ -50,6 +54,12 @@ object AppConstants {
         const val DEFAULT_LONG_PRESS_SPEED = 2.0f
         const val MIN_LONG_PRESS_SPEED = 1.5f
         const val MAX_LONG_PRESS_SPEED = 3.5f
+        
+        // 双击手势默认配置
+        const val DEFAULT_DOUBLE_TAP_MODE = 0  // 默认为暂停/播放模式
+        const val DEFAULT_DOUBLE_TAP_SEEK_SECONDS = 10  // 默认10秒
+        const val MIN_DOUBLE_TAP_SEEK_SECONDS = 5
+        const val MAX_DOUBLE_TAP_SEEK_SECONDS = 30
 
         // 播放历史最大记录数
         const val MAX_HISTORY_SIZE = 50

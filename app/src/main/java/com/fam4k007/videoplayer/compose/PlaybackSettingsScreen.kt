@@ -41,6 +41,11 @@ fun PlaybackSettingsScreen(
     var showSeekTimeDialog by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
     
+    // 双击手势设置
+    var doubleTapMode by remember { mutableIntStateOf(preferencesManager.getDoubleTapMode()) }
+    var doubleTapSeekSeconds by remember { mutableIntStateOf(preferencesManager.getDoubleTapSeekSeconds()) }
+    var showDoubleTapSeekDialog by remember { mutableStateOf(false) }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -88,6 +93,32 @@ fun PlaybackSettingsScreen(
                     value = "${seekTime}秒",
                     onClick = { showSeekTimeDialog = true }
                 )
+            }
+            
+            // 手势控制
+            item {
+                SectionHeader("手势控制")
+            }
+            
+            item {
+                DoubleTapModeCard(
+                    currentMode = doubleTapMode,
+                    onModeChange = {
+                        doubleTapMode = it
+                        preferencesManager.setDoubleTapMode(it)
+                    }
+                )
+            }
+            
+            // 只有在快进/快退模式时才显示秒数设置
+            if (doubleTapMode == 1) {
+                item {
+                    ClickableSettingCard(
+                        title = "双击跳转时长",
+                        value = "${doubleTapSeekSeconds}秒",
+                        onClick = { showDoubleTapSeekDialog = true }
+                    )
+                }
             }
             
             // 音量控制
@@ -163,6 +194,19 @@ fun PlaybackSettingsScreen(
                 longPressSpeed = newValue
                 preferencesManager.setLongPressSpeed(newValue)
                 showSpeedDialog = false
+            }
+        )
+    }
+    
+    // 双击跳转时长选择对话框
+    if (showDoubleTapSeekDialog) {
+        DoubleTapSeekDialog(
+            currentValue = doubleTapSeekSeconds,
+            onDismiss = { showDoubleTapSeekDialog = false },
+            onConfirm = { newValue ->
+                doubleTapSeekSeconds = newValue
+                preferencesManager.setDoubleTapSeekSeconds(newValue)
+                showDoubleTapSeekDialog = false
             }
         )
     }
@@ -337,6 +381,188 @@ fun SeekTimeDialog(
         title = { 
             Text(
                 "快进/快退时长", 
+                fontSize = 16.sp, 
+                fontWeight = FontWeight.Bold, 
+                color = SettingsPalette.PrimaryText
+            ) 
+        },
+        text = {
+            Column(
+                modifier = Modifier.width(280.dp)
+            ) {
+                options.forEach { seconds ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { selected = seconds }
+                            .background(
+                                if (selected == seconds) SettingsPalette.Highlight
+                                else Color.Transparent
+                            )
+                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected == seconds,
+                            onClick = { selected = seconds },
+                            modifier = Modifier.size(24.dp),
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = accentColor,
+                                unselectedColor = SettingsPalette.PrimaryText.copy(alpha = 0.4f)
+                            )
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            "${seconds}秒",
+                            fontSize = 15.sp,
+                            color = if (selected == seconds) accentColor else SettingsPalette.PrimaryText,
+                            fontWeight = if (selected == seconds) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) {
+                Text("确定", color = SettingsPalette.AccentText, fontSize = 14.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消", color = SettingsPalette.SecondaryText, fontSize = 14.sp)
+            }
+        },
+        shape = RoundedCornerShape(12.dp),
+        containerColor = SettingsPalette.DialogSurface,
+        modifier = Modifier.width(320.dp)
+    )
+}
+
+@Composable
+fun DoubleTapModeCard(
+    currentMode: Int,
+    onModeChange: (Int) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SettingsPalette.CardBackground),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Text(
+                "双击手势",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = SettingsPalette.PrimaryText
+            )
+            Spacer(Modifier.height(12.dp))
+            
+            // 模式 0: 暂停/播放
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (currentMode == 0) SettingsPalette.Highlight
+                        else Color.Transparent
+                    )
+                    .clickable { onModeChange(0) }
+                    .padding(vertical = 12.dp, horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = currentMode == 0,
+                    onClick = { onModeChange(0) },
+                    modifier = Modifier.size(24.dp),
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = MaterialTheme.colorScheme.primary,
+                        unselectedColor = SettingsPalette.PrimaryText.copy(alpha = 0.4f)
+                    )
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "暂停/播放",
+                        fontSize = 15.sp,
+                        color = if (currentMode == 0) MaterialTheme.colorScheme.primary 
+                                else SettingsPalette.PrimaryText,
+                        fontWeight = if (currentMode == 0) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                    Text(
+                        "双击任意位置暂停或播放",
+                        fontSize = 12.sp,
+                        color = SettingsPalette.SecondaryText
+                    )
+                }
+            }
+            
+            Spacer(Modifier.height(8.dp))
+            
+            // 模式 1: 快进/快退
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (currentMode == 1) SettingsPalette.Highlight
+                        else Color.Transparent
+                    )
+                    .clickable { onModeChange(1) }
+                    .padding(vertical = 12.dp, horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = currentMode == 1,
+                    onClick = { onModeChange(1) },
+                    modifier = Modifier.size(24.dp),
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = MaterialTheme.colorScheme.primary,
+                        unselectedColor = SettingsPalette.PrimaryText.copy(alpha = 0.4f)
+                    )
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "快进/快退",
+                        fontSize = 15.sp,
+                        color = if (currentMode == 1) MaterialTheme.colorScheme.primary 
+                                else SettingsPalette.PrimaryText,
+                        fontWeight = if (currentMode == 1) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                    Text(
+                        "双击左半屏快退，右半屏快进",
+                        fontSize = 12.sp,
+                        color = SettingsPalette.SecondaryText
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DoubleTapSeekDialog(
+    currentValue: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var selected by remember { mutableIntStateOf(currentValue) }
+    val options = listOf(5, 10, 15, 20, 30)
+    val accentColor = MaterialTheme.colorScheme.primary
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(
+                "双击跳转时长", 
                 fontSize = 16.sp, 
                 fontWeight = FontWeight.Bold, 
                 color = SettingsPalette.PrimaryText

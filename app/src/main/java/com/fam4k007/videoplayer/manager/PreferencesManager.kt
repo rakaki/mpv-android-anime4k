@@ -140,6 +140,44 @@ class PreferencesManager private constructor(context: Context) {
         sharedPreferences.edit().putString(AppConstants.Preferences.ANIME4K_LAST_MODE, mode).apply()
     }
     
+    // ==================== 双击手势设置 ====================
+    
+    /**
+     * 获取双击手势模式
+     * @return 0=暂停/播放, 1=快进/快退
+     */
+    fun getDoubleTapMode(): Int {
+        return sharedPreferences.getInt(
+            AppConstants.Preferences.DOUBLE_TAP_MODE,
+            AppConstants.Defaults.DEFAULT_DOUBLE_TAP_MODE
+        )
+    }
+    
+    /**
+     * 设置双击手势模式
+     * @param mode 0=暂停/播放, 1=快进/快退
+     */
+    fun setDoubleTapMode(mode: Int) {
+        sharedPreferences.edit().putInt(AppConstants.Preferences.DOUBLE_TAP_MODE, mode).apply()
+    }
+    
+    /**
+     * 获取双击跳转秒数（仅在快进/快退模式下有效）
+     */
+    fun getDoubleTapSeekSeconds(): Int {
+        return sharedPreferences.getInt(
+            AppConstants.Preferences.DOUBLE_TAP_SEEK_SECONDS,
+            AppConstants.Defaults.DEFAULT_DOUBLE_TAP_SEEK_SECONDS
+        )
+    }
+    
+    /**
+     * 设置双击跳转秒数
+     */
+    fun setDoubleTapSeekSeconds(seconds: Int) {
+        sharedPreferences.edit().putInt(AppConstants.Preferences.DOUBLE_TAP_SEEK_SECONDS, seconds).apply()
+    }
+    
     // ==================== 播放位置（用于记忆播放进度）====================
     
     /**

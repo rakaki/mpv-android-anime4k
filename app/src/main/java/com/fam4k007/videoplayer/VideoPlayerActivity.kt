@@ -111,6 +111,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     private var isPlaying = false
     private var currentSpeed = 1.0
     private var isHardwareDecoding = true
+    private var pendingSeekPosition: Int? = null  // 待处理的seek位置，用于解决连续双击问题
     
     private var currentVideoAspect = VideoAspect.FIT  // 当前画面比例模式
     
@@ -340,6 +341,10 @@ class VideoPlayerActivity : AppCompatActivity(),
                 override fun onProgressUpdate(position: Double, duration: Double) {
                     this@VideoPlayerActivity.currentPosition = position
                     this@VideoPlayerActivity.duration = duration
+                    
+                    // 清除pending seek位置(当位置更新后，说明seek已完成)
+                    pendingSeekPosition = null
+                    
                     controlsManager?.updateProgress(position, duration)
                     
                     // 初始化缩略图（当duration首次有效时）
@@ -534,9 +539,20 @@ class VideoPlayerActivity : AppCompatActivity(),
                     }
                 }
                 
-                override fun onSeekGesture(seekSeconds: Int) {
+                override fun onSeekGesture(seekSeconds: Int, isRelativeSeek: Boolean) {
                     if (duration > 0) {
-                        val newPos = (currentPosition + seekSeconds).coerceIn(0.0, duration).toInt()
+                        val newPos = if (isRelativeSeek) {
+                            // 双击模式: 相对当前位置(或pending位置)累加
+                            val basePosition = pendingSeekPosition ?: currentPosition.toInt()
+                            val result = (basePosition + seekSeconds).coerceIn(0, duration.toInt())
+                            // 更新pending位置，防止连续双击时基准位置错误
+                            pendingSeekPosition = result
+                            result
+                        } else {
+                            // 滑动模式: 基于初始位置的绝对偏移
+                            (currentPosition.toInt() + seekSeconds).coerceIn(0, duration.toInt())
+                        }
+                        
                         val usePrecise = gestureHandler.isPreciseSeekingEnabled()
                         playbackEngine?.seekTo(newPos, usePrecise)
                         danmakuManager.seekTo((newPos * 1000).toLong())
@@ -801,6 +817,12 @@ class VideoPlayerActivity : AppCompatActivity(),
             volumeBar = findViewById(R.id.volumeBar),
             brightnessText = findViewById(R.id.brightnessText),
             volumeText = findViewById(R.id.volumeText)
+        )
+        
+        // 绑定双击跳转指示器
+        gestureHandler.bindDoubleTapSeekIndicators(
+            left = findViewById(R.id.doubleTapSeekLeft),
+            right = findViewById(R.id.doubleTapSeekRight)
         )
         
         // 设置controlsManager引用到gestureHandler，用于检查锁定状态

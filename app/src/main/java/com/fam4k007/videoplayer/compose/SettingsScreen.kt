@@ -462,7 +462,7 @@ fun ThemeOption(
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onSelect)
             .background(
-                if (isSelected) SettingsPalette.Highlight 
+                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 else Color.Transparent
             )
             .padding(vertical = 12.dp, horizontal = 16.dp),
@@ -481,7 +481,7 @@ fun ThemeOption(
         Text(
                  text = theme.themeName,
                  fontSize = 16.sp,
-                 color = if (isSelected) SettingsPalette.AccentText 
+                 color = if (isSelected) MaterialTheme.colorScheme.primary
                      else SettingsPalette.PrimaryText
         )
     }
