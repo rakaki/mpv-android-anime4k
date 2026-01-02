@@ -80,7 +80,7 @@ class ScreenshotManager(private val activity: Activity) {
                 
                 // 删除临时文件
                 sourceFile.delete()
-                Log.d(TAG, "Screenshot saved: $displayName")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Screenshot saved: $displayName")
             } else {
                 Log.e(TAG, "Failed to create MediaStore URI")
             }

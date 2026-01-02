@@ -4,71 +4,58 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
+import com.fam4k007.videoplayer.database.PlaybackHistoryEntity
+import com.fam4k007.videoplayer.database.VideoDatabase
 import com.fam4k007.videoplayer.utils.FormatUtils
+import com.fam4k007.videoplayer.utils.Logger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
  * 播放历史记录管理器
+ * 已迁移到Room数据库，提供更好的性能和类型安全
  */
-class PlaybackHistoryManager(context: Context) {
+class PlaybackHistoryManager(private val context: Context) {
 
     companion object {
         private const val TAG = "PlaybackHistoryManager"
+        private const val MIGRATION_FLAG = "history_migrated_to_room"
     }
 
-    // 内存缓存相关
-    private var cachedHistory: List<HistoryItem>? = null
-    private var lastSavedJsonString: String? = null
-    private val cacheLock = Any()
+    private val database = VideoDatabase.getDatabase(context)
+    private val historyDao = database.playbackHistoryDao()
+    private val sharedPreferences: SharedPreferences =
+        context.getSharedPreferences(AppConstants.Preferences.PLAYBACK_HISTORY, Context.MODE_PRIVATE)
+    
+    // 使用协程作用域管理后台任务
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    
+    init {
+        // 首次启动时自动迁移数据
+        migrateFromSharedPreferences()
+    }
 
+    /**
+     * 历史记录数据类（保持向后兼容）
+     */
     data class HistoryItem(
         val uri: String,
         val fileName: String,
-        val position: Long,      // 播放位置（毫秒）
-        val duration: Long,      // 总时长（毫秒）
-        val lastPlayed: Long,    // 最后播放时间戳
-        val folderName: String,  // 所属文件夹
-        val danmuPath: String? = null,        // 弹幕文件路径（参考 DanDanPlay）
-        val danmuVisible: Boolean = true,     // 弹幕显示状态（参考 DanDanPlay）
-        val danmuOffsetTime: Long = 0L,       // 弹幕时间偏移（毫秒，参考 DanDanPlay）
-        val thumbnailPath: String? = null     // 视频缩略图路径（在当前播放位置截取）
+        val position: Long,
+        val duration: Long,
+        val lastPlayed: Long,
+        val folderName: String,
+        val danmuPath: String? = null,
+        val danmuVisible: Boolean = true,
+        val danmuOffsetTime: Long = 0L,
+        val thumbnailPath: String? = null
     ) {
-        fun toJson(): JSONObject {
-            return JSONObject().apply {
-                put("uri", uri)
-                put("fileName", fileName)
-                put("position", position)
-                put("duration", duration)
-                put("lastPlayed", lastPlayed)
-                put("folderName", folderName)
-                // 弹幕相关字段（参考 DanDanPlay 的 PlayHistoryEntity）
-                put("danmuPath", danmuPath ?: "")
-                put("danmuVisible", danmuVisible)
-                put("danmuOffsetTime", danmuOffsetTime)
-                // 缩略图路径
-                put("thumbnailPath", thumbnailPath ?: "")
-            }
-        }
-
-        companion object {
-            fun fromJson(json: JSONObject): HistoryItem {
-                return HistoryItem(
-                    uri = json.getString("uri"),
-                    fileName = json.getString("fileName"),
-                    position = json.getLong("position"),
-                    duration = json.getLong("duration"),
-                    lastPlayed = json.getLong("lastPlayed"),
-                    folderName = json.optString("folderName", "未知文件夹"),
-                    // 兼容旧数据：使用 optString/optBoolean/optLong
-                    danmuPath = json.optString("danmuPath", null).takeIf { it?.isNotEmpty() == true },
-                    danmuVisible = json.optBoolean("danmuVisible", true),
-                    danmuOffsetTime = json.optLong("danmuOffsetTime", 0L),
-                    thumbnailPath = json.optString("thumbnailPath", null).takeIf { it?.isNotEmpty() == true }
-                )
-            }
-        }
-
         fun getFormattedDate(): String {
             return FormatUtils.formatDateShort(lastPlayed)
         }
@@ -80,10 +67,45 @@ class PlaybackHistoryManager(context: Context) {
                 0
             }
         }
+        
+        /**
+         * 转换为Room实体
+         */
+        fun toEntity(): PlaybackHistoryEntity {
+            return PlaybackHistoryEntity(
+                uri = uri,
+                fileName = fileName,
+                position = position,
+                duration = duration,
+                lastPlayed = lastPlayed,
+                folderName = folderName,
+                danmuPath = danmuPath,
+                danmuVisible = danmuVisible,
+                danmuOffsetTime = danmuOffsetTime,
+                thumbnailPath = thumbnailPath
+            )
+        }
+        
+        companion object {
+            /**
+             * 从Room实体转换
+             */
+            fun fromEntity(entity: PlaybackHistoryEntity): HistoryItem {
+                return HistoryItem(
+                    uri = entity.uri,
+                    fileName = entity.fileName,
+                    position = entity.position,
+                    duration = entity.duration,
+                    lastPlayed = entity.lastPlayed,
+                    folderName = entity.folderName,
+                    danmuPath = entity.danmuPath,
+                    danmuVisible = entity.danmuVisible,
+                    danmuOffsetTime = entity.danmuOffsetTime,
+                    thumbnailPath = entity.thumbnailPath
+                )
+            }
+        }
     }
-
-    private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences(AppConstants.Preferences.PLAYBACK_HISTORY, Context.MODE_PRIVATE)
 
     /**
      * 添加或更新历史记录
@@ -95,15 +117,9 @@ class PlaybackHistoryManager(context: Context) {
         duration: Long,
         folderName: String
     ) {
-        try {
-            val history = getHistory().toMutableList()
-            
-            // 移除已存在的相同视频
-            history.removeAll { it.uri == uri.toString() }
-            
-            // 添加新记录到开头
-            history.add(
-                0, HistoryItem(
+        scope.launch {
+            try {
+                val entity = PlaybackHistoryEntity(
                     uri = uri.toString(),
                     fileName = fileName,
                     position = position,
@@ -111,78 +127,35 @@ class PlaybackHistoryManager(context: Context) {
                     lastPlayed = System.currentTimeMillis(),
                     folderName = folderName
                 )
-            )
-            
-            // 限制历史记录数量
-            if (history.size > AppConstants.Defaults.MAX_HISTORY_SIZE) {
-                history.subList(AppConstants.Defaults.MAX_HISTORY_SIZE, history.size).clear()
+                
+                historyDao.insertOrUpdate(entity)
+                
+                // 限制历史记录数量
+                val count = historyDao.getCount()
+                if (count > AppConstants.Defaults.MAX_HISTORY_SIZE) {
+                    historyDao.deleteOldRecords(AppConstants.Defaults.MAX_HISTORY_SIZE)
+                }
+                
+                Logger.d(TAG, "History added successfully: $fileName")
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to add history: ${e.message}", e)
             }
-            
-            saveHistory(history)
-            Log.d(TAG, "History added successfully: $fileName")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to add history", e)
-            // 降级处理：不中断主流程
         }
     }
 
     /**
      * 获取所有历史记录
-     * 优化：使用内存缓存避免频繁 JSON 解析
+     * 同步方法，保持API兼容性
      */
     fun getHistory(): List<HistoryItem> {
         return try {
-            val jsonString = sharedPreferences.getString(AppConstants.Preferences.HISTORY_LIST, null) 
-                ?: return emptyList()
-            
-            // 验证 JSON 格式
-            if (jsonString.isEmpty()) {
-                Log.w(TAG, "History JSON string is empty")
-                return emptyList()
-            }
-            
-            // 缓存命中：如果 JSON 字符串没变化，直接返回缓存
-            synchronized(cacheLock) {
-                if (lastSavedJsonString == jsonString && cachedHistory != null) {
-                    Log.d(TAG, "History cache hit: ${cachedHistory!!.size} items")
-                    return cachedHistory!!
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    historyDao.getAllHistory().map { HistoryItem.fromEntity(it) }
                 }
             }
-            
-            // 缓存未命中：解析 JSON
-            val jsonArray = JSONArray(jsonString)
-            val history = mutableListOf<HistoryItem>()
-            
-            // 逐个解析，遇到错误的数据项时跳过而不是中断
-            for (i in 0 until jsonArray.length()) {
-                try {
-                    val jsonObject = jsonArray.getJSONObject(i)
-                    val item = HistoryItem.fromJson(jsonObject)
-                    
-                    // 数据验证
-                    if (item.uri.isNotEmpty() && item.fileName.isNotEmpty()) {
-                        history.add(item)
-                    } else {
-                        Log.w(TAG, "Skipping invalid history item at index $i: missing uri or fileName")
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to parse history item at index $i", e)
-                    // 继续处理下一项
-                    continue
-                }
-            }
-            
-            // 更新缓存
-            synchronized(cacheLock) {
-                cachedHistory = history
-                lastSavedJsonString = jsonString
-            }
-            
-            Log.d(TAG, "Successfully loaded ${history.size} history items (cache updated)")
-            history
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse history", e)
-            // 降级处理：返回空列表而不是崩溃
+            Logger.e(TAG, "Failed to get history: ${e.message}", e)
             emptyList()
         }
     }
@@ -191,20 +164,13 @@ class PlaybackHistoryManager(context: Context) {
      * 删除单条历史记录
      */
     fun removeHistory(uri: String) {
-        try {
-            val history = getHistory().toMutableList()
-            val sizeBefore = history.size
-            history.removeAll { it.uri == uri }
-            
-            if (history.size < sizeBefore) {
-                saveHistory(history)
-                Log.d(TAG, "History removed successfully: $uri")
-            } else {
-                Log.w(TAG, "No history found to remove: $uri")
+        scope.launch {
+            try {
+                historyDao.deleteByUri(uri)
+                Logger.d(TAG, "History removed successfully: $uri")
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to remove history: ${e.message}", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to remove history", e)
-            // 降级处理：不中断主流程
         }
     }
 
@@ -212,71 +178,18 @@ class PlaybackHistoryManager(context: Context) {
      * 清空所有历史记录
      */
     fun clearHistory() {
-        try {
-            sharedPreferences.edit().remove(AppConstants.Preferences.HISTORY_LIST).apply()
-            // 清空缓存
-            synchronized(cacheLock) {
-                cachedHistory = null
-                lastSavedJsonString = null
+        scope.launch {
+            try {
+                historyDao.clearAll()
+                Logger.d(TAG, "History cleared successfully")
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to clear history: ${e.message}", e)
             }
-            Log.d(TAG, "History cleared successfully (cache invalidated)")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to clear history", e)
-            // 降级处理：不中断主流程
         }
     }
 
     /**
-     * 保存历史记录
-     * 优化：保存新字符串后更新缓存
-     */
-    private fun saveHistory(history: List<HistoryItem>) {
-        try {
-            val jsonArray = JSONArray()
-            
-            // 逐个转换为 JSON，遇到错误时跳过而不是中断
-            for (item in history) {
-                try {
-                    jsonArray.put(item.toJson())
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to convert history item to JSON: ${item.fileName}", e)
-                    // 继续处理下一项
-                    continue
-                }
-            }
-            
-            // 数据验证：不保存空数组给系统，直接删除
-            val jsonString = jsonArray.toString()
-            if (jsonString.isEmpty() || jsonString == "[]") {
-                sharedPreferences.edit().remove(AppConstants.Preferences.HISTORY_LIST).apply()
-                // 清空缓存
-                synchronized(cacheLock) {
-                    cachedHistory = null
-                    lastSavedJsonString = null
-                }
-                Log.d(TAG, "Cleared empty history (cache invalidated)")
-                return
-            }
-            
-            sharedPreferences.edit()
-                .putString(AppConstants.Preferences.HISTORY_LIST, jsonString)
-                .apply()
-            
-            // 更新缓存
-            synchronized(cacheLock) {
-                cachedHistory = history
-                lastSavedJsonString = jsonString
-            }
-            
-            Log.d(TAG, "History saved successfully: ${history.size} items (cache updated)")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to save history", e)
-            // 降级处理：不中断主流程
-        }
-    }
-
-    /**
-     * 更新弹幕信息（参考 DanDanPlay 的 PlayHistoryDao.updateDanmu）
+     * 更新弹幕信息
      */
     fun updateDanmu(
         uri: Uri,
@@ -284,28 +197,13 @@ class PlaybackHistoryManager(context: Context) {
         danmuVisible: Boolean = true,
         danmuOffsetTime: Long = 0L
     ) {
-        try {
-            val history = getHistory().toMutableList()
-            val uriString = uri.toString()
-            
-            // 查找对应的历史记录
-            val index = history.indexOfFirst { it.uri == uriString }
-            if (index >= 0) {
-                val oldItem = history[index]
-                // 创建新的 HistoryItem（只更新弹幕相关字段）
-                val newItem = oldItem.copy(
-                    danmuPath = danmuPath,
-                    danmuVisible = danmuVisible,
-                    danmuOffsetTime = danmuOffsetTime
-                )
-                history[index] = newItem
-                saveHistory(history)
-                Log.d(TAG, "Danmu info updated for: ${oldItem.fileName}, path: $danmuPath, visible: $danmuVisible")
-            } else {
-                Log.w(TAG, "No history found for URI: $uriString")
+        scope.launch {
+            try {
+                historyDao.updateDanmu(uri.toString(), danmuPath, danmuVisible, danmuOffsetTime)
+                Logger.d(TAG, "Danmu info updated for: $uri")
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to update danmu info: ${e.message}", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to update danmu info", e)
         }
     }
 
@@ -313,55 +211,108 @@ class PlaybackHistoryManager(context: Context) {
      * 更新视频缩略图路径
      */
     fun updateThumbnail(uri: Uri, thumbnailPath: String?) {
-        try {
-            val history = getHistory().toMutableList()
-            val uriString = uri.toString()
-            
-            // 查找对应的历史记录
-            val index = history.indexOfFirst { it.uri == uriString }
-            if (index >= 0) {
-                val oldItem = history[index]
-                val newItem = oldItem.copy(thumbnailPath = thumbnailPath)
-                history[index] = newItem
-                saveHistory(history)
-                Log.d(TAG, "Thumbnail updated for: ${oldItem.fileName}, path: $thumbnailPath")
-            } else {
-                Log.w(TAG, "No history found for URI: $uriString")
+        scope.launch {
+            try {
+                historyDao.updateThumbnail(uri.toString(), thumbnailPath)
+                Logger.d(TAG, "Thumbnail updated for: $uri")
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to update thumbnail: ${e.message}", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to update thumbnail", e)
         }
     }
 
     /**
-     * 获取指定 URI 的历史记录（用于恢复弹幕状态）
+     * 获取指定 URI 的历史记录
      */
     fun getHistoryForUri(uri: Uri): HistoryItem? {
         return try {
-            val uriString = uri.toString()
-            getHistory().firstOrNull { it.uri == uriString }
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    historyDao.getHistoryByUri(uri.toString())?.let { HistoryItem.fromEntity(it) }
+                }
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get history for URI", e)
+            Logger.e(TAG, "Failed to get history for URI: ${e.message}", e)
             null
         }
     }
 
     /**
      * 获取最后播放的本地视频记录
-     * 只返回本地视频(非http/https URL)
      */
     fun getLastPlayedLocalVideo(): HistoryItem? {
         return try {
-            getHistory()
-                .filter { item ->
-                    // 过滤掉在线视频（http/https 开头的 URI）
-                    val uri = item.uri
-                    !uri.startsWith("http://") && !uri.startsWith("https://")
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    historyDao.getLastPlayedLocalVideo()?.let { HistoryItem.fromEntity(it) }
                 }
-                .firstOrNull() // 第一条就是最后播放的
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get last played local video", e)
+            Logger.e(TAG, "Failed to get last played local video: ${e.message}", e)
             null
+        }
+    }
+    
+    /**
+     * 从SharedPreferences迁移数据到Room数据库
+     * 只在首次启动时执行一次
+     */
+    private fun migrateFromSharedPreferences() {
+        scope.launch {
+            try {
+                // 检查是否已经迁移过
+                val migrated = sharedPreferences.getBoolean(MIGRATION_FLAG, false)
+                if (migrated) {
+                    Logger.d(TAG, "Data already migrated to Room")
+                    return@launch
+                }
+                
+                // 读取旧的JSON数据
+                val jsonString = sharedPreferences.getString(AppConstants.Preferences.HISTORY_LIST, null)
+                if (jsonString.isNullOrEmpty()) {
+                    Logger.d(TAG, "No data to migrate")
+                    sharedPreferences.edit().putBoolean(MIGRATION_FLAG, true).apply()
+                    return@launch
+                }
+                
+                // 解析JSON并转换为实体
+                val entities = mutableListOf<PlaybackHistoryEntity>()
+                val jsonArray = JSONArray(jsonString)
+                
+                for (i in 0 until jsonArray.length()) {
+                    try {
+                        val jsonObject = jsonArray.getJSONObject(i)
+                        val entity = PlaybackHistoryEntity(
+                            uri = jsonObject.getString("uri"),
+                            fileName = jsonObject.getString("fileName"),
+                            position = jsonObject.getLong("position"),
+                            duration = jsonObject.getLong("duration"),
+                            lastPlayed = jsonObject.getLong("lastPlayed"),
+                            folderName = jsonObject.optString("folderName", "未知文件夹"),
+                            danmuPath = jsonObject.optString("danmuPath", null).takeIf { it?.isNotEmpty() == true },
+                            danmuVisible = jsonObject.optBoolean("danmuVisible", true),
+                            danmuOffsetTime = jsonObject.optLong("danmuOffsetTime", 0L),
+                            thumbnailPath = jsonObject.optString("thumbnailPath", null).takeIf { it?.isNotEmpty() == true }
+                        )
+                        entities.add(entity)
+                    } catch (e: Exception) {
+                        Logger.w(TAG, "Failed to parse history item at index $i during migration: ${e.message}")
+                    }
+                }
+                
+                // 批量插入到数据库
+                if (entities.isNotEmpty()) {
+                    historyDao.insertAll(entities)
+                    Logger.d(TAG, "Successfully migrated ${entities.size} history items to Room")
+                }
+                
+                // 标记迁移完成（保留原数据作为备份，不删除）
+                sharedPreferences.edit().putBoolean(MIGRATION_FLAG, true).apply()
+                Logger.d(TAG, "Migration completed, original data preserved as backup")
+                
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to migrate data from SharedPreferences: ${e.message}", e)
+            }
         }
     }
 }

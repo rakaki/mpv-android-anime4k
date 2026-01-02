@@ -55,6 +55,8 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+        // Room Schema 导出配置
+        freeCompilerArgs += ["-Xopt-in=kotlin.RequiresOptIn"]
     }
     
     buildFeatures {
@@ -64,6 +66,23 @@ android {
     
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.3"  // 兼容 Kotlin 1.9.10
+    }
+    
+    // Room Schema 导出路径配置
+    defaultConfig {
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += ["room.schemaLocation": "$projectDir/schemas".toString()]
+            }
+        }
+    }
+    
+    // Kapt 配置 (用于 Room 编译)
+    kapt {
+        arguments {
+            arg("room.schemaLocation", "$projectDir/schemas")
+            arg("room.incremental", "true")
+        }
     }
     
     // ========== 为分包 APK 设置不同的版本号 ==========
@@ -124,6 +143,13 @@ dependencies {
     implementation 'androidx.room:room-runtime:2.5.2'
     implementation 'androidx.room:room-ktx:2.5.2'
     kapt 'androidx.room:room-compiler:2.5.2'
+    
+    // WorkManager - 后台任务调度
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+    
+    // Paging3 - 分页加载防OOM
+    implementation 'androidx.paging:paging-runtime-ktx:3.2.1'
+    implementation 'androidx.paging:paging-compose:3.2.1'
     
     // 二维码生成 - B站扫码登录
     implementation 'com.google.zxing:core:3.5.1'

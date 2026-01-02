@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : BaseActivity() {
     
-    private lateinit var historyManager: PlaybackHistoryManager
+    private var historyManager: PlaybackHistoryManager? = null  // 改为可空类型，延迟初始化
     private var lastThemeName: String? = null
     private var needsRefresh = false
     
@@ -31,12 +31,19 @@ class MainActivity : BaseActivity() {
             return
         }
         
-        // 初始化历史记录管理器
-        historyManager = PlaybackHistoryManager(this)
+        // 使用IdleHandler在主线程空闲时初始化历史记录管理器
+        android.os.Looper.myQueue().addIdleHandler {
+            historyManager = PlaybackHistoryManager(this)
+            com.fam4k007.videoplayer.utils.Logger.d("MainActivity", "PlaybackHistoryManager initialized in idle")
+            false  // 返回false表示只执行一次
+        }
+        
         lastThemeName = ThemeManager.getCurrentTheme(this).themeName
         
-        // 自动检查更新
-        checkForUpdateSilently()
+        // 延迟检查更新（5秒后，避免阻塞启动）
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            checkForUpdateSilently()
+        }, 5000)
         
         setupContent()
     }
@@ -82,7 +89,7 @@ class MainActivity : BaseActivity() {
                 )
             ) {
                 HomeScreen(
-                    historyManager = historyManager,
+                    historyManager = historyManager ?: PlaybackHistoryManager(activity),
                     onNavigateToSettings = {
                         startActivity(Intent(activity, SettingsComposeActivity::class.java))
                         overridePendingTransition(R.anim.scale_in, R.anim.scale_out)

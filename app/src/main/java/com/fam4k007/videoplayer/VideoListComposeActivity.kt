@@ -12,7 +12,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.lifecycleScope
 import com.fam4k007.videoplayer.compose.VideoListScreen
+import com.fam4k007.videoplayer.compose.VideoListScreenPaging
+import com.fam4k007.videoplayer.database.VideoDatabase
 import com.fam4k007.videoplayer.ui.theme.getThemeColors
+import com.fam4k007.videoplayer.utils.Logger
 import com.fam4k007.videoplayer.utils.NoMediaChecker
 import com.fam4k007.videoplayer.utils.ThemeManager
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +30,7 @@ class VideoListComposeActivity : ComponentActivity() {
 
     private lateinit var preferencesManager: com.fam4k007.videoplayer.manager.PreferencesManager
     private var folderPath: String = ""
+    private var usePaging: Boolean = false  // 是否使用Paging3模式
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +44,10 @@ class VideoListComposeActivity : ComponentActivity() {
         val folderName = intent.getStringExtra("folder_name") ?: "视频列表"
         folderPath = intent.getStringExtra("folder_path") ?: ""
         val videos = intent.getParcelableArrayListExtra<VideoFileParcelable>("video_list") ?: arrayListOf()
+        
+        // 如果视频数量超过100个，使用Paging3模式
+        usePaging = videos.size > 100
+        Logger.d(TAG, "视频数量: ${videos.size}, 使用Paging3: $usePaging")
 
         setupContent(folderName, videos)
     }
@@ -63,16 +71,35 @@ class VideoListComposeActivity : ComponentActivity() {
                     onSurface = Color(0xFF212121)
                 )
             ) {
-                VideoListScreen(
-                    folderName = folderName,
-                    initialVideos = videos,
-                    onNavigateBack = { finish() },
-                    onOpenVideo = { video, index, allVideos -> 
-                        openVideoPlayer(video, index, folderName, allVideos)
-                    },
-                    onRescanFolder = { callback -> rescanFolder(callback) },
-                    preferencesManager = preferencesManager
-                )
+                // 根据视频数量选择不同的加载模式
+                if (usePaging && folderPath.isNotEmpty()) {
+                    // 大量视频使用Paging3防止OOM
+                    VideoListScreenPaging(
+                        folderName = folderName,
+                        folderPath = folderPath,
+                        onNavigateBack = { finish() },
+                        onOpenVideo = { video, allVideos -> 
+                            openVideoPlayer(video, 0, folderName, allVideos)
+                        },
+                        onRescanFolder = { callback -> 
+                            rescanFolderToDatabase { callback() }
+                        },
+                        preferencesManager = preferencesManager,
+                        coroutineScope = lifecycleScope
+                    )
+                } else {
+                    // 少量视频使用传统模式
+                    VideoListScreen(
+                        folderName = folderName,
+                        initialVideos = videos,
+                        onNavigateBack = { finish() },
+                        onOpenVideo = { video, index, allVideos -> 
+                            openVideoPlayer(video, index, folderName, allVideos)
+                        },
+                        onRescanFolder = { callback -> rescanFolder(callback) },
+                        preferencesManager = preferencesManager
+                    )
+                }
             }
         }
     }
@@ -169,5 +196,45 @@ class VideoListComposeActivity : ComponentActivity() {
         }
         
         return videos
+    }
+    
+    /**
+     * 重新扫描文件夹并保存到数据库（用于Paging3模式）
+     */
+    private fun rescanFolderToDatabase(callback: () -> Unit) {
+        if (folderPath.isEmpty()) {
+            callback()
+            return
+        }
+        
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    val videos = scanVideosInFolder(folderPath)
+                    
+                    // 保存到数据库
+                    val database = VideoDatabase.getDatabase(this@VideoListComposeActivity)
+                    val entities = videos.map { video ->
+                        com.fam4k007.videoplayer.database.VideoCacheEntity(
+                            uri = video.uri,
+                            name = video.name,
+                            path = video.path,
+                            folderPath = folderPath,
+                            folderName = folderPath.substringAfterLast("/"),
+                            size = video.size,
+                            duration = video.duration,
+                            dateModified = video.dateAdded,
+                            dateAdded = video.dateAdded,
+                            lastScanned = System.currentTimeMillis()
+                        )
+                    }
+                    database.videoCacheDao().insertVideos(entities)
+                    Logger.d(TAG, "重新扫描完成，保存了 ${entities.size} 个视频到数据库")
+                } catch (e: Exception) {
+                    Logger.e(TAG, "重新扫描文件夹失败", e)
+                }
+            }
+            callback()
+        }
     }
 }

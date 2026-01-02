@@ -32,8 +32,8 @@ class SubtitleManager {
         return try {
             val path = getSubtitlePath(context, subtitleUri)
             if (path != null) {
-                Log.d(TAG, "===== Adding external subtitle =====")
-                Log.d(TAG, "Path: $path")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "===== Adding external subtitle =====")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Path: $path")
                 
                 // 保存路径供外部使用
                 lastAddedSubtitlePath = path
@@ -42,24 +42,24 @@ class SubtitleManager {
                 // sub-add <path> [select|insert-next|append] [title]
                 // "select" 标志会自动加载并显示该字幕
                 MPVLib.command("sub-add", path, "select")
-                Log.d(TAG, "sub-add command executed with 'select' flag")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "sub-add command executed with 'select' flag")
                 
                 // 立即查询 track-list 状态
                 val trackCount = MPVLib.getPropertyInt("track-list/count") ?: 0
                 val currentSid = MPVLib.getPropertyString("sid") ?: "no"
-                Log.d(TAG, "Immediately after sub-add: track-list/count = $trackCount, current sid = $currentSid")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Immediately after sub-add: track-list/count = $trackCount, current sid = $currentSid")
                 
                 for (i in 0 until trackCount) {
                     val type = MPVLib.getPropertyString("track-list/$i/type")
                     val id = MPVLib.getPropertyInt("track-list/$i/id")
                     val lang = MPVLib.getPropertyString("track-list/$i/lang") ?: "unknown"
                     val title = MPVLib.getPropertyString("track-list/$i/title") ?: ""
-                    Log.d(TAG, "  Track[$i]: type=$type, id=$id, lang=$lang, title=$title")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "  Track[$i]: type=$type, id=$id, lang=$lang, title=$title")
                 }
                 
-                Log.d(TAG, "Successfully added external subtitle: $path")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Successfully added external subtitle: $path")
                 
-                Log.d(TAG, "===== End adding external subtitle =====")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "===== End adding external subtitle =====")
                 true
             } else {
                 Log.w(TAG, "Failed to get subtitle path from URI: $subtitleUri")
@@ -84,22 +84,22 @@ class SubtitleManager {
                     // file:// URI 直接使用路径
                     uri.path?.let { path ->
                         if (File(path).exists()) {
-                            Log.d(TAG, "Using file:// path directly: $path")
+                            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Using file:// path directly: $path")
                             path
                         } else {
-                            Log.w(TAG, "File does not exist: $path")
+                            com.fam4k007.videoplayer.utils.Logger.w(TAG, "File does not exist: $path")
                             null
                         }
                     }
                 }
                 "content" -> {
                     // content:// URI 需要复制到实际文件路径，MPV 无法直接处理 content:// URI
-                    Log.d(TAG, "content:// URI detected, need to copy to cache")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "content:// URI detected, need to copy to cache")
                     copyContentUriToFile(context, uri)
                 }
                 else -> {
                     // 尝试直接使用 URI
-                    Log.d(TAG, "Unknown scheme: ${uri.scheme}, trying direct URI")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Unknown scheme: ${uri.scheme}, trying direct URI")
                     uri.toString()
                 }
             }
@@ -127,7 +127,7 @@ class SubtitleManager {
             val fileName = "${uri.hashCode()}_$displayName"
             val subtitleFile = File(subtitleDir, fileName)
             
-            Log.d(TAG, "Copying content URI to persistent storage: ${subtitleFile.absolutePath}")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Copying content URI to persistent storage: ${subtitleFile.absolutePath}")
             
             context.contentResolver.openInputStream(uri)?.use { input ->
                 subtitleFile.outputStream().use { output ->
@@ -136,7 +136,7 @@ class SubtitleManager {
             }
             
             if (subtitleFile.exists()) {
-                Log.d(TAG, "Subtitle file created successfully: ${subtitleFile.absolutePath} (${subtitleFile.length()} bytes)")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Subtitle file created successfully: ${subtitleFile.absolutePath} (${subtitleFile.length()} bytes)")
                 subtitleFile.absolutePath
             } else {
                 Log.e(TAG, "Failed to create subtitle file")

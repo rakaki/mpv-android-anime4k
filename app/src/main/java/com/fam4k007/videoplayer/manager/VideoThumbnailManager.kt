@@ -4,293 +4,238 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.util.Log
 import android.util.LruCache
+import com.fam4k007.videoplayer.utils.Logger
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 视频缩略图管理器 - 哔哩哔哩级别优化
- * 特性：分批优先级生成、多线程并行、关键帧加速、智能缓存
+ * 视频缩略图管理器 - 重构优化版
+ * 核心优化：
+ * 1. 单例 MediaMetadataRetriever，避免重复创建
+ * 2. 智能预加载：拖动时预加载周围10秒
+ * 3. 防抖机制：快速拖动时避免过度提取
+ * 4. 高效缓存：LruCache + 按需提取
  */
 class VideoThumbnailManager(context: Context) {
     
     private val contextRef = WeakReference(context)
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
-    // LRU 缓存，500张缩略图
-    private val thumbnailCache = LruCache<Long, Bitmap>(500)
+    // LRU 缓存，最多300张缩略图（约占30MB内存）
+    private val thumbnailCache = LruCache<Long, Bitmap>(300)
+    
+    // 单例 MediaMetadataRetriever，避免重复创建
+    private var retriever: MediaMetadataRetriever? = null
+    private val retrieverLock = Any()
     
     // 当前视频信息
     private var currentVideoUri: Uri? = null
     private var videoDuration: Long = 0L
     private var isLocal: Boolean = false
-    private var isInitialized: Boolean = false
-    private var isGenerating: Boolean = false
-    private var currentPlayPosition: Long = 0
+    private var isInitialized = AtomicBoolean(false)
     
-    // 缩略图参数 - 使用较小分辨率提高速度
-    private val thumbnailWidth = 320
-    private val thumbnailHeight = 180
+    // 缩略图参数
+    private val thumbnailWidth = 480
+    private val thumbnailHeight = 270
     
-    // 提取任务队列
-    private val extractQueue = mutableSetOf<Long>()
+    // 预加载控制
+    private var preloadJob: Job? = null
+    private val preloadRange = 10L  // 预加载前后10秒
     
     companion object {
         private const val TAG = "VideoThumbnailManager"
     }
     
     /**
-     * 初始化视频，分批优先级生成缩略图
+     * 初始化视频
      */
     fun initializeVideo(uri: Uri, duration: Long, isWebDav: Boolean = false) {
-        if (isInitialized && currentVideoUri == uri) {
-            Log.d(TAG, "缩略图已初始化，跳过")
+        // 如果是同一视频，直接返回
+        if (isInitialized.get() && currentVideoUri == uri) {
             return
         }
         
         isLocal = !isWebDav && (uri.scheme == "file" || uri.scheme == "content")
         
         if (!isLocal) {
-            Log.d(TAG, "非本地视频，跳过缩略图生成")
+            Logger.d(TAG, "非本地视频，跳过缩略图")
             return
         }
         
+        // 释放旧资源
+        releaseRetriever()
+        thumbnailCache.evictAll()
+        
         currentVideoUri = uri
         videoDuration = duration
-        isInitialized = true
-        isGenerating = false
-        currentPlayPosition = 0
+        isInitialized.set(true)
         
-        thumbnailCache.evictAll()
-        extractQueue.clear()
-        
-        val durationSec = duration / 1000
-        Log.d(TAG, "初始化: ${durationSec}秒, 每2秒一帧")
-        
-        // 立即开始分批生成
+        // 初始化 MediaMetadataRetriever
         scope.launch {
-            generateThumbnailsInBatches()
+            initializeRetriever(uri)
         }
+        
+        Logger.d(TAG, "初始化完成: ${duration / 1000}秒")
     }
     
     /**
-     * 分批优先级生成缩略图（类似哔哩哔哩）
+     * 初始化 MediaMetadataRetriever（在后台线程）
      */
-    private suspend fun generateThumbnailsInBatches() {
-        if (isGenerating) return
-        isGenerating = true
-        
-        val durationSec = videoDuration / 1000
-        
-        // 第1批：当前位置前后60秒（120帧）
-        Log.d(TAG, "[第1批] 生成当前位置前后60秒...")
-        generateRange(maxOf(0, currentPlayPosition - 60), minOf(durationSec, currentPlayPosition + 60))
-        
-        // 第2批：扩展到前后3分钟（360帧）
-        Log.d(TAG, "[第2批] 扩展到前后3分钟...")
-        generateRange(maxOf(0, currentPlayPosition - 180), minOf(durationSec, currentPlayPosition + 180))
-        
-        // 第3批：生成全视频
-        Log.d(TAG, "[第3批] 生成全视频...")
-        generateRange(0, durationSec)
-        
-        Log.d(TAG, "所有缩略图生成完成，共 ${thumbnailCache.size()} 帧")
-        isGenerating = false
-    }
-    
-    /**
-     * 生成指定范围的缩略图（并行加速）
-     */
-    private suspend fun generateRange(startSec: Long, endSec: Long) = withContext(Dispatchers.IO) {
-        val uri = currentVideoUri ?: return@withContext
+    private suspend fun initializeRetriever(uri: Uri) = withContext(Dispatchers.IO) {
         val context = contextRef.get() ?: return@withContext
         
-        // 分成多个块并行处理
-        val chunkSize = 30  // 每块30秒
-        val chunks = mutableListOf<Pair<Long, Long>>()
-        var current = startSec
-        while (current < endSec) {
-            val end = minOf(current + chunkSize, endSec)
-            chunks.add(current to end)
-            current = end
-        }
-        
-        // 并行处理每个块（最多3个线程）
-        chunks.chunked(3).forEach { batch ->
-            batch.map { (start, end) ->
-                async {
-                    generateChunk(start, end, context, uri)
-                }
-            }.awaitAll()
-        }
-    }
-    
-    /**
-     * 生成一个块的缩略图
-     */
-    private suspend fun generateChunk(startSec: Long, endSec: Long, context: Context, uri: Uri) {
-        val retriever = MediaMetadataRetriever()
-        try {
-            retriever.setDataSource(context, uri)
-            
-            for (sec in startSec until endSec step 2) {
-                if (!scope.isActive || !isInitialized) break
-                
-                // 跳过已缓存的
-                if (thumbnailCache.get(sec) != null) continue
-                
-                try {
-                    val timeUs = sec * 1000 * 1000
-                    
-                    // 使用 OPTION_CLOSEST_SYNC 获取关键帧，速度更快
-                    val frame = retriever.getFrameAtTime(
-                        timeUs,
-                        MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-                    )
-                    
-                    frame?.let {
-                        val scaledBitmap = scaleBitmapKeepRatio(it, thumbnailWidth, thumbnailHeight)
-                        if (it != scaledBitmap) {
-                            it.recycle()
-                        }
-                        thumbnailCache.put(sec, scaledBitmap)
-                    }
-                    
-                } catch (e: Exception) {
-                    // 关键帧失败，尝试普通帧
-                    try {
-                        val frame = retriever.getFrameAtTime(
-                            sec * 1000 * 1000,
-                            MediaMetadataRetriever.OPTION_CLOSEST
-                        )
-                        frame?.let {
-                            val scaledBitmap = scaleBitmapKeepRatio(it, thumbnailWidth, thumbnailHeight)
-                            if (it != scaledBitmap) {
-                                it.recycle()
-                            }
-                            thumbnailCache.put(sec, scaledBitmap)
-                        }
-                    } catch (e2: Exception) {
-                        // 忽略失败的帧
-                    }
-                }
-            }
-            
-        } finally {
+        synchronized(retrieverLock) {
             try {
-                retriever.release()
+                retriever?.release()
+                retriever = MediaMetadataRetriever().apply {
+                    setDataSource(context, uri)
+                }
+                Logger.d(TAG, "MediaMetadataRetriever 初始化成功")
             } catch (e: Exception) {
-                // 忽略
+                Logger.e(TAG, "初始化失败: ${e.message}", e)
+                retriever = null
             }
         }
     }
     
     /**
-     * 更新当前播放位置（用于智能预测）
-     */
-    fun updatePlayPosition(positionSec: Long) {
-        currentPlayPosition = positionSec
-    }
-    
-    /**
-     * 获取指定位置的缩略图（智能查找最接近的）
+     * 获取缩略图（带缓存）
      */
     fun getThumbnailAt(positionSec: Long): Bitmap? {
-        if (!isLocal || videoDuration <= 0) return null
-        
-        // 1. 精确匹配
-        thumbnailCache.get(positionSec)?.let { return it }
-        
-        // 2. 找最近的2秒倍数位置
-        val nearestKey = (positionSec / 2) * 2
-        thumbnailCache.get(nearestKey)?.let { return it }
-        
-        // 3. 查找前后的帧
-        thumbnailCache.get(nearestKey - 2)?.let { return it }
-        thumbnailCache.get(nearestKey + 2)?.let { return it }
-        
-        return null
+        return thumbnailCache.get(positionSec)
     }
     
     /**
-     * 按比例缩放 Bitmap，保持宽高比
-     */
-    private fun scaleBitmapKeepRatio(source: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
-        val sourceWidth = source.width
-        val sourceHeight = source.height
-        
-        val ratioWidth = maxWidth.toFloat() / sourceWidth
-        val ratioHeight = maxHeight.toFloat() / sourceHeight
-        val ratio = minOf(ratioWidth, ratioHeight)
-        
-        val targetWidth = (sourceWidth * ratio).toInt()
-        val targetHeight = (sourceHeight * ratio).toInt()
-        
-        return Bitmap.createScaledBitmap(source, targetWidth, targetHeight, true)
-    }
-    
-    /**
-     * 实时提取缩略图（用于补充）
+     * 实时提取缩略图（主方法）- 关键帧优先策略
      */
     suspend fun extractThumbnailRealtime(positionSec: Long): Bitmap? = withContext(Dispatchers.IO) {
-        if (!isLocal) return@withContext null
+        // 先检查缓存
+        thumbnailCache.get(positionSec)?.let { return@withContext it }
         
-        val uri = currentVideoUri ?: return@withContext null
-        val context = contextRef.get() ?: return@withContext null
+        // 提取缩略图（关键帧优先，速度更快）
+        val bitmap = extractFrameFast(positionSec)
         
-        // 再次检查缓存
-        getThumbnailAt(positionSec)?.let { return@withContext it }
+        // 缓存结果
+        bitmap?.let { thumbnailCache.put(positionSec, it) }
         
-        // 避免重复提取
-        synchronized(extractQueue) {
-            if (positionSec in extractQueue) return@withContext null
-            extractQueue.add(positionSec)
-        }
-        
-        val retriever = MediaMetadataRetriever()
-        try {
-            retriever.setDataSource(context, uri)
+        bitmap
+    }
+    
+    /**
+     * 快速提取视频帧（关键帧优先）
+     */
+    private fun extractFrameFast(positionSec: Long): Bitmap? {
+        synchronized(retrieverLock) {
+            val ret = retriever ?: return null
             
-            val frame = retriever.getFrameAtTime(
-                positionSec * 1000 * 1000,
-                MediaMetadataRetriever.OPTION_CLOSEST
-            )
-            
-            frame?.let {
-                val scaledBitmap = scaleBitmapKeepRatio(it, thumbnailWidth, thumbnailHeight)
-                if (it != scaledBitmap) it.recycle()
+            return try {
+                val timeUs = positionSec * 1_000_000
                 
-                thumbnailCache.put(positionSec, scaledBitmap)
-                return@withContext scaledBitmap
-            }
-            
-        } finally {
-            retriever.release()
-            synchronized(extractQueue) {
-                extractQueue.remove(positionSec)
+                // 策略1：优先使用关键帧（SYNC），速度最快（50-100ms）
+                val syncFrame = ret.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                if (syncFrame != null) {
+                    return scaleBitmap(syncFrame)
+                }
+                
+                // 策略2：使用精确帧（CLOSEST），较慢但更准确（200-500ms）
+                val exactFrame = ret.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                if (exactFrame != null) {
+                    return scaleBitmap(exactFrame)
+                }
+                
+                null
+            } catch (e: Exception) {
+                Logger.e(TAG, "提取帧失败 @${positionSec}s: ${e.message}")
+                null
             }
         }
+    }
+    
+    /**
+     * 智能预加载：拖动时预加载周围的帧（更激进的策略）
+     */
+    fun preloadAroundPosition(centerSec: Long) {
+        preloadJob?.cancel()
+        preloadJob = scope.launch {
+            val startSec = maxOf(0, centerSec - preloadRange)
+            val endSec = minOf(videoDuration / 1000, centerSec + preloadRange)
+            
+            // 优先加载中心附近的帧（每秒一帧）
+            val positions = mutableListOf<Long>()
+            for (offset in 0..preloadRange) {
+                if (centerSec + offset <= endSec) positions.add(centerSec + offset)
+                if (centerSec - offset >= startSec && offset > 0) positions.add(centerSec - offset)
+            }
+            
+            // 批量提取（使用关键帧，速度快）
+            positions.forEach { pos ->
+                if (!isActive) return@forEach
+                if (thumbnailCache.get(pos) == null) {
+                    extractFrameFast(pos)?.let { thumbnailCache.put(pos, it) }
+                }
+                delay(3)  // 减少延迟，加快预加载
+            }
+        }
+    }
+    
+    /**
+     * 缩放 Bitmap
+     */
+    private fun scaleBitmap(source: Bitmap): Bitmap {
+        val sw = source.width
+        val sh = source.height
         
-        null
+        if (sw <= thumbnailWidth && sh <= thumbnailHeight) {
+            return source
+        }
+        
+        val scale = minOf(
+            thumbnailWidth.toFloat() / sw,
+            thumbnailHeight.toFloat() / sh
+        )
+        
+        val targetW = (sw * scale).toInt()
+        val targetH = (sh * scale).toInt()
+        
+        val scaled = Bitmap.createScaledBitmap(source, targetW, targetH, true)
+        if (scaled != source) source.recycle()
+        
+        return scaled
+    }
+    
+    /**
+     * 释放 MediaMetadataRetriever
+     */
+    private fun releaseRetriever() {
+        synchronized(retrieverLock) {
+            retriever?.let {
+                try {
+                    it.release()
+                } catch (e: Exception) {
+                    Logger.e(TAG, "释放 retriever 失败: ${e.message}")
+                }
+            }
+            retriever = null
+        }
     }
     
     /**
      * 清理资源
      */
     fun release() {
+        preloadJob?.cancel()
         scope.cancel()
+        releaseRetriever()
         thumbnailCache.evictAll()
-        extractQueue.clear()
         currentVideoUri = null
         videoDuration = 0L
-        isInitialized = false
-        isGenerating = false
-        currentPlayPosition = 0
+        isInitialized.set(false)
     }
     
     /**
-     * 检查是否支持缩略图预览
+     * 检查是否支持缩略图
      */
     fun isThumbnailSupported(): Boolean {
         return isLocal && currentVideoUri != null && videoDuration > 0

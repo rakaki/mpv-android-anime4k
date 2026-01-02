@@ -33,31 +33,50 @@ class Anime4KManager(private val context: Context) {
     private var shaderDir: File? = null
     private var currentMode: Mode = Mode.OFF
     private var currentQuality: Quality = Quality.BALANCED
+    private var isInitialized = false  // 标记是否已初始化
 
     /**
-     * 初始化：将着色器从assets复制到内部存储
+     * 延迟初始化：只在首次使用时将着色器从assets复制到内部存储
+     * 避免每次VideoPlayerActivity启动都执行I/O操作
      */
     fun initialize(): Boolean {
+        // 如果已经初始化过，直接返回成功
+        if (isInitialized) {
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Anime4K already initialized, skipping")
+            return true
+        }
+        
         return try {
             shaderDir = File(context.filesDir, SHADER_DIR)
             if (!shaderDir!!.exists()) {
                 shaderDir!!.mkdirs()
             }
 
-            // 复制所有着色器文件
+            // 检查是否所有着色器文件都已存在
             val shaderFiles = context.assets.list(SHADER_DIR) ?: emptyArray()
-            Log.d(TAG, "Found ${shaderFiles.size} shader files in assets")
-
-            for (fileName in shaderFiles) {
-                if (fileName.endsWith(".glsl")) {
-                    copyShaderFromAssets(fileName)
-                }
+            val glslFiles = shaderFiles.filter { it.endsWith(".glsl") }
+            val allFilesExist = glslFiles.all { fileName ->
+                File(shaderDir, fileName).exists()
+            }
+            
+            if (allFilesExist && glslFiles.isNotEmpty()) {
+                // 所有文件已存在，无需复制
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "All ${glslFiles.size} shader files already exist, skipping copy")
+                isInitialized = true
+                return true
             }
 
-            Log.d(TAG, "Anime4K shaders initialized successfully")
+            // 复制缺失的着色器文件
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Copying ${glslFiles.size} shader files from assets")
+            for (fileName in glslFiles) {
+                copyShaderFromAssets(fileName)
+            }
+
+            isInitialized = true
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Anime4K shaders initialized successfully")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize Anime4K shaders", e)
+            com.fam4k007.videoplayer.utils.Logger.e(TAG, "Failed to initialize Anime4K shaders", e)
             false
         }
     }

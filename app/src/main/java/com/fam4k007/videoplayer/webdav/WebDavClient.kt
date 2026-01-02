@@ -72,7 +72,7 @@ class WebDavClient(internal val config: WebDavConfig) {
             sardine.list(url)
             true
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("WebDavClient", "WebDAV连接测试失败: ${config.serverUrl}", e)
             false
         }
     }
@@ -117,7 +117,7 @@ class WebDavClient(internal val config: WebDavConfig) {
                 )
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("WebDavClient", "WebDAV列出文件失败: $path", e)
             emptyList()
         }
     }
