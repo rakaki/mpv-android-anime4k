@@ -83,7 +83,7 @@ class PlaybackEngine(
             MPVLib.addObserver(this)
             
             isInitialized = true
-            Log.d(TAG, "PlaybackEngine initialized successfully")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "PlaybackEngine initialized successfully")
             true
         } catch (e: Exception) {
             Log.e(TAG, "MPV initialization failed", e)
@@ -102,8 +102,8 @@ class PlaybackEngine(
         }
 
         try {
-            Log.d(TAG, "Loading video: $videoUri")
-            Log.d(TAG, "Start position: $startPosition seconds")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Loading video: $videoUri")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Start position: $startPosition seconds")
             
             // 对于网络URL，直接使用原始字符串；对于本地文件，使用URI
             val filePath = when (videoUri.scheme) {
@@ -120,7 +120,7 @@ class PlaybackEngine(
             // 保存文件路径
             currentFilePath = filePath
             
-            Log.d(TAG, "MPV loading file path: $filePath")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "MPV loading file path: $filePath")
             MPVLib.command("loadfile", filePath)
             
             // 确保视频加载后开始播放
@@ -130,7 +130,7 @@ class PlaybackEngine(
                     isPlaying = true
                     
                     // 字幕将在 FILE_LOADED 事件中自动启用，不在这里处理
-                    Log.d(TAG, "Video auto-play started")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video auto-play started")
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to start auto-play: ${e.message}")
                 }
@@ -157,10 +157,10 @@ class PlaybackEngine(
                     val videoFormat = MPVLib.getPropertyString("video-format")
                     val hwdec = MPVLib.getPropertyString("hwdec-current")
                     
-                    Log.d(TAG, "Video codec: $videoCodec")
-                    Log.d(TAG, "Audio codec: $audioCodec")
-                    Log.d(TAG, "Video format: $videoFormat")
-                    Log.d(TAG, "Hardware decoding: $hwdec")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video codec: $videoCodec")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Audio codec: $audioCodec")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video format: $videoFormat")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Hardware decoding: $hwdec")
                     
                     // 检查视频流是否存在
                     if (videoCodec == null || videoCodec == "null") {

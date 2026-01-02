@@ -324,7 +324,7 @@ fun DanmakuStyleContent(
         )
         
         Text(
-            text = "数值越大，弹幕移动越慢",
+            text = "数值越大，弹幕移动越快",
             fontSize = 11.sp,
             color = Color(0x99FFFFFF),
             modifier = Modifier.padding(top = 2.dp)

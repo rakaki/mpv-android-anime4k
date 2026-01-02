@@ -96,8 +96,8 @@ class BiliBiliAuthManager(private val context: Context) {
             val response = client.newCall(request).execute()
             val body = response.body?.string()
             
-            android.util.Log.d("BiliAuth", "Poll response code: ${response.code}")
-            android.util.Log.d("BiliAuth", "Poll response body: $body")
+            com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Poll response code: ${response.code}")
+            com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Poll response body: $body")
             
             if (!response.isSuccessful || body == null) {
                 return@withContext LoginResult.Failed("网络请求失败")
@@ -105,26 +105,26 @@ class BiliBiliAuthManager(private val context: Context) {
             
             val apiResponse = gson.fromJson(body, object : com.google.gson.reflect.TypeToken<BiliApiResponse<QRLoginPollResponse>>() {}.type) as BiliApiResponse<QRLoginPollResponse>
             
-            android.util.Log.d("BiliAuth", "Poll API code: ${apiResponse.code}, data.code: ${apiResponse.data?.code}, message: ${apiResponse.data?.message}")
+            com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Poll API code: ${apiResponse.code}, data.code: ${apiResponse.data?.code}, message: ${apiResponse.data?.message}")
             
             when (apiResponse.data?.code) {
                 0 -> {
-                    android.util.Log.d("BiliAuth", "Login success! URL: ${apiResponse.data.url}, refresh_token: ${apiResponse.data.refreshToken}")
+                    com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Login success! URL: ${apiResponse.data.url}")
                     
                     // 登录成功，先访问返回的URL来获取Cookie
                     apiResponse.data.url?.let { loginUrl ->
                         try {
-                            android.util.Log.d("BiliAuth", "Accessing login URL to get cookies...")
+                            com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Accessing login URL to get cookies...")
                             val followRequest = Request.Builder()
                                 .url(loginUrl)
                                 .get()
                                 .build()
                             val followResponse = client.newCall(followRequest).execute()
-                            android.util.Log.d("BiliAuth", "Follow response code: ${followResponse.code}")
+                            com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Follow response code: ${followResponse.code}")
                             
                             // 重要：从跳转响应中保存Cookie
                             saveCookiesFromResponse(followResponse)
-                            android.util.Log.d("BiliAuth", "Cookies saved from follow response")
+                            com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Cookies saved from follow response")
                             
                             followResponse.close()
                         } catch (e: Exception) {
@@ -139,7 +139,8 @@ class BiliBiliAuthManager(private val context: Context) {
                     
                     // 等待Cookie完全保存
                     delay(500)
-                    android.util.Log.d("BiliAuth", "Cookies after login: ${getCookies()}")
+                    // 敏感信息：使用Logger.sensitive保护Cookie
+                    com.fam4k007.videoplayer.utils.Logger.sensitive("BiliAuth", "Cookies after login", getCookies().toString())
                     
                     // 获取用户信息（必须等待完成）
                     fetchAndSaveUserInfo()
@@ -147,16 +148,17 @@ class BiliBiliAuthManager(private val context: Context) {
                     // 给一点时间让SharedPreferences写入完成
                     delay(200)
                     
-                    android.util.Log.d("BiliAuth", "Final cookies: ${getCookies()}")
-                    android.util.Log.d("BiliAuth", "User info after fetch: ${getUserInfo()?.uname}")
+                    // 敏感信息：使用Logger.sensitive保护Cookie
+                    com.fam4k007.videoplayer.utils.Logger.sensitive("BiliAuth", "Final cookies", getCookies().toString())
+                    com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "User info after fetch: ${getUserInfo()?.uname}")
                     LoginResult.Success
                 }
                 86101 -> {
-                    android.util.Log.d("BiliAuth", "Waiting for scan")
+                    com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Waiting for scan")
                     LoginResult.WaitingScan          // 未扫码
                 }
                 86090 -> {
-                    android.util.Log.d("BiliAuth", "Scanned, waiting confirm")
+                    com.fam4k007.videoplayer.utils.Logger.d("BiliAuth", "Scanned, waiting confirm")
                     LoginResult.WaitingConfirm       // 已扫码未确认
                 }
                 86038 -> {

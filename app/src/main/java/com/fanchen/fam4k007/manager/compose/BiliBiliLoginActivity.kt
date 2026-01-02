@@ -411,16 +411,16 @@ class LoginViewModel(private val authManager: BiliBiliAuthManager) : ViewModel()
                 when (result) {
                     is LoginResult.Success -> {
                         // 登录成功，更新UI状态
-                        android.util.Log.d("BiliLogin", "Login success in ViewModel!")
+                        com.fam4k007.videoplayer.utils.Logger.d("BiliLogin", "Login success in ViewModel!")
                         
                         // 等待一下确保用户信息已保存
                         delay(500)
                         
                         var userInfo = authManager.getUserInfo()
-                        android.util.Log.d("BiliLogin", "User info retrieved: ${userInfo?.uname}")
+                        com.fam4k007.videoplayer.utils.Logger.d("BiliLogin", "User info retrieved: ${userInfo?.uname}")
                         
                         if (userInfo == null) {
-                            android.util.Log.e("BiliLogin", "User info is null, creating placeholder")
+                            com.fam4k007.videoplayer.utils.Logger.e("BiliLogin", "User info is null, creating placeholder")
                             // 即使用户信息为空，也创建一个占位符让登录成功
                             userInfo = UserInfo(
                                 mid = 0,
@@ -431,7 +431,7 @@ class LoginViewModel(private val authManager: BiliBiliAuthManager) : ViewModel()
                             )
                         }
                         
-                        android.util.Log.d("BiliLogin", "Setting LoggedIn state")
+                        com.fam4k007.videoplayer.utils.Logger.d("BiliLogin", "Setting LoggedIn state")
                         _uiState.value = LoginUiState.LoggedIn(userInfo)
                         return@launch // 退出轮询
                     }

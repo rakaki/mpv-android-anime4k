@@ -1,6 +1,25 @@
 # ProGuard rules for release build
 
 # ============================================
+# 日志优化：Release版本移除DEBUG/INFO日志
+# ============================================
+
+# 移除Android Log的调试日志（保留Warning和Error）
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+# 移除自定义Logger的调试日志
+-assumenosideeffects class com.fam4k007.videoplayer.utils.Logger {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+    public static *** sensitive(...);
+}
+
+# ============================================
 # 核心规则：保护 MPV 和 Native 调用
 # ============================================
 

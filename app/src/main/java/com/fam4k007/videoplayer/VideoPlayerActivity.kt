@@ -49,6 +49,7 @@ import com.fam4k007.videoplayer.utils.UriUtils.getFolderName
 import com.fam4k007.videoplayer.utils.DialogUtils
 import com.fam4k007.videoplayer.utils.ThemeManager
 import com.fam4k007.videoplayer.utils.getThemeAttrColor
+import com.fam4k007.videoplayer.utils.Logger
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -111,6 +112,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     private var isPlaying = false
     private var currentSpeed = 1.0
     private var isHardwareDecoding = true
+    private var pendingSeekPosition: Int? = null  // 待处理的seek位置，用于解决连续双击问题
     
     private var currentVideoAspect = VideoAspect.FIT  // 当前画面比例模式
     
@@ -121,6 +123,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     
     // 播放状态跟踪
     private var previousIsPlaying = false
+    private var isThumbnailInitialized = false  // 记录是否已初始化缩略图
     
     private var seekTimeSeconds = 5
     
@@ -170,7 +173,7 @@ class VideoPlayerActivity : AppCompatActivity(),
         }
         
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        Log.d(TAG, "Screen keep-on enabled")
+        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Screen keep-on enabled")
 
         preferencesManager = PreferencesManager.getInstance(this)
         
@@ -182,11 +185,11 @@ class VideoPlayerActivity : AppCompatActivity(),
         try {
             videoUri = when {
                 intent.action == android.content.Intent.ACTION_VIEW -> {
-                    Log.d(TAG, "ACTION_VIEW intent")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "ACTION_VIEW intent")
                     intent.data
                 }
                 intent.action == android.content.Intent.ACTION_SEND -> {
-                    Log.d(TAG, "ACTION_SEND intent")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "ACTION_SEND intent")
                     if (intent.type?.startsWith("video/") == true || intent.type?.startsWith("audio/") == true) {
                         intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM)
                     } else {
@@ -195,9 +198,9 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
                 // 支持从MainActivity传递的URL
                 intent.hasExtra("uri") -> {
-                    Log.d(TAG, "Has 'uri' extra")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Has 'uri' extra")
                     val uriString = intent.getStringExtra("uri")
-                    Log.d(TAG, "URI string from extra: $uriString")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "URI string from extra: $uriString")
                     if (uriString != null) {
                         Uri.parse(uriString)
                     } else {
@@ -205,7 +208,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                     }
                 }
                 else -> {
-                    Log.d(TAG, "Using intent.data")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Using intent.data")
                     intent.data
                 }
             }
@@ -223,34 +226,34 @@ class VideoPlayerActivity : AppCompatActivity(),
             return
         }
 
-        Log.d(TAG, "Video URI: $videoUri")
-        Log.d(TAG, "URI scheme: ${videoUri?.scheme}")
+        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video URI: $videoUri")
+        com.fam4k007.videoplayer.utils.Logger.d(TAG, "URI scheme: ${videoUri?.scheme}")
         
         // 判断是否为在线视频
         isOnlineVideo = intent.getBooleanExtra("is_online", false) ||
             videoUri?.scheme?.let { it == "http" || it == "https" } == true
         
-        Log.d(TAG, "Is online video: $isOnlineVideo")
+        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Is online video: $isOnlineVideo")
         
         // 检查是否从主页继续播放进入（有 folder_path 参数）
         isFromHomeContinue = intent.hasExtra("folder_path")
         if (isFromHomeContinue) {
             currentFolderPath = intent.getStringExtra("folder_path")
-            Log.d(TAG, "From home continue play, folder: $currentFolderPath")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "From home continue play, folder: $currentFolderPath")
         } else if (isOnlineVideo) {
-            Log.d(TAG, "Playing online video")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Playing online video")
             // 在线视频不需要获取文件夹路径
             currentFolderPath = null
         } else {
             // 获取当前视频所在文件夹路径
             videoUri?.let { uri ->
                 currentFolderPath = uri.getFolderName()
-                Log.d(TAG, "Folder path: $currentFolderPath")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Folder path: $currentFolderPath")
             }
         }
 
         savedPosition = preferencesManager.getPlaybackPosition(videoUri.toString())
-        Log.d(TAG, "Saved position: $savedPosition seconds")
+        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Saved position: $savedPosition seconds")
 
         mpvView = findViewById(R.id.surfaceView)
         danmakuView = findViewById(R.id.danmakuView)
@@ -274,19 +277,19 @@ class VideoPlayerActivity : AppCompatActivity(),
             bottomMargin = 100  // 底部边距100px
         })
         
-        Log.d(TAG, "Initializing MPV in Activity...")
+        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Initializing MPV in Activity...")
         try {
             // 总是调用 initialize，CustomMPVView 内部会处理重复初始化的保护
             mpvView.initialize(filesDir.path, cacheDir.path)
-            Log.d(TAG, "MPV View initialized")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "MPV View initialized")
             
             mpvView.postDelayed({
-                Log.d(TAG, "Loading video after MPV init")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Loading video after MPV init")
                 loadVideo()
             }, 100) // 延迟 100ms 确保 MPV 完全就绪
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize MPV", e)
-            DialogUtils.showToastShort(this, "MPV 初始化失败: ${e.message}")
+            DialogUtils.showToastLong(this, "播放器初始化失败: ${e.message}\n\n如果问题持续存在，请重启应用")
             finish()
             return
         }
@@ -340,14 +343,19 @@ class VideoPlayerActivity : AppCompatActivity(),
                 override fun onProgressUpdate(position: Double, duration: Double) {
                     this@VideoPlayerActivity.currentPosition = position
                     this@VideoPlayerActivity.duration = duration
+                    
+                    // 清除pending seek位置(当位置更新后，说明seek已完成)
+                    pendingSeekPosition = null
+                    
                     controlsManager?.updateProgress(position, duration)
                     
-                    // 初始化缩略图（当duration首次有效时）
-                    if (duration > 0) {
+                    // 只在第一次获取有效duration时初始化缩略图
+                    if (duration > 0 && !isThumbnailInitialized) {
                         videoUri?.let { uri ->
                             val isWebDav = intent.getBooleanExtra("is_webdav", false)
                             thumbnailManager.initializeVideo(uri, (duration * 1000).toLong(), isWebDav)
                             seekBarThumbnailHelper?.updateDuration(duration)
+                            isThumbnailInitialized = true
                         }
                     }
                     
@@ -370,7 +378,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                         if (isStalledBuffering) {
                             isStalledBuffering = false
                             loadingIndicator.visibility = View.GONE
-                            Log.d(TAG, "Playback resumed, hide stalled buffering indicator")
+                            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Playback resumed, hide stalled buffering indicator")
                         }
                         lastPositionForBuffering = position
                         lastPositionUpdateTime = currentTime
@@ -378,13 +386,13 @@ class VideoPlayerActivity : AppCompatActivity(),
                         // 位置停顿超过0.2秒，且正在播放，显示停顿缓冲
                         isStalledBuffering = true
                         loadingIndicator.visibility = View.VISIBLE
-                        Log.d(TAG, "Playback stalled, show buffering indicator")
+                        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Playback stalled, show buffering indicator")
                     }
                     
                     // 初始播放后隐藏加载动画（防止MPV缓冲状态延迟）
                     if (position > 1.0 && isPlaying && loadingIndicator.visibility == View.VISIBLE && !isStalledBuffering) {
                         loadingIndicator.visibility = View.GONE
-                        Log.d(TAG, "Initial playback started, hide loading indicator")
+                        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Initial playback started, hide loading indicator")
                     }
                     
                     // 处理片头片尾跳过
@@ -420,20 +428,20 @@ class VideoPlayerActivity : AppCompatActivity(),
                     // 延迟标记视频准备好，确保视频真正开始播放
                     Handler(Looper.getMainLooper()).postDelayed({
                         skipIntroOutroManager.markVideoReady()
-                        Log.d(TAG, "Video marked as ready for skip detection")
+                        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video marked as ready for skip detection")
                     }, 500)  // 延迟500ms
                     
                     // 不在这里启动弹幕，弹幕的启动由 onPlaybackStateChanged 统一管理
-                    Log.d(TAG, "Video file loaded")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video file loaded")
                 }
                 
                 override fun onEndOfFile() {
                     videoUri?.let { uri ->
                         preferencesManager.clearPlaybackPosition(uri.toString())
-                        Log.d(TAG, "Video ended, position reset to 0")
+                        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video ended, position reset to 0")
                     }
                     
-                    Log.d(TAG, "Video playback ended, auto-play disabled")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video playback ended, auto-play disabled")
                 }
                 
                 override fun onError(message: String) {
@@ -442,7 +450,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 
                 override fun onBufferingStateChanged(isBuffering: Boolean) {
                     // 根据缓冲状态显示或隐藏加载动画
-                    Log.d(TAG, "Buffering state changed: $isBuffering")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Buffering state changed: $isBuffering")
                     
                     if (isBuffering) {
                         // 显示加载动画
@@ -459,7 +467,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
                 
                 override fun onSurfaceReady() {
-                    Log.d(TAG, "Surface ready callback received")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Surface ready callback received")
                 }
             }
         )
@@ -534,9 +542,20 @@ class VideoPlayerActivity : AppCompatActivity(),
                     }
                 }
                 
-                override fun onSeekGesture(seekSeconds: Int) {
+                override fun onSeekGesture(seekSeconds: Int, isRelativeSeek: Boolean) {
                     if (duration > 0) {
-                        val newPos = (currentPosition + seekSeconds).coerceIn(0.0, duration).toInt()
+                        val newPos = if (isRelativeSeek) {
+                            // 双击模式: 相对当前位置(或pending位置)累加
+                            val basePosition = pendingSeekPosition ?: currentPosition.toInt()
+                            val result = (basePosition + seekSeconds).coerceIn(0, duration.toInt())
+                            // 更新pending位置，防止连续双击时基准位置错误
+                            pendingSeekPosition = result
+                            result
+                        } else {
+                            // 滑动模式: 基于初始位置的绝对偏移
+                            (currentPosition.toInt() + seekSeconds).coerceIn(0, duration.toInt())
+                        }
+                        
                         val usePrecise = gestureHandler.isPreciseSeekingEnabled()
                         playbackEngine?.seekTo(newPos, usePrecise)
                         danmakuManager.seekTo((newPos * 1000).toLong())
@@ -644,7 +663,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 val uriList = videoListParcelable.map { Uri.parse(it.uri) }
                 videoUri?.let { uri ->
                     seriesManager.setVideoList(uriList, uri)
-                    Log.d(TAG, "Video list from intent: ${uriList.size} videos, currentIndex: ${seriesManager.currentIndex}")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video list from intent: ${uriList.size} videos, currentIndex: ${seriesManager.currentIndex}")
                 }
             } else {
                 videoUri?.let { uri ->
@@ -654,17 +673,17 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
             }
             
-            Log.d(TAG, "Series list size: ${seriesManager.getVideoList().size}, currentIndex: ${seriesManager.currentIndex}")
-            Log.d(TAG, "hasPrevious: ${seriesManager.hasPrevious}, hasNext: ${seriesManager.hasNext}")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Series list size: ${seriesManager.getVideoList().size}, currentIndex: ${seriesManager.currentIndex}")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "hasPrevious: ${seriesManager.hasPrevious}, hasNext: ${seriesManager.hasNext}")
         } else {
-            Log.d(TAG, "Online video - skipping series detection")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Online video - skipping series detection")
         }
         
         anime4KManager = Anime4KManager(this)
         if (anime4KManager.initialize()) {
-            Log.d(TAG, "Anime4K initialized successfully")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Anime4K initialized successfully")
         } else {
-            Log.w(TAG, "Anime4K initialization failed")
+            com.fam4k007.videoplayer.utils.Logger.w(TAG, "Anime4K initialization failed")
         }
         
         // 初始化Compose管理器（必须在dialogManager之前）
@@ -706,7 +725,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 // 如果启用了记忆功能，保存当前模式
                 if (preferencesManager.isAnime4KMemoryEnabled()) {
                     preferencesManager.setLastAnime4KMode(mode.name)
-                    Log.d(TAG, "Anime4K mode saved to memory: ${mode.name}")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Anime4K mode saved to memory: ${mode.name}")
                 }
             }
         })
@@ -803,6 +822,12 @@ class VideoPlayerActivity : AppCompatActivity(),
             volumeText = findViewById(R.id.volumeText)
         )
         
+        // 绑定双击跳转指示器
+        gestureHandler.bindDoubleTapSeekIndicators(
+            left = findViewById(R.id.doubleTapSeekLeft),
+            right = findViewById(R.id.doubleTapSeekRight)
+        )
+        
         // 设置controlsManager引用到gestureHandler，用于检查锁定状态
         gestureHandler.setControlsManager(controlsManager)
         
@@ -824,14 +849,14 @@ class VideoPlayerActivity : AppCompatActivity(),
     private fun loadVideo() {
         videoUri?.let { uri ->
             val position = if (duration > 0 && duration < 30) {
-                Log.d(TAG, "Short video detected, starting from 0")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Short video detected, starting from 0")
                 0.0
             } else {
                 savedPosition
             }
             
             if (position > 5.0) {
-                Log.d(TAG, "Saved position detected: $position seconds - showing resume prompt")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Saved position detected: $position seconds - showing resume prompt")
                 showResumeProgressPrompt()
             }
             
@@ -839,11 +864,11 @@ class VideoPlayerActivity : AppCompatActivity(),
             if (isOnlineVideo) {
                 // 在线视频:直接使用原始URL字符串
                 val urlString = uri.toString()
-                Log.d(TAG, "Loading online video with URL string: $urlString")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Loading online video with URL string: $urlString")
                 
                 // B站视频需要设置Referer头(防盗链)
                 if (urlString.contains("bilivideo.com")) {
-                    Log.d(TAG, "Detected Bilibili video, setting Referer header")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Detected Bilibili video, setting Referer header")
                     `is`.xyz.mpv.MPVLib.setOptionString(
                         "http-header-fields",
                         "Referer: https://www.bilibili.com"
@@ -865,7 +890,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                     val delayTime = if (isOnlineVideo) 3000L else 800L
                     delay(delayTime)
                     danmakuManager.seekTo((position * 1000).toLong())
-                    Log.d(TAG, "Synced danmaku to position: $position seconds")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Synced danmaku to position: $position seconds")
                 }
             }
             
@@ -873,14 +898,14 @@ class VideoPlayerActivity : AppCompatActivity(),
             lifecycleScope.launch {
                 delay(500)
                 
-                Log.d(TAG, "Post-load coroutine started, isOnlineVideo=$isOnlineVideo")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Post-load coroutine started, isOnlineVideo=$isOnlineVideo")
                 
                 // 先尝试自动加载同名字幕（本地视频，包括content://）
                 if (!isOnlineVideo) {
-                    Log.d(TAG, "Calling autoLoadSubtitleIfExists")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Calling autoLoadSubtitleIfExists")
                     autoLoadSubtitleIfExists(uri)
                 } else {
-                    Log.d(TAG, "Skipping subtitle auto-load for online video")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Skipping subtitle auto-load for online video")
                 }
                 
                 // 再恢复用户的字幕偏好设置（会覆盖自动加载的）
@@ -890,7 +915,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 if (anime4KEnabled && anime4KMode != Anime4KManager.Mode.OFF) {
                     delay(200) // 额外延迟确保MPV完全初始化
                     applyAnime4K()
-                    Log.d(TAG, "Applied remembered Anime4K mode: $anime4KMode")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Applied remembered Anime4K mode: $anime4KMode")
                 }
             }
         }
@@ -903,30 +928,30 @@ class VideoPlayerActivity : AppCompatActivity(),
      */
     private fun autoLoadSubtitleIfExists(videoUri: android.net.Uri) {
         try {
-            Log.d(TAG, "===== Auto-load subtitle start =====")
-            Log.d(TAG, "Video URI: $videoUri")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "===== Auto-load subtitle start =====")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video URI: $videoUri")
             
             // 检查PreferencesManager中是否已有字幕路径，如果有则跳过自动加载
             val savedSubtitlePath = preferencesManager.getExternalSubtitle(videoUri.toString())
             if (savedSubtitlePath != null && File(savedSubtitlePath).exists()) {
-                Log.d(TAG, "Subtitle already exists in preferences: $savedSubtitlePath, skipping auto-load")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Subtitle already exists in preferences: $savedSubtitlePath, skipping auto-load")
                 return
             }
             
             // 获取视频文件真实路径
             val videoPath = getRealPathFromUri(videoUri)
-            Log.d(TAG, "Real video path: $videoPath")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Real video path: $videoPath")
             
             if (videoPath == null) {
-                Log.d(TAG, "Cannot get real path from URI")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Cannot get real path from URI")
                 return
             }
             
             val videoFile = File(videoPath)
-            Log.d(TAG, "Video file exists: ${videoFile.exists()}, isFile: ${videoFile.isFile}")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video file exists: ${videoFile.exists()}, isFile: ${videoFile.isFile}")
             
             if (!videoFile.exists() || !videoFile.isFile) {
-                Log.d(TAG, "Video file not accessible")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video file not accessible")
                 return
             }
             
@@ -934,11 +959,11 @@ class VideoPlayerActivity : AppCompatActivity(),
             val videoNameWithoutExt = videoFile.nameWithoutExtension
             val videoDir = videoFile.parentFile
             
-            Log.d(TAG, "Video name without ext: $videoNameWithoutExt")
-            Log.d(TAG, "Video directory: ${videoDir?.absolutePath}")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video name without ext: $videoNameWithoutExt")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video directory: ${videoDir?.absolutePath}")
             
             if (videoDir == null) {
-                Log.d(TAG, "Video directory is null")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video directory is null")
                 return
             }
             
@@ -951,7 +976,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 val subtitleFile = File(videoDir, "$videoNameWithoutExt.$ext")
                 if (subtitleFile.exists() && subtitleFile.isFile) {
                     foundSubtitle = subtitleFile
-                    Log.d(TAG, "Found subtitle: ${subtitleFile.name}")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Found subtitle: ${subtitleFile.name}")
                     break
                 }
             }
@@ -959,19 +984,21 @@ class VideoPlayerActivity : AppCompatActivity(),
             // 如果找到字幕文件，自动加载
             if (foundSubtitle != null) {
                 val subtitlePath = foundSubtitle.absolutePath
-                Log.d(TAG, "Auto-loading subtitle: $subtitlePath")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Auto-loading subtitle: $subtitlePath")
                 
                 try {
                     MPVLib.command("sub-add", subtitlePath, "select")
-                    Log.d(TAG, "Successfully auto-loaded subtitle: ${foundSubtitle.name}")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Successfully auto-loaded subtitle: ${foundSubtitle.name}")
+                    DialogUtils.showToastShort(this, "已自动加载字幕: ${foundSubtitle.name}")
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to auto-load subtitle", e)
+                    com.fam4k007.videoplayer.utils.Logger.w(TAG, "Failed to auto-load subtitle", e)
+                    DialogUtils.showToastShort(this, "字幕加载失败: ${e.message}")
                 }
             } else {
-                Log.d(TAG, "No matching subtitle file found")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "No matching subtitle file found")
             }
             
-            Log.d(TAG, "===== Auto-load subtitle end =====")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "===== Auto-load subtitle end =====")
         } catch (e: Exception) {
             Log.e(TAG, "Error in autoLoadSubtitleIfExists", e)
         }
@@ -996,7 +1023,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                         }
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to get real path from content URI", e)
+                    com.fam4k007.videoplayer.utils.Logger.w(TAG, "Failed to get real path from content URI", e)
                     null
                 }
             }
@@ -1032,7 +1059,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to get content URI for file: ${file.absolutePath}", e)
+            com.fam4k007.videoplayer.utils.Logger.w(TAG, "Failed to get content URI for file: ${file.absolutePath}", e)
             null
         }
     }
@@ -1043,12 +1070,12 @@ class VideoPlayerActivity : AppCompatActivity(),
      */
     private fun loadDanmakuForVideo(videoUri: android.net.Uri) {
         try {
-            Log.d(TAG, "Loading danmaku for video: $videoUri")
+            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Loading danmaku for video: $videoUri")
             
             val history = historyManager.getHistoryForUri(videoUri)
             
             if (history?.danmuPath != null && File(history.danmuPath).exists()) {
-                Log.d(TAG, "Restoring danmaku from history: ${history.danmuPath}")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Restoring danmaku from history: ${history.danmuPath}")
                 // 恢复用户上次的弹幕可见性设置
                 val autoShow = history.danmuVisible
                 val loaded = danmakuManager.loadDanmakuFile(
@@ -1057,28 +1084,29 @@ class VideoPlayerActivity : AppCompatActivity(),
                 )
                 
                 if (loaded) {
-                    Log.d(TAG, "Danmaku restored successfully, autoShow=$autoShow")
-                    Log.d(TAG, "Current danmaku visibility: ${danmakuManager.isVisible()}")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Danmaku restored successfully, autoShow=$autoShow")
+                    com.fam4k007.videoplayer.utils.Logger.d(TAG, "Current danmaku visibility: ${danmakuManager.isVisible()}")
                     
                     // 如果视频正在播放，启动弹幕
                     if (isPlaying) {
                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                             danmakuManager.resume()
-                            Log.d(TAG, "Danmaku resumed after restore, isPlaying=$isPlaying")
+                            com.fam4k007.videoplayer.utils.Logger.d(TAG, "Danmaku resumed after restore, isPlaying=$isPlaying")
                         }, 300)
                     } else {
-                        Log.d(TAG, "Video not playing yet, danmaku will start when video plays")
+                        com.fam4k007.videoplayer.utils.Logger.d(TAG, "Video not playing yet, danmaku will start when video plays")
                     }
                 } else {
-                    Log.w(TAG, "Failed to restore danmaku, trying auto-find")
+                    com.fam4k007.videoplayer.utils.Logger.w(TAG, "Failed to restore danmaku, trying auto-find")
                     autoFindAndLoadDanmaku(videoUri)
                 }
             } else {
-                Log.d(TAG, "No danmaku history found, auto-finding...")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "No danmaku history found, auto-finding...")
                 autoFindAndLoadDanmaku(videoUri)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading danmaku", e)
+            DialogUtils.showToastShort(this, "弹幕加载失败: ${e.message}")
         }
     }
     
@@ -1089,12 +1117,13 @@ class VideoPlayerActivity : AppCompatActivity(),
         try {
             val videoPath = videoUri.resolveUri(this)
             if (videoPath != null) {
-                Log.d(TAG, "Auto-finding danmaku for: $videoPath")
+                com.fam4k007.videoplayer.utils.Logger.d(TAG, "Auto-finding danmaku for: $videoPath")
                 danmakuManager.loadDanmakuForVideo(videoUri.toString(), videoPath)
                 // prepared回调会自动处理弹幕启动，这里不需要手动启动
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error auto-finding danmaku", e)
+            // 自动查找失败不提示，避免打扰用户
         }
     }
     
@@ -1104,7 +1133,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     private fun restoreSubtitlePreferences(videoUri: android.net.Uri) {
         try {
             val uriString = videoUri.toString()
-            Log.d(TAG, "Restoring subtitle preferences for: $uriString")
+            Logger.d(TAG, "Restoring subtitle preferences for: $uriString")
             
             playbackEngine?.let { engine ->
                 val assOverride = preferencesManager.isAssOverrideEnabled(uriString)
@@ -1112,26 +1141,26 @@ class VideoPlayerActivity : AppCompatActivity(),
                     lifecycleScope.launch {
                         delay(300)
                         engine.setAssOverride(assOverride)
-                        Log.d(TAG, "Restored ASS override: $assOverride")
+                        Logger.d(TAG, "Restored ASS override: $assOverride")
                     }
                 }
                 
                 val savedScale = preferencesManager.getSubtitleScale(uriString)
                 if (savedScale != 1.0) {
                     engine.setSubtitleScale(savedScale)
-                    Log.d(TAG, "Restored subtitle scale: $savedScale")
+                    Logger.d(TAG, "Restored subtitle scale: $savedScale")
                 }
                 
                 val savedPosition = preferencesManager.getSubtitlePosition(uriString)
                 if (savedPosition != 100) {
                     engine.setSubtitleVerticalPosition(savedPosition)
-                    Log.d(TAG, "Restored subtitle position: $savedPosition")
+                    Logger.d(TAG, "Restored subtitle position: $savedPosition")
                 }
                 
                 val savedDelay = preferencesManager.getSubtitleDelay(uriString)
                 if (savedDelay != 0.0) {
                     engine.setSubtitleDelay(savedDelay)
-                    Log.d(TAG, "Restored subtitle delay: $savedDelay")
+                    Logger.d(TAG, "Restored subtitle delay: $savedDelay")
                 }
                 
                 val savedSubtitlePath = preferencesManager.getExternalSubtitle(uriString)
@@ -1139,12 +1168,12 @@ class VideoPlayerActivity : AppCompatActivity(),
                     if (File(savedSubtitlePath).exists()) {
                         try {
                             MPVLib.command("sub-add", savedSubtitlePath, "select")
-                            Log.d(TAG, "Restored external subtitle from path: $savedSubtitlePath")
+                            Logger.d(TAG, "Restored external subtitle from path: $savedSubtitlePath")
                         } catch (e: Exception) {
-                            Log.w(TAG, "Failed to restore external subtitle", e)
+                            Logger.w(TAG, "Failed to restore external subtitle", e)
                         }
                     } else {
-                        Log.w(TAG, "Saved subtitle file not found: $savedSubtitlePath")
+                        Logger.w(TAG, "Saved subtitle file not found: $savedSubtitlePath")
                     }
                 }
                 
@@ -1154,9 +1183,9 @@ class VideoPlayerActivity : AppCompatActivity(),
                         delay(600)
                         try {
                             engine.selectSubtitleTrack(savedTrackId)
-                            Log.d(TAG, "Restored subtitle track: $savedTrackId")
+                            Logger.d(TAG, "Restored subtitle track: $savedTrackId")
                         } catch (e: Exception) {
-                            Log.w(TAG, "Failed to restore subtitle track", e)
+                            Logger.w(TAG, "Failed to restore subtitle track", e)
                         }
                     }
                 }
@@ -1164,34 +1193,35 @@ class VideoPlayerActivity : AppCompatActivity(),
                 val savedTextColor = preferencesManager.getSubtitleTextColor(uriString)
                 if (savedTextColor != "#FFFFFF") {
                     engine.setSubtitleTextColor(savedTextColor)
-                    Log.d(TAG, "Restored subtitle text color: $savedTextColor")
+                    Logger.d(TAG, "Restored subtitle text color: $savedTextColor")
                 }
                 
                 val savedBorderSize = preferencesManager.getSubtitleBorderSize(uriString)
                 if (savedBorderSize != 3) {
                     engine.setSubtitleBorderSize(savedBorderSize)
-                    Log.d(TAG, "Restored subtitle border size: $savedBorderSize")
+                    Logger.d(TAG, "Restored subtitle border size: $savedBorderSize")
                 }
                 
                 val savedBorderColor = preferencesManager.getSubtitleBorderColor(uriString)
                 if (savedBorderColor != "#000000") {
                     engine.setSubtitleBorderColor(savedBorderColor)
-                    Log.d(TAG, "Restored subtitle border color: $savedBorderColor")
+                    Logger.d(TAG, "Restored subtitle border color: $savedBorderColor")
                 }
                 
                 val savedBackColor = preferencesManager.getSubtitleBackColor(uriString)
                 if (savedBackColor != "#00000000") {
                     engine.setSubtitleBackColor(savedBackColor)
-                    Log.d(TAG, "Restored subtitle back color: $savedBackColor")
+                    Logger.d(TAG, "Restored subtitle back color: $savedBackColor")
                 }
                 
                 // 总是应用描边样式，即使是默认值，确保MPV状态正确
                 val savedBorderStyle = preferencesManager.getSubtitleBorderStyle(uriString)
                 engine.setSubtitleBorderStyle(savedBorderStyle)
-                Log.d(TAG, "Restored subtitle border style: $savedBorderStyle")
+                Logger.d(TAG, "Restored subtitle border style: $savedBorderStyle")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error restoring subtitle preferences", e)
+            // 恢复字幕设置失败不影响播放，不提示用户
         }
     }
     
@@ -1220,7 +1250,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 anime4KMode = Anime4KManager.Mode.valueOf(lastMode)
                 // 只有非OFF模式才启用Anime4K
                 anime4KEnabled = (anime4KMode != Anime4KManager.Mode.OFF)
-                Log.d(TAG, "Anime4K mode restored from memory: $lastMode, enabled=$anime4KEnabled")
+                Logger.d(TAG, "Anime4K mode restored from memory: $lastMode, enabled=$anime4KEnabled")
             } catch (e: IllegalArgumentException) {
                 Log.e(TAG, "Invalid Anime4K mode in preferences: $lastMode", e)
                 anime4KMode = Anime4KManager.Mode.OFF
@@ -1244,7 +1274,7 @@ class VideoPlayerActivity : AppCompatActivity(),
      * 用户点击确定按钮，从头开始播放
      */
     private fun onResumePromptConfirm() {
-        Log.d(TAG, "User confirmed to restart from beginning")
+        Logger.d(TAG, "User confirmed to restart from beginning")
         hideResumeProgressPrompt()
         
         playbackEngine?.seekTo(0)
@@ -1270,7 +1300,7 @@ class VideoPlayerActivity : AppCompatActivity(),
      * 更新上一集下一集按钮状态
      */
     private fun updateEpisodeButtons() {
-        Log.d(TAG, "updateEpisodeButtons - hasPrevious: ${seriesManager.hasPrevious}, hasNext: ${seriesManager.hasNext}")
+        Logger.d(TAG, "updateEpisodeButtons - hasPrevious: ${seriesManager.hasPrevious}, hasNext: ${seriesManager.hasNext}")
         controlsManager?.updateEpisodeButtons(seriesManager.hasPrevious, seriesManager.hasNext)
     }
     
@@ -1278,11 +1308,11 @@ class VideoPlayerActivity : AppCompatActivity(),
      * 播放上一集
      */
     private fun playPreviousVideo() {
-        Log.d(TAG, "playPreviousVideo - hasPrevious: ${seriesManager.hasPrevious}")
+        Logger.d(TAG, "playPreviousVideo - hasPrevious: ${seriesManager.hasPrevious}")
         if (seriesManager.hasPrevious) {
             val previousUri = seriesManager.previous()
             if (previousUri != null) {
-                Log.d(TAG, "Playing previous video: $previousUri")
+                Logger.d(TAG, "Playing previous video: $previousUri")
                 playVideo(previousUri)
                 updateEpisodeButtons()
             }
@@ -1295,11 +1325,11 @@ class VideoPlayerActivity : AppCompatActivity(),
      * 播放下一集
      */
     private fun playNextVideo() {
-        Log.d(TAG, "playNextVideo - hasNext: ${seriesManager.hasNext}")
+        Logger.d(TAG, "playNextVideo - hasNext: ${seriesManager.hasNext}")
         if (seriesManager.hasNext) {
             val nextUri = seriesManager.next()
             if (nextUri != null) {
-                Log.d(TAG, "Playing next video: $nextUri")
+                Logger.d(TAG, "Playing next video: $nextUri")
                 playVideo(nextUri)
                 updateEpisodeButtons()
             }
@@ -1334,7 +1364,7 @@ class VideoPlayerActivity : AppCompatActivity(),
             
             // 本地视频自动加载同名字幕
             if (!isOnlineVideo) {
-                Log.d(TAG, "Auto-loading subtitle for next video")
+                Logger.d(TAG, "Auto-loading subtitle for next video")
                 autoLoadSubtitleIfExists(uri)
             }
             
@@ -1359,7 +1389,7 @@ class VideoPlayerActivity : AppCompatActivity(),
         
         if (isFromHomeContinue) {
             // 从主页继续播放进入，直接返回到主页（MainActivity）
-            Log.d(TAG, "Returning to MainActivity from continue play")
+            Logger.d(TAG, "Returning to MainActivity from continue play")
             
             val intent = Intent(this, MainActivity::class.java).apply {
                 // 清除任务栈，确保回到主页
@@ -1381,7 +1411,7 @@ class VideoPlayerActivity : AppCompatActivity(),
      */
     override fun onVideoAspectChanged(aspect: VideoAspect) {
         currentVideoAspect = aspect
-        Log.d(TAG, "Video aspect changed to: ${aspect.displayName}")
+        Logger.d(TAG, "Video aspect changed to: ${aspect.displayName}")
     }
 
     override fun onPause() {
@@ -1405,7 +1435,7 @@ class VideoPlayerActivity : AppCompatActivity(),
     
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "Activity destroyed")
+        Logger.d(TAG, "Activity destroyed")
         
         savePlaybackState()
         
@@ -1452,7 +1482,7 @@ class VideoPlayerActivity : AppCompatActivity(),
             // 1. 保存播放进度到 PreferencesManager
             if (duration > 0 && currentPosition > 0) {
                 preferencesManager.setPlaybackPosition(uri.toString(), currentPosition)
-                Log.d(TAG, "Playback position saved: $currentPosition / $duration")
+                Logger.d(TAG, "Playback position saved: $currentPosition / $duration")
             }
             
             // 2. 添加到历史记录 - 只记录本地视频，不记录在线视频
@@ -1467,7 +1497,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                     duration = (duration * 1000).toLong(),
                     folderName = folderName
                 )
-                Log.d(TAG, "History saved: $fileName")
+                Logger.d(TAG, "History saved: $fileName")
                 
                 // 3. 保存弹幕信息到历史记录
                 val danmakuPath = danmakuManager.getCurrentDanmakuPath()
@@ -1478,10 +1508,10 @@ class VideoPlayerActivity : AppCompatActivity(),
                         danmuVisible = danmakuManager.isVisible(),
                         danmuOffsetTime = 0L
                     )
-                    Log.d(TAG, "Danmu info saved: path=$danmakuPath, visible=${danmakuManager.isVisible()}")
+                    Logger.d(TAG, "Danmu info saved: path=$danmakuPath, visible=${danmakuManager.isVisible()}")
                 }
             } else if (isOnlineVideo) {
-                Log.d(TAG, "Skipping history for online video: $uri")
+                Logger.d(TAG, "Skipping history for online video: $uri")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save playback state", e)
@@ -1510,10 +1540,10 @@ class VideoPlayerActivity : AppCompatActivity(),
                 emptyList()
             }
             playbackEngine.setShaderList(shaders)
-            Log.d(TAG, "Anime4K applied: mode=$anime4KMode, quality=$anime4KQuality")
+            Logger.d(TAG, "Anime4K applied: mode=$anime4KMode, quality=$anime4KQuality")
         } else {
             playbackEngine.setShaderList(emptyList())
-            Log.d(TAG, "Anime4K disabled")
+            Logger.d(TAG, "Anime4K disabled")
         }
     }
     
@@ -1534,7 +1564,7 @@ class VideoPlayerActivity : AppCompatActivity(),
                 danmuVisible = visible,
                 danmuOffsetTime = 0L
             )
-            Log.d(TAG, "Danmaku visibility updated in history: $visible")
+            Logger.d(TAG, "Danmaku visibility updated in history: $visible")
         }
     }
     

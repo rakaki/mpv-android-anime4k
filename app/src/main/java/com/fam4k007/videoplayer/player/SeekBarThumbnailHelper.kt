@@ -4,9 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.SeekBar
@@ -17,9 +15,11 @@ import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
 
 /**
- * 进度条缩略图预览助手
- * 处理拖动进度条时显示缩略图预览
- * 使用代理模式，包装原有的监听器
+ * 进度条缩略图预览助手 - 重构优化版
+ * 核心优化：
+ * 1. 防抖机制：避免快速拖动时过度提取
+ * 2. 智能预加载：触发预加载周围帧
+ * 3. 降级显示：立即显示附近帧，避免等待
  */
 class SeekBarThumbnailHelper(
     context: Context,
@@ -38,13 +38,18 @@ class SeekBarThumbnailHelper(
     
     private var isShowing = false
     private var videoDuration: Double = 0.0
-    private var lastDisplayedSecond: Long = -1  // 记录上次显示的秒数
     
-    private var extractJob: Job? = null
+    // 防抖控制
+    private var loadJob: Job? = null
+    private val debounceDelay = 10L  // 10ms 防抖延迟（快速响应）
+    
+    // 预加载控制
+    private var preloadJob: Job? = null
+    private var lastRequestedPosition: Long = -1
     
     companion object {
-        private const val POPUP_WIDTH = 640  // 更大尺寸
-        private const val POPUP_HEIGHT = 410 // 包含文字高度
+        private const val POPUP_WIDTH = 640
+        private const val POPUP_HEIGHT = 410
         private const val TAG = "SeekBarThumbnail"
     }
     
@@ -53,44 +58,36 @@ class SeekBarThumbnailHelper(
     }
     
     /**
-     * 设置进度条监听（使用代理模式包装原监听器）
+     * 设置进度条监听
      */
     private fun setupSeekBarListener() {
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                // 先调用原监听器
                 originalListener?.onProgressChanged(seekBar, progress, fromUser)
                 
-                // 然后处理缩略图显示
                 if (fromUser && thumbnailManager.isThumbnailSupported()) {
-                    // progress 现在就是秒数
-                    val currentSecond = progress.toLong()
-                    
-                    // 只有当秒数变化时才更新缩略图
-                    if (currentSecond != lastDisplayedSecond) {
-                        lastDisplayedSecond = currentSecond
-                        showThumbnail(currentSecond)
-                    }
+                    val positionSec = progress.toLong()
+                    showThumbnail(positionSec)
                 }
             }
             
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                // 先调用原监听器
                 originalListener?.onStartTrackingTouch(seekBar)
+                // 开始拖动时，立即预加载当前位置周围的缩略图
+                val currentSec = (seekBar?.progress ?: 0).toLong()
+                startPreload(currentSec)
             }
             
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                // 先调用原监听器
                 originalListener?.onStopTrackingTouch(seekBar)
-                // 然后隐藏缩略图
+                stopPreload()
                 hideThumbnail()
             }
         })
     }
     
     /**
-     * 显示缩略图
-     * @param positionSec 视频位置（秒）
+     * 显示缩略图（立即响应 + 降级显示）
      */
     private fun showThumbnail(positionSec: Long) {
         if (!isShowing) {
@@ -101,12 +98,71 @@ class SeekBarThumbnailHelper(
         // 更新时间文字
         thumbnailTimeText?.text = formatTime(positionSec.toDouble())
         
-        // 加载缩略图
-        loadThumbnail(positionSec)
+        // 策略1：立即显示精确缓存
+        val exactCached = thumbnailManager.getThumbnailAt(positionSec)
+        if (exactCached != null) {
+            thumbnailImageView?.setImageBitmap(exactCached)
+            lastRequestedPosition = positionSec
+            return
+        }
+        
+        // 策略2：立即显示附近的缓存帧（降级方案）
+        val nearbyBitmap = findNearbyThumbnail(positionSec, maxDistance = 3)
+        if (nearbyBitmap != null) {
+            thumbnailImageView?.setImageBitmap(nearbyBitmap)
+        }
+        
+        // 策略3：后台提取精确帧（如果位置变化）
+        if (positionSec != lastRequestedPosition) {
+            lastRequestedPosition = positionSec
+            
+            loadJob?.cancel()
+            loadJob = scope.launch {
+                delay(debounceDelay)
+                
+                val bitmap = thumbnailManager.extractThumbnailRealtime(positionSec)
+                bitmap?.let {
+                    // 只有当用户还在这个位置时才更新
+                    if (positionSec == lastRequestedPosition) {
+                        thumbnailImageView?.setImageBitmap(it)
+                    }
+                }
+            }
+        }
     }
     
     /**
-     * 创建弹窗，固定在屏幕中央
+     * 查找附近的缓存缩略图（降级显示）
+     */
+    private fun findNearbyThumbnail(positionSec: Long, maxDistance: Long): Bitmap? {
+        for (offset in 1..maxDistance) {
+            thumbnailManager.getThumbnailAt(positionSec + offset)?.let { return it }
+            thumbnailManager.getThumbnailAt(positionSec - offset)?.let { return it }
+        }
+        return null
+    }
+    
+    /**
+     * 开始预加载（用户开始拖动时触发）
+     */
+    private fun startPreload(centerSec: Long) {
+        preloadJob?.cancel()
+        preloadJob = scope.launch {
+            // 立即预加载当前位置周围的缩略图
+            thumbnailManager.preloadAroundPosition(centerSec)
+        }
+    }
+    
+    /**
+     * 停止预加载
+     */
+    private fun stopPreload() {
+        preloadJob?.cancel()
+        preloadJob = null
+    }
+    
+    /**
+     * 创建弹窗
      */
     private fun createPopupWindow() {
         val context = contextRef.get() ?: return
@@ -119,7 +175,6 @@ class SeekBarThumbnailHelper(
         thumbnailImageView = contentView.findViewById(R.id.ivThumbnail)
         thumbnailTimeText = contentView.findViewById(R.id.tvThumbnailTime)
         
-        // 计算居中位置
         val screenWidth = containerView.width
         val screenHeight = containerView.height
         val x = (screenWidth - POPUP_WIDTH) / 2
@@ -139,41 +194,17 @@ class SeekBarThumbnailHelper(
     }
     
     /**
-     * 加载缩略图
-     * @param positionSec 视频位置（秒）
-     */
-    private fun loadThumbnail(positionSec: Long) {
-        extractJob?.cancel()
-        
-        // 先尝试从缓存获取
-        val cached = thumbnailManager.getThumbnailAt(positionSec)
-        if (cached != null) {
-            thumbnailImageView?.setImageBitmap(cached)
-            return
-        }
-        
-        // 缓存未命中，异步提取
-        extractJob = scope.launch {
-            val bitmap = thumbnailManager.extractThumbnailRealtime(positionSec)
-            bitmap?.let {
-                thumbnailImageView?.setImageBitmap(it)
-            }
-        }
-    }
-    
-    /**
      * 隐藏缩略图
      */
     private fun hideThumbnail() {
+        loadJob?.cancel()
+        preloadJob?.cancel()
         popupWindow?.dismiss()
         popupWindow = null
         thumbnailImageView = null
         thumbnailTimeText = null
         isShowing = false
-        lastDisplayedSecond = -1  // 重置秒数记录
-        
-        extractJob?.cancel()
-        extractJob = null
+        lastRequestedPosition = -1
     }
     
     /**

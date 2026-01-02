@@ -52,7 +52,7 @@ class GestureHandler(
         fun onSingleTap()
         fun onDoubleTap()
         fun onLongPress()
-        fun onSeekGesture(seekSeconds: Int)  // 改为传递秒数
+        fun onSeekGesture(seekSeconds: Int, isRelativeSeek: Boolean = false)  // isRelativeSeek: true=双击累积模式, false=滑动绝对模式
     }
 
     // 音量和亮度控制
@@ -69,6 +69,10 @@ class GestureHandler(
     
     // 音量增强设置
     private var volumeBoostEnabled = false  // 默认关闭音量增强
+    
+    // 双击手势设置
+    private var doubleTapMode = 1  // 0=暂停/播放, 1=快进/快退（默认为快进快退）
+    private var doubleTapSeekSeconds = 10  // 双击跳转秒数
     
     // 保存进入播放器时的原始系统设置(退出时恢复)
     private var originalSystemVolume = -1
@@ -100,6 +104,14 @@ class GestureHandler(
     private var brightnessText: TextView? = null
     private var volumeText: TextView? = null
 
+    // 双击跳转指示器视图
+    private var doubleTapSeekLeft: DoubleTapSeekIndicator? = null
+    private var doubleTapSeekRight: DoubleTapSeekIndicator? = null
+    
+    // 双击手势标志位，用于防止触发滚动手势
+    private var isDoubleTapping = false
+    private val doubleTapResetDelay = 300L  // 双击后300ms内不响应滚动手势
+
     // 手势检测器
     val gestureDetector: GestureDetector by lazy {
         GestureDetector(contextRef.get(), GestureListener())
@@ -119,6 +131,12 @@ class GestureHandler(
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         usePreciseSeeking = prefs.getBoolean(KEY_PRECISE_SEEKING, false)
         volumeBoostEnabled = prefs.getBoolean(KEY_VOLUME_BOOST_ENABLED, false)  // 默认关闭
+        
+        // 读取双击手势设置
+        doubleTapMode = prefs.getInt(com.fam4k007.videoplayer.AppConstants.Preferences.DOUBLE_TAP_MODE, 
+            com.fam4k007.videoplayer.AppConstants.Defaults.DEFAULT_DOUBLE_TAP_MODE)
+        doubleTapSeekSeconds = prefs.getInt(com.fam4k007.videoplayer.AppConstants.Preferences.DOUBLE_TAP_SEEK_SECONDS,
+            com.fam4k007.videoplayer.AppConstants.Defaults.DEFAULT_DOUBLE_TAP_SEEK_SECONDS)
         
         // 根据音量增强设置确定最大音量
         val effectiveMaxVolume = if (volumeBoostEnabled) MAX_VOLUME else MAX_VOLUME_NO_BOOST
@@ -223,6 +241,21 @@ class GestureHandler(
         this.volumeBar = volumeBar
         this.brightnessText = brightnessText
         this.volumeText = volumeText
+    }
+    
+    /**
+     * 绑定双击跳转指示器视图
+     */
+    fun bindDoubleTapSeekIndicators(
+        left: DoubleTapSeekIndicator,
+        right: DoubleTapSeekIndicator
+    ) {
+        this.doubleTapSeekLeft = left
+        this.doubleTapSeekRight = right
+        
+        // 初始化属性
+        left.isForward = false  // 左侧是后退
+        right.isForward = true  // 右侧是前进
     }
     
     /**
@@ -450,6 +483,41 @@ class GestureHandler(
     }
 
     /**
+     * 显示双击跳转动画
+     * @param isForward true=快进(右侧), false=快退(左侧)
+     * @param seconds 跳转秒数
+     */
+    private fun showDoubleTapSeekAnimation(isForward: Boolean, seconds: Int) {
+        if (isForward) {
+            // 显示右侧快进动画
+            doubleTapSeekRight?.let { indicator ->
+                indicator.seconds = seconds
+                indicator.visibility = View.VISIBLE
+                indicator.start()
+                
+                // 600ms后自动隐藏
+                hideHandler.postDelayed({
+                    indicator.stop()
+                    indicator.visibility = View.GONE
+                }, 600)
+            }
+        } else {
+            // 显示左侧快退动画
+            doubleTapSeekLeft?.let { indicator ->
+                indicator.seconds = -seconds
+                indicator.visibility = View.VISIBLE
+                indicator.start()
+                
+                // 600ms后自动隐藏
+                hideHandler.postDelayed({
+                    indicator.stop()
+                    indicator.visibility = View.GONE
+                }, 600)
+            }
+        }
+    }
+
+    /**
      * 计算Seek值（纯计算，无副作用）
      * 固定步进：每100px滑动 = 5秒
      * @param deltaX 水平滑动距离
@@ -509,8 +577,36 @@ class GestureHandler(
             if (controlsManagerRef?.get()?.isControlsLocked() == true) {
                 return false
             }
-            // 双击全屏响应 - 暂停/播放
-            callback.onDoubleTap()
+            
+            // 设置双击标志位，防止触发滚动手势
+            isDoubleTapping = true
+            hideHandler.postDelayed({
+                isDoubleTapping = false
+            }, doubleTapResetDelay)
+            
+            // 根据双击模式选择行为
+            when (doubleTapMode) {
+                0 -> {
+                    // 模式0: 双击暂停/播放（全屏任意位置）
+                    callback.onDoubleTap()
+                }
+                1 -> {
+                    // 模式1: 双击快进/快退（左半屏快退，右半屏快进）
+                    val screenWidth = cachedScreenWidth
+                    val isLeftHalf = e.x < screenWidth / 2
+                    
+                    if (isLeftHalf) {
+                        // 左半屏：快退，显示左侧动画
+                        showDoubleTapSeekAnimation(false, doubleTapSeekSeconds)
+                        callback.onSeekGesture(-doubleTapSeekSeconds, isRelativeSeek = true)
+                    } else {
+                        // 右半屏：快进，显示右侧动画
+                        showDoubleTapSeekAnimation(true, doubleTapSeekSeconds)
+                        callback.onSeekGesture(doubleTapSeekSeconds, isRelativeSeek = true)
+                    }
+                }
+            }
+            
             return true
         }
         
@@ -534,6 +630,11 @@ class GestureHandler(
             
             // 如果控制已锁定，不处理滑动手势
             if (controlsManagerRef?.get()?.isControlsLocked() == true) {
+                return false
+            }
+            
+            // 如果刚刚双击，忽略滚动手势（防止手势冲突）
+            if (isDoubleTapping) {
                 return false
             }
             
@@ -588,7 +689,7 @@ class GestureHandler(
                     callback.onGestureStart()
                     // 使用计算方法获取seek值
                     val seekStep = calculateSeek(deltaX)
-                    callback.onSeekGesture(seekStep)
+                    callback.onSeekGesture(seekStep, isRelativeSeek = false)
                 }
                 GestureType.NONE -> {
                     // 还未确定手势类型
@@ -613,6 +714,15 @@ class GestureHandler(
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_PRECISE_SEEKING, enabled).apply()
         Log.d(TAG, "Precise seeking ${if (enabled) "enabled" else "disabled"}")
+    }
+    
+    /**
+     * 更新双击手势设置（从设置界面调用）
+     */
+    fun updateDoubleTapSettings(mode: Int, seekSeconds: Int) {
+        doubleTapMode = mode
+        doubleTapSeekSeconds = seekSeconds
+        Log.d(TAG, "Double tap settings updated - mode: $mode, seekSeconds: $seekSeconds")
     }
     
     /**

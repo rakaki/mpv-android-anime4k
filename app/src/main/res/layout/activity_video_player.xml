@@ -35,6 +35,26 @@
         android:indeterminateTint="#FFFFFF"
         android:visibility="visible" />
 
+    <!-- 双击跳转指示器 - 左侧（快退） -->
+    <com.fam4k007.videoplayer.player.DoubleTapSeekIndicator
+        android:id="@+id/doubleTapSeekLeft"
+        android:layout_width="180dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="20dp"
+        android:visibility="gone" />
+
+    <!-- 双击跳转指示器 - 右侧（快进） -->
+    <com.fam4k007.videoplayer.player.DoubleTapSeekIndicator
+        android:id="@+id/doubleTapSeekRight"
+        android:layout_width="180dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:layout_marginEnd="20dp"
+        android:visibility="gone" />
+
     <!-- 解锁按钮（锁定模式下显示在屏幕左侧） -->
     <ImageView
         android:id="@+id/btnUnlock"
@@ -461,12 +481,13 @@
         <!-- 亮度数值（1-10） -->
         <TextView
             android:id="@+id/brightnessText"
-            android:layout_width="wrap_content"
+            android:layout_width="44dp"
             android:layout_height="wrap_content"
             android:text="5"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold"
+            android:gravity="center"
             android:layout_marginBottom="8dp" />
 
         <!-- 背景容器 -->
@@ -513,12 +534,13 @@
         <!-- 音量数值（1-10） -->
         <TextView
             android:id="@+id/volumeText"
-            android:layout_width="wrap_content"
+            android:layout_width="44dp"
             android:layout_height="wrap_content"
             android:text="5"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold"
+            android:gravity="center"
             android:layout_marginBottom="8dp" />
 
         <!-- 背景容器 -->

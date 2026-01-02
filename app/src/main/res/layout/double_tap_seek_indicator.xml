@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    tools:parentTag="android.widget.LinearLayout">
+
+    <!-- 三角箭头容器，可旋转来改变方向 -->
+    <LinearLayout
+        android:id="@+id/triangleContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal"
+        android:paddingTop="8dp">
+
+        <!-- 第一个三角形 -->
+        <ImageView
+            android:id="@+id/tri1"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:alpha="0"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_play_triangle"
+            android:tint="#FFFFFF" />
+
+        <!-- 第二个三角形 -->
+        <ImageView
+            android:id="@+id/tri2"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:alpha="0"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_play_triangle"
+            android:tint="#FFFFFF" />
+
+        <!-- 第三个三角形 -->
+        <ImageView
+            android:id="@+id/tri3"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="4dp"
+            android:alpha="0"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_play_triangle"
+            android:tint="#FFFFFF" />
+
+    </LinearLayout>
+
+    <!-- 显示跳转秒数 -->
+    <TextView
+        android:id="@+id/doubleTapSeconds"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:shadowColor="#80000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="3"
+        tools:text="+10秒" />
+
+</merge>

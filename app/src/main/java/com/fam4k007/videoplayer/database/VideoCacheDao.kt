@@ -17,6 +17,22 @@ interface VideoCacheDao {
     @Query("SELECT * FROM video_cache WHERE folderPath = :folderPath ORDER BY name")
     fun getVideosByFolder(folderPath: String): List<VideoCacheEntity>
     
+    /**
+     * 分页查询指定文件夹的视频（支持Paging3）
+     */
+    @Query("SELECT * FROM video_cache WHERE folderPath = :folderPath ORDER BY name LIMIT :limit OFFSET :offset")
+    fun getVideosByFolderPaged(
+        folderPath: String,
+        limit: Int,
+        offset: Int
+    ): List<VideoCacheEntity>
+    
+    /**
+     * 获取指定文件夹视频总数（Paging3需要）
+     */
+    @Query("SELECT COUNT(*) FROM video_cache WHERE folderPath = :folderPath")
+    fun getVideoCountByFolder(folderPath: String): Int
+    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertVideos(videos: List<VideoCacheEntity>)
     
