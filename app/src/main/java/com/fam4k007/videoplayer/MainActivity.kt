@@ -132,8 +132,12 @@ class MainActivity : BaseActivity() {
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
+            containerColor = androidx.compose.ui.graphics.Color.White,
             title = {
-                Text(text = "发现新版本 ${updateInfo.versionName}")
+                Text(
+                    text = "发现新版本 ${updateInfo.versionName}",
+                    color = androidx.compose.ui.graphics.Color(0xFF222222)
+                )
             },
             text = {
                 Text(
@@ -141,17 +145,18 @@ class MainActivity : BaseActivity() {
                         "更新内容：\n${updateInfo.releaseNotes}"
                     } else {
                         "发现新版本，是否立即下载？"
-                    }
+                    },
+                    color = androidx.compose.ui.graphics.Color(0xFF666666)
                 )
             },
             confirmButton = {
                 TextButton(onClick = { onDownload(updateInfo.downloadUrl) }) {
-                    Text("立即下载")
+                    Text("立即下载", color = androidx.compose.ui.graphics.Color(0xFF1A73E8))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("稍后提醒")
+                    Text("稍后提醒", color = androidx.compose.ui.graphics.Color(0xFF666666))
                 }
             }
         )
