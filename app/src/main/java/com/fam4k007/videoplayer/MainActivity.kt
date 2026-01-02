@@ -3,8 +3,14 @@ package com.fam4k007.videoplayer
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.fam4k007.videoplayer.compose.HomeScreen
 import com.fam4k007.videoplayer.ui.theme.getThemeColors
@@ -17,6 +23,10 @@ class MainActivity : BaseActivity() {
     private var historyManager: PlaybackHistoryManager? = null  // 改为可空类型，延迟初始化
     private var lastThemeName: String? = null
     private var needsRefresh = false
+    
+    // 更新弹窗状态
+    private var showUpdateDialog by mutableStateOf(false)
+    private var currentUpdateInfo: UpdateManager.UpdateInfo? by mutableStateOf(null)
     
     override fun onCreate(savedInstanceState: Bundle?) {
         ThemeManager.applyTheme(this)
@@ -95,8 +105,56 @@ class MainActivity : BaseActivity() {
                         overridePendingTransition(R.anim.scale_in, R.anim.scale_out)
                     }
                 )
+                
+                // 更新弹窗
+                if (showUpdateDialog && currentUpdateInfo != null) {
+                    UpdateDialog(
+                        updateInfo = currentUpdateInfo!!,
+                        onDismiss = { showUpdateDialog = false },
+                        onDownload = { url ->
+                            UpdateManager.openDownloadPage(activity, url)
+                            showUpdateDialog = false
+                        }
+                    )
+                }
             }
         }
+    }
+    
+    /**
+     * 更新对话框 Composable
+     */
+    @androidx.compose.runtime.Composable
+    private fun UpdateDialog(
+        updateInfo: UpdateManager.UpdateInfo,
+        onDismiss: () -> Unit,
+        onDownload: (String) -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(text = "发现新版本 ${updateInfo.versionName}")
+            },
+            text = {
+                Text(
+                    text = if (updateInfo.releaseNotes.isNotEmpty()) {
+                        "更新内容：\n${updateInfo.releaseNotes}"
+                    } else {
+                        "发现新版本，是否立即下载？"
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { onDownload(updateInfo.downloadUrl) }) {
+                    Text("立即下载")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("稍后提醒")
+                }
+            }
+        )
     }
     
     /**
@@ -121,23 +179,8 @@ class MainActivity : BaseActivity() {
      * 显示更新对话框
      */
     private fun showUpdateDialog(updateInfo: UpdateManager.UpdateInfo) {
-        val builder = android.app.AlertDialog.Builder(this)
-        builder.setTitle("发现新版本 ${updateInfo.versionName}")
-        
-        val message = if (updateInfo.releaseNotes.isNotEmpty()) {
-            "更新内容：\n${updateInfo.releaseNotes}"
-        } else {
-            "发现新版本，是否立即下载？"
-        }
-        builder.setMessage(message)
-        
-        builder.setPositiveButton("立即下载") { _, _ ->
-            UpdateManager.openDownloadPage(this, updateInfo.downloadUrl)
-        }
-        builder.setNegativeButton("稍后提醒", null)
-        builder.setCancelable(true)
-        
-        builder.create().show()
+        currentUpdateInfo = updateInfo
+        showUpdateDialog = true
     }
 }
 

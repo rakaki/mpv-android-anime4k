@@ -481,12 +481,13 @@
         <!-- 亮度数值（1-10） -->
         <TextView
             android:id="@+id/brightnessText"
-            android:layout_width="wrap_content"
+            android:layout_width="44dp"
             android:layout_height="wrap_content"
             android:text="5"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold"
+            android:gravity="center"
             android:layout_marginBottom="8dp" />
 
         <!-- 背景容器 -->
@@ -533,12 +534,13 @@
         <!-- 音量数值（1-10） -->
         <TextView
             android:id="@+id/volumeText"
-            android:layout_width="wrap_content"
+            android:layout_width="44dp"
             android:layout_height="wrap_content"
             android:text="5"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold"
+            android:gravity="center"
             android:layout_marginBottom="8dp" />
 
         <!-- 背景容器 -->
