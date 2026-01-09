@@ -125,11 +125,13 @@ object DanDanApiManager {
 
     /**
      * 获取弹幕
-     * GET /api/v2/comment/{episodeId}?withRelated=true
+     * GET /api/v2/comment/{episodeId}?withRelated=true&ch_convert=1
      */
     suspend fun getComments(episodeId: Long): List<com.fam4k007.videoplayer.dandanplay.model.DanDanComment> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("$BASE_URL/api/v2/comment/$episodeId?withRelated=true")
+            // withRelated=true: 获取相关第三方弹幕
+            // ch_convert=1: 繁体转简体
+            .url("$BASE_URL/api/v2/comment/$episodeId?withRelated=true&ch_convert=1")
             .get()
             .build()
             

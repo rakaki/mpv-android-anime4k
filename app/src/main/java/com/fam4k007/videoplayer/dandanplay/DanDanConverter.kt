@@ -35,11 +35,12 @@ object DanDanConverter {
             // 我们需要补全缺失的字段，主要是字号(25)和时间戳等
             
             val parts = p.split(",")
-            if (parts.size >= 4) {
+            // 增加容错性：允许只有3个部分的旧数据，或未来可能变化的格式
+            if (parts.size >= 3) {
                 val time = parts[0]
                 val type = parts[1]
                 val color = parts[2]
-                val uid = parts[3] // 这里作为用户Hash
+                val uid = if (parts.size > 3) parts[3] else "0" // 如果缺少用户ID，使用默认值
                 
                 // 构造 B站格式的 p 属性
                 // 默认字号 25, 时间戳用当前时间, 池ID 0, 弹幕ID 用 cid

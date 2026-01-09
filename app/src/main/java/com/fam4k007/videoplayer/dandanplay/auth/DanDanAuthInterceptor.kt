@@ -4,11 +4,17 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
-import java.util.TreeMap
+import android.util.Base64
+import java.util.Locale
 
 /**
  * 弹弹play API 签名验证拦截器
- * 文档: https://doc.dandanplay.com/open/#_5-%E7%AD%BE%E5%90%8D%E9%AA%8C%E8%AF%81%E6%A8%A1%E5%BC%8F%E6%8C%87%E5%8D%97
+ * 文档: https://doc.dandanplay.com/open/#%E4%BA%8C%E3%80%81api-%E6%8E%A5%E5%85%A5%E6%8C%87%E5%8D%97
+ * 
+ * 签名生成规则 (V2):
+ * 1. 拼接字符串: AppId + Timestamp + Path + AppSecret (注意: V2 不需要 Query 参数参与签名)
+ * 2. 计算 SHA256 哈希
+ * 3. 对哈希结果进行 Base64 编码
  */
 class DanDanAuthInterceptor(
     private val appId: String,
@@ -19,50 +25,36 @@ class DanDanAuthInterceptor(
         val originalRequest = chain.request()
         val originalUrl = originalRequest.url
         
-        // 1. 构建参数 Map
-        val params = TreeMap<String, String>()
+        // 获取当前 Unix 时间戳 (秒)
+        val timestamp = (System.currentTimeMillis() / 1000).toString()
         
-        // 添加原有查询参数
-        for (i in 0 until originalUrl.querySize) {
-            params[originalUrl.queryParameterName(i)] = originalUrl.queryParameterValue(i) ?: ""
-        }
+        // 获取 API 路径 (例如 /api/v2/match)
+        // encodedPath 获取的是 URL 中域名之后的部分，不包含 Query
+        val path = originalUrl.encodedPath
         
-        // 2. 拼接字符串: appId + key1value1key2value2... + appSecret
-        val sb = StringBuilder()
-        sb.append(appId)
-        for ((key, value) in params) {
-            sb.append(key).append(value)
-        }
-        sb.append(appSecret)
+        // 1. 拼接字符串: AppId + Timestamp + Path + AppSecret
+        val rawString = appId + timestamp + path + appSecret
         
-        // 3. 计算 SHA256 哈希作为签名
-        val signature = sha256(sb.toString())
+        // 2. 计算 SHA256 哈希并 Base64 编码
+        val signature = sha256Base64(rawString)
         
-        // 4. 重建 URL，添加签名头或参数? 
-        // 文档说明：API 访问验证均在 HTTP Header 中进行
+        // 3. 添加 Header
         // X-AppId: [AppId]
         // X-Signature: [Signature]
+        // X-Timestamp: [Timestamp]
         
         val newRequest = originalRequest.newBuilder()
             .header("X-AppId", appId)
             .header("X-Signature", signature)
+            .header("X-Timestamp", timestamp)
             .build()
             
         return chain.proceed(newRequest)
     }
     
-    private fun sha256(input: String): String {
+    private fun sha256Base64(input: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val encodedhash = digest.digest(input.toByteArray(StandardCharsets.UTF_8))
-        
-        val hexString = StringBuilder(2 * encodedhash.size)
-        for (i in encodedhash.indices) {
-            val hex = Integer.toHexString(0xff and encodedhash[i].toInt())
-            if (hex.length == 1) {
-                hexString.append('0')
-            }
-            hexString.append(hex)
-        }
-        return hexString.toString()
+        return Base64.encodeToString(encodedhash, Base64.NO_WRAP)
     }
 }
