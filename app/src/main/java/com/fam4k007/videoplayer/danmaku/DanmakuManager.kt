@@ -3,7 +3,13 @@ package com.fam4k007.videoplayer.danmaku
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.fam4k007.videoplayer.dandanplay.DanDanApiManager
+import com.fam4k007.videoplayer.dandanplay.DanDanConverter
 import com.fam4k007.videoplayer.utils.DialogUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -56,6 +62,7 @@ class DanmakuManager(
     /**
      * 加载弹幕文件
      * 自动根据视频文件路径查找同名的 .xml 弹幕文件
+     * 如果未找到，尝试使用弹弹play API 自动下载
      */
     fun loadDanmakuForVideo(videoUri: String, videoPath: String, autoShow: Boolean = true): Boolean {
         if (!isInitialized) {
@@ -70,26 +77,82 @@ class DanmakuManager(
 
         // 查找同名弹幕文件
         val danmakuFile = findDanmakuFile(videoPath)
-        if (danmakuFile == null) {
-            Log.d(TAG, "No danmaku file found for video: $videoPath")
-            return false
+        if (danmakuFile != null) {
+            // 加载本地弹幕
+            val loaded = danmakuView.loadDanmaku(danmakuFile.absolutePath)
+            if (loaded) {
+                currentDanmakuPath = danmakuFile.absolutePath
+                danmakuView.setTrackSelected(true)
+                if (autoShow) {
+                    Log.d(TAG, "Danmaku loaded from local file: ${danmakuFile.absolutePath}")
+                }
+            }
+            return loaded
+        } else {
+            // 本地未找到，尝试自动匹配并下载
+            Log.d(TAG, "No local danmaku found, trying DanDanPlay match...")
+            autoMatchAndDownloadDanmaku(videoPath, autoShow)
+            return false // 异步操作，先返回 false
         }
+    }
 
-        // 加载弹幕
-        val loaded = danmakuView.loadDanmaku(danmakuFile.absolutePath)
-        if (loaded) {
-            currentDanmakuPath = danmakuFile.absolutePath
-            // 参考 DanDanPlay: addTrack 成功后自动调用 selectTrack
-            danmakuView.setTrackSelected(true)
-            
-            // 根据参数决定是否自动显示
-            if (autoShow) {
-                Log.d(TAG, "Danmaku loaded, track selected and shown: ${danmakuFile.absolutePath}")
-            } else {
-                Log.d(TAG, "Danmaku loaded, track selected (hidden): ${danmakuFile.absolutePath}")
+    private fun autoMatchAndDownloadDanmaku(videoPath: String, autoShow: Boolean) {
+        val scope = CoroutineScope(Dispatchers.Main)
+        scope.launch {
+            try {
+                // 1. 获取视频信息
+                val videoFile = File(videoPath)
+                if (!videoFile.exists()) return@launch
+                
+                // 这里暂时简单估算时长，或者需要从 VideoPlayerActivity 传入
+                // 实际应该使用 MediaMetadataRetriever 获取准确时长
+                // 为演示目的，假设调用方之后会完善
+                val durationMs = 0L // TODO: 需要传入真实时长以提高匹配准确率
+
+                // 2. 匹配视频
+                val matchResults = DanDanApiManager.matchVideo(
+                    fileName = videoFile.name,
+                    filePath = videoPath,
+                    durationMs = durationMs
+                )
+
+                if (matchResults.isNotEmpty()) {
+                    // 默认取第一个匹配结果
+                    val bestMatch = matchResults[0]
+                    Log.d(TAG, "DanDanPlay match success: ${bestMatch.animeTitle} - ${bestMatch.episodeTitle}")
+
+                    // 3. 下载弹幕
+                    val comments = DanDanApiManager.getComments(bestMatch.episodeId)
+                    if (comments.isNotEmpty()) {
+                        // 4. 保存为 XML
+                        val danmakuDir = File(context.filesDir, "danmaku_cache")
+                        if (!danmakuDir.exists()) danmakuDir.mkdirs()
+                        
+                        val xmlFile = File(danmakuDir, "${videoFile.nameWithoutExtension}.xml")
+                        withContext(Dispatchers.IO) {
+                            DanDanConverter.saveToXmlFile(comments, xmlFile)
+                        }
+
+                        // 5. 加载弹幕
+                        if (xmlFile.exists()) {
+                            val loaded = danmakuView.loadDanmaku(xmlFile.absolutePath)
+                            if (loaded) {
+                                currentDanmakuPath = xmlFile.absolutePath
+                                danmakuView.setTrackSelected(true)
+                                Log.d(TAG, "Danmaku loaded from DanDanPlay: ${xmlFile.absolutePath}")
+                                // TODO: 可以显示 Toast 提示用户已自动下载弹幕
+                            }
+                        }
+                    } else {
+                        Log.d(TAG, "No comments found for episode: ${bestMatch.episodeId}")
+                    }
+                } else {
+                    Log.d(TAG, "DanDanPlay match failed for: ${videoFile.name}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Auto download danmaku failed", e)
             }
         }
-        return loaded
     }
 
     /**
