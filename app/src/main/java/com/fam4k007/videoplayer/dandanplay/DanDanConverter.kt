@@ -68,7 +68,7 @@ object DanDanConverter {
         return str.replace("&", "&")
             .replace("<", "<")
             .replace(">", ">")
-            .replace("\"", """)
+            .replace("\"", "\"")
             .replace("'", "'")
     }
 }

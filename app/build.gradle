@@ -126,7 +126,7 @@ dependencies {
     
     implementation(name: 'mpv-android-lib-v0.1.10', ext: 'aar')
     // Danmaku - 弹幕库
-    implementation(name: 'DanmakuFlameMaster', ext: 'aar')
+    implementation 'com.github.ctiao:DanmakuFlameMaster:0.9.25'
     // WebDAV - Sardine library
     implementation files('libs/sardine-1.0.2.jar')
     implementation files('libs/simple-xml-2.7.1.jar')

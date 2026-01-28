@@ -367,8 +367,11 @@ class DanmakuPlayerView @JvmOverloads constructor(
      */
     fun setPlaybackSpeed(speed: Float) {
         if (speed >= 1f) {
-            danmakuContext.setSpeed(speed)
-            Log.d(TAG, "Playback speed set to: $speed")
+            // DanmakuFlameMaster doesn't have a direct setSpeed method, use scroll speed factor
+            // The scroll speed factor is inversely proportional to the playback speed
+            val scrollSpeedFactor = 1f / speed
+            danmakuContext.setScrollSpeedFactor(scrollSpeedFactor)
+            Log.d(TAG, "Playback speed set to: $speed, scroll speed factor: $scrollSpeedFactor")
         }
     }
 }
